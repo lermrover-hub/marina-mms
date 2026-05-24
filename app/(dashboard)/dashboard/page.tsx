@@ -6,6 +6,11 @@ import {
   Activity, Wrench, Anchor, CheckCircle2, Clock, ArrowRight,
   Calendar, BarChart3, ShieldAlert, Loader2,
 } from "lucide-react"
+import {
+  AreaChart, Area, BarChart, Bar,
+  XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, Legend,
+} from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/shared/StatusBadge"
@@ -134,11 +139,17 @@ type DashboardStats = {
 
 // ── page ──────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
-  const [stats,           setStats]    = useState<DashboardStats | null>(null)
-  const [workOrders,      setWOs]      = useState<WorkOrder[]>([])
-  const [invoices,        setInvoices] = useState<Invoice[]>([])
-  const [serviceRequests, setSRs]      = useState<ServiceRequest[]>([])
-  const [loading,         setLoading]  = useState(true)
+  const [stats,           setStats]     = useState<DashboardStats | null>(null)
+  const [workOrders,      setWOs]       = useState<WorkOrder[]>([])
+  const [invoices,        setInvoices]  = useState<Invoice[]>([])
+  const [serviceRequests, setSRs]       = useState<ServiceRequest[]>([])
+  const [analytics,       setAnalytics] = useState<{
+    monthlyRevenue: { month: string; revenue: number; recurring: number; workOrder: number; manual: number }[]
+    occupancy:      { total: number; occupied: number; pct: number }
+    byCategory:     { category: string; revenue: number; cost: number; count: number }[]
+    topCustomers:   { customer_id: string; name: string; total: number }[]
+  } | null>(null)
+  const [loading,         setLoading]   = useState(true)
 
   useEffect(() => {
     Promise.all([
@@ -146,11 +157,13 @@ export default function DashboardPage() {
       fetch("/api/db/work-orders").then(r => r.json()),
       fetch("/api/db/invoices").then(r => r.json()),
       fetch("/api/db/service-requests").then(r => r.json()),
-    ]).then(([statsData, woData, invData, srData]) => {
-      if (statsData && !statsData.error) setStats(statsData)
-      if (Array.isArray(woData))  setWOs(woData)
-      if (Array.isArray(invData)) setInvoices(invData)
-      if (Array.isArray(srData))  setSRs(srData)
+      fetch("/api/db/dashboard/analytics").then(r => r.json()),
+    ]).then(([statsData, woData, invData, srData, analyticsData]) => {
+      if (statsData && !statsData.error)       setStats(statsData)
+      if (Array.isArray(woData))               setWOs(woData)
+      if (Array.isArray(invData))              setInvoices(invData)
+      if (Array.isArray(srData))               setSRs(srData)
+      if (analyticsData && !analyticsData.error) setAnalytics(analyticsData)
     }).catch(console.error)
       .finally(() => setLoading(false))
   }, [])
@@ -317,6 +330,144 @@ export default function DashboardPage() {
           href="/quotations"
         />
       </div>
+
+      {/* ── Revenue Trend Chart ─────────────────────────────────────────────── */}
+      {analytics?.monthlyRevenue && analytics.monthlyRevenue.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <TrendingUp className="h-4 w-4 text-teal-500" /> Revenue Trend — Last 6 Months
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={analytics.monthlyRevenue}>
+                  <defs>
+                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%"  stopColor="#14b8a6" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#14b8a6" stopOpacity={0}   />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => `฿${(v / 1000).toFixed(0)}k`} />
+                  <Tooltip formatter={(v) => [`฿${Number(v ?? 0).toLocaleString()}`, ""]} />
+                  <Legend />
+                  <Area type="monotone" dataKey="recurring"  name="Recurring"   stackId="1" stroke="#14b8a6" fill="#14b8a6" fillOpacity={0.6} />
+                  <Area type="monotone" dataKey="workOrder"  name="Work Orders" stackId="1" stroke="#6366f1" fill="#6366f1" fillOpacity={0.6} />
+                  <Area type="monotone" dataKey="manual"     name="Manual"      stackId="1" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.6} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Revenue by Category + Top Customers + Occupancy Gauge ───────────── */}
+      {analytics && (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+
+          {/* Revenue by Category bar chart */}
+          {analytics.byCategory.length > 0 && (
+            <Card className="lg:col-span-1">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <BarChart3 className="h-4 w-4 text-purple-500" /> Revenue by Category
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-52">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={analytics.byCategory} layout="vertical" margin={{ left: 8, right: 16 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
+                      <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={(v: number) => `฿${(v / 1000).toFixed(0)}k`} />
+                      <YAxis type="category" dataKey="category" tick={{ fontSize: 10 }} width={72} />
+                      <Tooltip formatter={(v) => [`฿${Number(v ?? 0).toLocaleString()}`, ""]} />
+                      <Bar dataKey="revenue" name="Revenue" fill="#6366f1" radius={[0, 3, 3, 0]} />
+                      <Bar dataKey="cost"    name="Cost"    fill="#f43f5e" radius={[0, 3, 3, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Top Customers */}
+          <Card className="lg:col-span-1">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Users className="h-4 w-4 text-blue-500" /> Top Customers by Revenue
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {analytics.topCustomers.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-4">No invoice data yet</p>
+              ) : (
+                analytics.topCustomers.map((c, i) => (
+                  <div key={c.customer_id} className="flex items-center gap-3">
+                    <span className="text-xs font-bold text-gray-400 w-4">{i + 1}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{c.name}</p>
+                      <div className="mt-0.5 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-teal-500 rounded-full"
+                          style={{ width: `${Math.min(100, (c.total / (analytics.topCustomers[0]?.total || 1)) * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                    <span className="text-sm font-semibold text-gray-700 tabular-nums shrink-0">
+                      ฿{c.total.toLocaleString()}
+                    </span>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Berth Occupancy Gauge */}
+          <Card className="lg:col-span-1">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Anchor className="h-4 w-4 text-blue-500" /> Berth Occupancy
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-center py-4">
+                <div className="relative h-36 w-36">
+                  <svg className="rotate-[-90deg]" viewBox="0 0 36 36" width="144" height="144">
+                    <circle cx="18" cy="18" r="15.9" fill="none" stroke="#e5e7eb" strokeWidth="3" />
+                    <circle
+                      cx="18" cy="18" r="15.9" fill="none" stroke="#14b8a6" strokeWidth="3"
+                      strokeDasharray={`${analytics.occupancy.pct} ${100 - analytics.occupancy.pct}`}
+                      strokeDashoffset="0" strokeLinecap="round"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-3xl font-bold text-gray-900">{analytics.occupancy.pct}%</span>
+                    <span className="text-xs text-gray-500">Occupied</span>
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center mt-2">
+                <div>
+                  <p className="text-lg font-bold text-gray-800">{analytics.occupancy.total}</p>
+                  <p className="text-xs text-gray-500">Total</p>
+                </div>
+                <div>
+                  <p className="text-lg font-bold text-teal-700">{analytics.occupancy.occupied}</p>
+                  <p className="text-xs text-gray-500">Occupied</p>
+                </div>
+                <div>
+                  <p className="text-lg font-bold text-gray-500">{analytics.occupancy.total - analytics.occupancy.occupied}</p>
+                  <p className="text-xs text-gray-500">Available</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+        </div>
+      )}
 
       {/* ── Main 3-col grid ─────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">

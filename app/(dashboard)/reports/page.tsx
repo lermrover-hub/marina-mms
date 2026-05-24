@@ -1,5 +1,6 @@
 "use client"
 import React, { useState, useEffect } from "react"
+import Link from "next/link"
 import {
   BarChart3, Download, TrendingUp, Ship, Wrench, DollarSign,
   ArrowRight, TrendingDown, Anchor, Loader2, Users, CheckCircle2,
@@ -206,6 +207,16 @@ export default function ReportsPage() {
           </Button>
         }
       />
+
+      {/* ── Quick links to detail reports ─────────────────────────────────── */}
+      <div className="flex gap-3 flex-wrap">
+        <Link
+          href="/reports/job-margin"
+          className="flex items-center gap-2 rounded-lg border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-medium text-teal-700 hover:bg-teal-100 transition-colors"
+        >
+          <TrendingUp className="h-4 w-4" /> Job Margin Analytics →
+        </Link>
+      </div>
 
       {/* ── KPI Summary (static) ───────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

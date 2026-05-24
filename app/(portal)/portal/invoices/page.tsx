@@ -33,9 +33,20 @@ export default function PortalInvoicesPage() {
   const [slipFiles, setSlipFiles] = useState<Record<string, File>>({})
 
   useEffect(() => {
-    fetch("/api/db/invoices")
-      .then((r) => r.json())
-      .then((data) => {
+    async function load() {
+      try {
+        // Get portal session
+        const sessionRes = await fetch("/api/portal/session")
+        const sessionData = await sessionRes.json()
+        const cid: string | null = sessionData?.customerId ?? null
+        // If no customer linked, show message
+        if (!cid) {
+          setError("No customer portal account linked to your login.")
+          setLoading(false)
+          return
+        }
+        const r = await fetch(`/api/db/invoices?customer_id=${cid}`)
+        const data = await r.json()
         if (Array.isArray(data)) {
           setInvoices(data)
           // Auto-expand first unpaid invoice
@@ -44,9 +55,13 @@ export default function PortalInvoicesPage() {
         } else {
           setError(data.error ?? "Failed to load invoices")
         }
-      })
-      .catch((e) => setError(String(e)))
-      .finally(() => setLoading(false))
+      } catch (e) {
+        setError(String(e))
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
   }, [])
 
   const totalOutstanding = invoices

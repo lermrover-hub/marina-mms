@@ -42,11 +42,28 @@ export default function PortalQuotationsPage() {
   const [approving,  setApproving]  = useState<string | null>(null)
 
   useEffect(() => {
-    fetch("/api/db/quotations")
-      .then(r => r.json())
-      .then(d => { if (Array.isArray(d)) setQuotations(d); else setError(d?.error ?? "Failed") })
-      .catch(() => setError("Network error"))
-      .finally(() => setLoading(false))
+    async function load() {
+      try {
+        // Get portal session
+        const sessionRes = await fetch("/api/portal/session")
+        const sessionData = await sessionRes.json()
+        const cid: string | null = sessionData?.customerId ?? null
+        // If no customer linked, show message
+        if (!cid) {
+          setError("No customer portal account linked to your login.")
+          setLoading(false)
+          return
+        }
+        const r = await fetch(`/api/db/quotations?customer_id=${cid}`)
+        const d = await r.json()
+        if (Array.isArray(d)) setQuotations(d); else setError(d?.error ?? "Failed")
+      } catch {
+        setError("Network error")
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
   }, [])
 
   async function handleApprove(id: string, action: "ACCEPTED" | "REJECTED") {

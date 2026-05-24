@@ -1,10 +1,34 @@
-import React from "react"
+"use client"
+import React, { useEffect, useState } from "react"
 import Link from "next/link"
 import { Anchor } from "lucide-react"
 
-export const metadata = { title: "Customer Portal — Marina MMS" }
+type PortalUser = {
+  id: string
+  name: string | null
+  email: string | null
+  role: string
+  customerId: string | null
+}
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<PortalUser | null>(null)
+
+  useEffect(() => {
+    fetch("/api/portal/session")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && data.id) setUser(data)
+      })
+      .catch(() => {/* silently ignore */})
+  }, [])
+
+  const displayName = user?.name ?? "…"
+  const initials = displayName !== "…"
+    ? displayName.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase()
+    : "…"
+  const customerId = user?.customerId ?? "—"
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Portal top nav */}
@@ -32,11 +56,11 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
 
           <div className="flex items-center gap-3">
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-semibold text-gray-900">James Thornton</p>
-              <p className="text-xs text-gray-500">Private Owner · cust-001</p>
+              <p className="text-sm font-semibold text-gray-900">{displayName}</p>
+              <p className="text-xs text-gray-500">Private Owner · {customerId}</p>
             </div>
             <div className="h-8 w-8 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 text-sm font-bold">
-              JT
+              {initials}
             </div>
           </div>
         </div>

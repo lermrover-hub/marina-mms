@@ -33,14 +33,29 @@ export default function PortalRequestsPage() {
   const [error, setError]       = useState<string | null>(null)
 
   useEffect(() => {
-    fetch("/api/db/service-requests")
-      .then((r) => r.json())
-      .then((data) => {
+    async function load() {
+      try {
+        // Get portal session
+        const sessionRes = await fetch("/api/portal/session")
+        const sessionData = await sessionRes.json()
+        const cid: string | null = sessionData?.customerId ?? null
+        // If no customer linked, show message
+        if (!cid) {
+          setError("No customer portal account linked to your login.")
+          setLoading(false)
+          return
+        }
+        const r = await fetch(`/api/db/service-requests?customer_id=${cid}`)
+        const data = await r.json()
         if (Array.isArray(data)) setRequests(data)
         else setError(data.error ?? "Failed to load service requests")
-      })
-      .catch((e) => setError(String(e)))
-      .finally(() => setLoading(false))
+      } catch (e) {
+        setError(String(e))
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
   }, [])
 
   const open = requests.filter((r) => !DONE_STATUSES.includes(r.status))

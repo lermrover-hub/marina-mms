@@ -30,14 +30,29 @@ export default function PortalBoatsPage() {
   const [error, setError]     = useState<string | null>(null)
 
   useEffect(() => {
-    fetch("/api/db/boats")
-      .then((r) => r.json())
-      .then((data) => {
+    async function load() {
+      try {
+        // Get portal session
+        const sessionRes = await fetch("/api/portal/session")
+        const sessionData = await sessionRes.json()
+        const cid: string | null = sessionData?.customerId ?? null
+        // If no customer linked, show message
+        if (!cid) {
+          setError("No customer portal account linked to your login.")
+          setLoading(false)
+          return
+        }
+        const r = await fetch(`/api/db/boats?customer_id=${cid}`)
+        const data = await r.json()
         if (Array.isArray(data)) setBoats(data)
         else setError(data.error ?? "Failed to load boats")
-      })
-      .catch((e) => setError(String(e)))
-      .finally(() => setLoading(false))
+      } catch (e) {
+        setError(String(e))
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
   }, [])
 
   return (

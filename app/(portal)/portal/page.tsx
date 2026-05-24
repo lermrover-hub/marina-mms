@@ -30,18 +30,29 @@ export default function PortalDashboardPage() {
   const [loading, setLoading]   = useState(true)
 
   useEffect(() => {
-    Promise.all([
-      fetch("/api/db/boats").then((r) => r.json()),
-      fetch("/api/db/invoices").then((r) => r.json()),
-      fetch("/api/db/service-requests").then((r) => r.json()),
-    ])
-      .then(([boatsData, invoicesData, requestsData]) => {
+    async function load() {
+      try {
+        // Get portal session
+        const sessionRes = await fetch("/api/portal/session")
+        const sessionData = await sessionRes.json()
+        const cid: string | null = sessionData?.customerId ?? null
+        // If no customer linked, show message
+        if (!cid) {
+          setLoading(false)
+          return
+        }
+        const [boatsData, invoicesData, requestsData] = await Promise.all([
+          fetch(`/api/db/boats?customer_id=${cid}`).then((r) => r.json()),
+          fetch(`/api/db/invoices?customer_id=${cid}`).then((r) => r.json()),
+          fetch(`/api/db/service-requests?customer_id=${cid}`).then((r) => r.json()),
+        ])
         if (Array.isArray(boatsData))    setBoats(boatsData)
         if (Array.isArray(invoicesData)) setInvoices(invoicesData)
         if (Array.isArray(requestsData)) setRequests(requestsData)
-      })
-      .catch(() => {/* silently continue with empty arrays */})
-      .finally(() => setLoading(false))
+      } catch {/* silently continue with empty arrays */}
+      finally { setLoading(false) }
+    }
+    load()
   }, [])
 
   const outstandingAmount = invoices

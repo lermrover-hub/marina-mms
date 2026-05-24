@@ -50,14 +50,24 @@ export default function PortalRampBookingPage() {
   const [safetyFt,     setSafetyFt]     = useState("1")
   const [notes,        setNotes]        = useState("")
 
-  const loadData = useCallback(() => {
-    Promise.all([
-      fetch("/api/db/ramp-bookings").then(r => r.json()),
-      fetch("/api/db/boats?limit=100").then(r => r.json()),
-    ]).then(([b, bts]) => {
+  const loadData = useCallback(async () => {
+    try {
+      // Get portal session
+      const sessionRes = await fetch("/api/portal/session")
+      const sessionData = await sessionRes.json()
+      const cid: string | null = sessionData?.customerId ?? null
+
+      const [b, bts] = await Promise.all([
+        fetch(cid ? `/api/db/ramp-bookings?customer_id=${cid}` : "/api/db/ramp-bookings").then(r => r.json()),
+        fetch(cid ? `/api/db/boats?limit=100&customer_id=${cid}` : "/api/db/boats?limit=100").then(r => r.json()),
+      ])
       if (Array.isArray(b))   setBookings(b)
       if (Array.isArray(bts)) setBoats(bts)
-    }).catch(() => {}).finally(() => setLoading(false))
+    } catch {
+      // silently continue
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => { loadData() }, [loadData])

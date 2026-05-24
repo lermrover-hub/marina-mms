@@ -1,0 +1,445 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  SUPER_ADMIN
+  MANAGING_DIRECTOR
+  MARINA_MANAGER
+  BOAT_YARD_MANAGER
+  FINANCE
+  SALES
+  OPERATION_SUPERVISOR
+  TECHNICIAN
+  SECURITY
+  CONTRACTOR
+  CUSTOMER
+  STAFF
+}
+
+enum CustomerType {
+  PRIVATE_OWNER
+  CHARTER_OPERATOR
+  SPEEDBOAT_OPERATOR
+  YACHT_BROKER
+  CONTRACTOR
+  SUPPLIER
+}
+
+enum CustomerStatus {
+  PROSPECT
+  ACTIVE
+  INACTIVE
+  BLOCKED
+}
+
+enum BoatType {
+  SPEED_BOAT
+  MOTOR_YACHT
+  SAILING_YACHT
+  CATAMARAN
+  POWER_CATAMARAN
+  FISHING_BOAT
+  JETSKI
+  DINGHY
+  OTHER
+}
+
+enum BoatStatus {
+  ACTIVE
+  INACTIVE
+  IN_STORAGE
+  IN_WATER
+  IN_REPAIR
+  MOVED_OUT
+}
+
+enum LocationType {
+  WET_BERTH
+  DRY_STORAGE
+  REPAIR_YARD
+  WORKSHOP_BAY
+  RAMP_AREA
+  WAITING_AREA
+  FUEL_AREA
+  TEMPORARY_HOLDING
+}
+
+enum BerthStatus {
+  AVAILABLE
+  RESERVED
+  OCCUPIED
+  MAINTENANCE
+  BLOCKED
+}
+
+enum QuotationStatus {
+  DRAFT
+  PENDING_APPROVAL
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  CONVERTED
+  CANCELLED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  CREDIT_CARD
+  QR_PAYMENT
+  CHEQUE
+  OTHER
+}
+
+// ─── Models ──────────────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         UserRole @default(STAFF)
+  isActive     Boolean  @default(true) @map("is_active")
+  avatar       String?
+  phone        String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  quotationsCreated  Quotation[]       @relation("QuotationCreatedBy")
+  quotationsApproved Quotation[]       @relation("QuotationApprovedBy")
+  invoicesCreated    Invoice[]         @relation("InvoiceCreatedBy")
+  paymentsConfirmed  Payment[]         @relation("PaymentConfirmedBy")
+  auditLogs          AuditLog[]        @relation("AuditLogUser")
+  boatMovements      BoatMovementLog[] @relation("MovementCreatedBy")
+
+  @@map("users")
+}
+
+model Customer {
+  id                String         @id @default(uuid())
+  customerType      CustomerType   @default(PRIVATE_OWNER) @map("customer_type")
+  firstName         String?        @map("first_name")
+  lastName          String?        @map("last_name")
+  companyName       String?        @map("company_name")
+  nationality       String?
+  phone             String?
+  email             String?
+  address           String?
+  taxId             String?        @map("tax_id")
+  passportId        String?        @map("passport_id")
+  preferredLanguage String?        @default("en") @map("preferred_language")
+  billingContact    String?        @map("billing_contact")
+  emergencyContact  String?        @map("emergency_contact")
+  paymentTerms      Int?           @default(30) @map("payment_terms")
+  creditLimit       Decimal?       @db.Decimal(12, 2) @map("credit_limit")
+  notes             String?
+  internalNotes     String?        @map("internal_notes")
+  riskFlag          Boolean        @default(false) @map("risk_flag")
+  status            CustomerStatus @default(PROSPECT)
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+
+  boats       Boat[]
+  quotations  Quotation[]
+  invoices    Invoice[]
+  payments    Payment[]
+  contracts   Contract[]
+  assignments BerthAssignment[]
+
+  @@map("customers")
+}
+
+model Boat {
+  id                 String     @id @default(uuid())
+  ownerId            String?    @map("owner_id")
+  name               String
+  boatType           BoatType   @default(OTHER) @map("boat_type")
+  usageType          String?    @map("usage_type")
+  brand              String?
+  model              String?
+  yearBuilt          Int?       @map("year_built")
+  registrationNumber String?    @map("registration_number")
+  hin                String?
+  flag               String?
+  loaFt              Decimal?   @db.Decimal(5, 1) @map("loa_ft")
+  beamFt             Decimal?   @db.Decimal(5, 1) @map("beam_ft")
+  draftFt            Decimal?   @db.Decimal(5, 2) @map("draft_ft")
+  weightT            Decimal?   @db.Decimal(6, 1) @map("weight_t")
+  hullMaterial       String?    @map("hull_material")
+  engineType         String?    @map("engine_type")
+  engineBrand        String?    @map("engine_brand")
+  numEngines         Int?       @default(1) @map("num_engines")
+  fuelType           String?    @map("fuel_type")
+  trailerRequired    Boolean    @default(false) @map("trailer_required")
+  insuranceExpiry    DateTime?  @db.Date @map("insurance_expiry")
+  specialHandling    String?    @map("special_handling")
+  status             BoatStatus @default(ACTIVE)
+  currentLocationId  String?    @map("current_location_id")
+  photoMain          String?    @map("photo_main")
+  notes              String?
+  createdAt          DateTime   @default(now()) @map("created_at")
+  updatedAt          DateTime   @updatedAt @map("updated_at")
+
+  owner           Customer?         @relation(fields: [ownerId], references: [id])
+  currentLocation Berth?            @relation("CurrentBerth", fields: [currentLocationId], references: [id])
+  movementLogs    BoatMovementLog[]
+  quotations      Quotation[]
+  invoices        Invoice[]
+  assignments     BerthAssignment[]
+
+  @@map("boats")
+}
+
+model Location {
+  id           String       @id @default(uuid())
+  name         String
+  locationType LocationType @map("location_type")
+  zone         String?
+  capacity     Int?
+  description  String?
+  isActive     Boolean      @default(true) @map("is_active")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  berths Berth[]
+
+  @@map("locations")
+}
+
+model Berth {
+  id         String      @id @default(uuid())
+  locationId String      @map("location_id")
+  berthCode  String      @unique @map("berth_code")
+  berthType  String?     @map("berth_type")
+  maxLoaFt   Decimal?    @db.Decimal(5, 1) @map("max_loa_ft")
+  maxBeamFt  Decimal?    @db.Decimal(5, 1) @map("max_beam_ft")
+  maxDraftFt Decimal?    @db.Decimal(5, 2) @map("max_draft_ft")
+  status     BerthStatus @default(AVAILABLE)
+  notes      String?
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
+
+  location     Location          @relation(fields: [locationId], references: [id])
+  currentBoats Boat[]            @relation("CurrentBerth")
+  assignments  BerthAssignment[]
+
+  @@map("berths")
+}
+
+model BerthAssignment {
+  id         String    @id @default(uuid())
+  berthId    String    @map("berth_id")
+  boatId     String    @map("boat_id")
+  customerId String?   @map("customer_id")
+  startDate  DateTime  @db.Date @map("start_date")
+  endDate    DateTime? @db.Date @map("end_date")
+  isActive   Boolean   @default(true) @map("is_active")
+  notes      String?
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  berth    Berth     @relation(fields: [berthId], references: [id])
+  boat     Boat      @relation(fields: [boatId], references: [id])
+  customer Customer? @relation(fields: [customerId], references: [id])
+
+  @@map("berth_assignments")
+}
+
+model BoatMovementLog {
+  id               String   @id @default(uuid())
+  boatId           String   @map("boat_id")
+  fromLocationCode String?  @map("from_location_code")
+  toLocationCode   String?  @map("to_location_code")
+  movedAt          DateTime @default(now()) @map("moved_at")
+  movedById        String?  @map("moved_by_id")
+  reason           String?
+  photosBefore     String[] @map("photos_before")
+  photosAfter      String[] @map("photos_after")
+  notes            String?
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  boat    Boat  @relation(fields: [boatId], references: [id])
+  movedBy User? @relation("MovementCreatedBy", fields: [movedById], references: [id])
+
+  @@map("boat_movement_logs")
+}
+
+model Quotation {
+  id              String          @id @default(uuid())
+  quoteNumber     String          @unique @map("quote_number")
+  customerId      String          @map("customer_id")
+  boatId          String?         @map("boat_id")
+  status          QuotationStatus @default(DRAFT)
+  subtotal        Decimal         @db.Decimal(12, 2) @default(0)
+  discountAmount  Decimal         @db.Decimal(12, 2) @default(0) @map("discount_amount")
+  vatRate         Decimal         @db.Decimal(5, 2) @default(7) @map("vat_rate")
+  vatAmount       Decimal         @db.Decimal(12, 2) @default(0) @map("vat_amount")
+  totalAmount     Decimal         @db.Decimal(12, 2) @default(0) @map("total_amount")
+  depositRequired Decimal?        @db.Decimal(12, 2) @map("deposit_required")
+  validUntil      DateTime?       @db.Date @map("valid_until")
+  notes           String?
+  internalNotes   String?         @map("internal_notes")
+  createdById     String?         @map("created_by_id")
+  approvedById    String?         @map("approved_by_id")
+  approvedAt      DateTime?       @map("approved_at")
+  sentAt          DateTime?       @map("sent_at")
+  acceptedAt      DateTime?       @map("accepted_at")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  customer   Customer        @relation(fields: [customerId], references: [id])
+  boat       Boat?           @relation(fields: [boatId], references: [id])
+  createdBy  User?           @relation("QuotationCreatedBy", fields: [createdById], references: [id])
+  approvedBy User?           @relation("QuotationApprovedBy", fields: [approvedById], references: [id])
+  items      QuotationItem[]
+  invoices   Invoice[]
+
+  @@map("quotations")
+}
+
+model QuotationItem {
+  id          String   @id @default(uuid())
+  quotationId String   @map("quotation_id")
+  description String
+  category    String?
+  quantity    Decimal  @db.Decimal(8, 2) @default(1)
+  unitPrice   Decimal  @db.Decimal(12, 2) @map("unit_price")
+  amount      Decimal  @db.Decimal(12, 2)
+  notes       String?
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  quotation Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+
+  @@map("quotation_items")
+}
+
+model Invoice {
+  id                 String        @id @default(uuid())
+  invoiceNumber      String        @unique @map("invoice_number")
+  customerId         String        @map("customer_id")
+  boatId             String?       @map("boat_id")
+  quotationId        String?       @map("quotation_id")
+  status             InvoiceStatus @default(DRAFT)
+  subtotal           Decimal       @db.Decimal(12, 2) @default(0)
+  discountAmount     Decimal       @db.Decimal(12, 2) @default(0) @map("discount_amount")
+  vatRate            Decimal       @db.Decimal(5, 2) @default(7) @map("vat_rate")
+  vatAmount          Decimal       @db.Decimal(12, 2) @default(0) @map("vat_amount")
+  totalAmount        Decimal       @db.Decimal(12, 2) @default(0) @map("total_amount")
+  paidAmount         Decimal       @db.Decimal(12, 2) @default(0) @map("paid_amount")
+  outstandingBalance Decimal       @db.Decimal(12, 2) @default(0) @map("outstanding_balance")
+  dueDate            DateTime?     @db.Date @map("due_date")
+  notes              String?
+  createdById        String?       @map("created_by_id")
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
+
+  customer  Customer      @relation(fields: [customerId], references: [id])
+  boat      Boat?         @relation(fields: [boatId], references: [id])
+  quotation Quotation?    @relation(fields: [quotationId], references: [id])
+  createdBy User?         @relation("InvoiceCreatedBy", fields: [createdById], references: [id])
+  items     InvoiceItem[]
+  payments  Payment[]
+
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id          String   @id @default(uuid())
+  invoiceId   String   @map("invoice_id")
+  description String
+  category    String?
+  quantity    Decimal  @db.Decimal(8, 2) @default(1)
+  unitPrice   Decimal  @db.Decimal(12, 2) @map("unit_price")
+  amount      Decimal  @db.Decimal(12, 2)
+  notes       String?
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@map("invoice_items")
+}
+
+model Payment {
+  id            String        @id @default(uuid())
+  invoiceId     String        @map("invoice_id")
+  customerId    String        @map("customer_id")
+  amount        Decimal       @db.Decimal(12, 2)
+  paymentMethod PaymentMethod @default(BANK_TRANSFER) @map("payment_method")
+  paymentDate   DateTime      @db.Date @map("payment_date")
+  reference     String?
+  slipUrl       String?       @map("slip_url")
+  status        PaymentStatus @default(PENDING)
+  confirmedById String?       @map("confirmed_by_id")
+  confirmedAt   DateTime?     @map("confirmed_at")
+  notes         String?
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id])
+  customer    Customer @relation(fields: [customerId], references: [id])
+  confirmedBy User?    @relation("PaymentConfirmedBy", fields: [confirmedById], references: [id])
+
+  @@map("payments")
+}
+
+model Contract {
+  id             String   @id @default(uuid())
+  contractNumber String   @unique @map("contract_number")
+  customerId     String   @map("customer_id")
+  contractType   String?  @map("contract_type")
+  startDate      DateTime @db.Date @map("start_date")
+  endDate        DateTime @db.Date @map("end_date")
+  value          Decimal? @db.Decimal(12, 2)
+  status         String   @default("active")
+  notes          String?
+  fileUrl        String?  @map("file_url")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  customer Customer @relation(fields: [customerId], references: [id])
+
+  @@map("contracts")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String?  @map("entity_id")
+  userId     String?  @map("user_id")
+  changes    Json?
+  ipAddress  String?  @map("ip_address")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User? @relation("AuditLogUser", fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}

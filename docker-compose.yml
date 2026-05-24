@@ -1,0 +1,44 @@
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: marina-mms-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: marina_mms
+      POSTGRES_USER: marina_user
+      POSTGRES_PASSWORD: marina_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - marina_mms_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U marina_user -d marina_mms"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-https://csltloqbjupxqwbkunsd.supabase.co}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:-local-docker-placeholder-key}
+    container_name: marina-mms-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+      DATABASE_URL: postgresql://marina_user:marina_password@db:5432/marina_mms?schema=public
+      AUTH_SECRET: marina-mms-docker-local-test-secret-change-before-production
+      AUTH_TRUST_HOST: "true"
+      NEXT_PUBLIC_SUPABASE_URL: https://csltloqbjupxqwbkunsd.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:-local-docker-placeholder-key}
+    ports:
+      - "3000:3000"
+
+volumes:
+  marina_mms_pgdata:

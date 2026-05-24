@@ -1,10 +1,11 @@
 "use client"
 import React, { useState, useMemo, useEffect } from "react"
 import Link from "next/link"
-import { Search, Phone, Mail, Loader2, UserCheck, Wrench, Users } from "lucide-react"
+import { Search, Phone, Mail, Loader2, UserCheck, Wrench, Users, BarChart2 } from "lucide-react"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 import type { Staff } from "@/lib/supabase"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -160,6 +161,11 @@ export default function StaffPage() {
       <PageHeader
         title="Staff"
         description="Technicians, operation staff, and support team"
+        actions={
+          <Button variant="outline" size="sm" className="gap-2" asChild>
+            <Link href="/staff/kpi"><BarChart2 className="h-4 w-4" /> KPI Dashboard</Link>
+          </Button>
+        }
       />
 
       {/* Stats */}

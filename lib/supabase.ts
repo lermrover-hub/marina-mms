@@ -113,6 +113,10 @@ export type Quotation = {
   deposit_amount: number
   valid_until: string | null
   notes: string | null
+  // Digital signature fields (optional — columns may not exist in all DB versions)
+  signature_data?: string | null
+  approved_by_name?: string | null
+  approved_at?: string | null
   created_at: string
   updated_at: string
 }

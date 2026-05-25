@@ -3,10 +3,11 @@ import React, { useState, useEffect } from "react"
 import Link from "next/link"
 import {
   ArrowLeft, FileText, CheckCircle2, XCircle, Clock,
-  ChevronDown, ChevronUp, Loader2, AlertTriangle,
+  ChevronDown, ChevronUp, Loader2, AlertTriangle, PenLine,
 } from "lucide-react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { SignatureApprovalModal } from "@/components/ui/SignatureApprovalModal"
 import { formatDate, formatTHB } from "@/lib/utils"
 
 type QuotationItem = {
@@ -20,6 +21,9 @@ type Quotation = {
   subtotal: number | null; discount: number | null
   vat_amount: number | null; total_amount: number | null
   deposit_required: number | null; notes: string | null
+  signature_data?: string | null
+  approved_by_name?: string | null
+  approved_at?: string | null
   mms_quotation_items?: QuotationItem[]
 }
 
@@ -39,16 +43,14 @@ export default function PortalQuotationsPage() {
   const [loading,    setLoading]    = useState(true)
   const [error,      setError]      = useState<string | null>(null)
   const [expandedId, setExpanded]   = useState<string | null>(null)
-  const [approving,  setApproving]  = useState<string | null>(null)
+  const [sigTarget,  setSigTarget]  = useState<Quotation | null>(null)
 
   useEffect(() => {
     async function load() {
       try {
-        // Get portal session
         const sessionRes = await fetch("/api/portal/session")
         const sessionData = await sessionRes.json()
         const cid: string | null = sessionData?.customerId ?? null
-        // If no customer linked, show message
         if (!cid) {
           setError("No customer portal account linked to your login.")
           setLoading(false)
@@ -66,23 +68,41 @@ export default function PortalQuotationsPage() {
     load()
   }, [])
 
-  async function handleApprove(id: string, action: "ACCEPTED" | "REJECTED") {
-    setApproving(id + action)
+  function handleApproved(id: string, updated: Record<string, unknown>) {
+    setQuotations(prev =>
+      prev.map(q => q.id === id ? { ...q, ...(updated as Partial<Quotation>) } : q)
+    )
+    setSigTarget(null)
+  }
+
+  async function handleReject(id: string) {
     try {
       const res = await fetch(`/api/db/quotations/${id}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: action }),
+        body: JSON.stringify({ status: "REJECTED" }),
       })
       if (res.ok) {
         const data = await res.json()
         setQuotations(prev => prev.map(q => q.id === id ? { ...q, ...data } : q))
       }
     } catch { /* ignore */ }
-    finally { setApproving(null) }
   }
 
   return (
     <div className="min-h-screen bg-gray-50 pb-10">
+      {sigTarget && (
+        <SignatureApprovalModal
+          quotation={{
+            id: sigTarget.id,
+            quote_number: sigTarget.quotation_number,
+            title: sigTarget.title,
+            customer_name: sigTarget.customer_name,
+            total_amount: sigTarget.total_amount ?? 0,
+          }}
+          onClose={() => setSigTarget(null)}
+          onApproved={(updated) => handleApproved(sigTarget.id, updated)}
+        />
+      )}
       <div className="max-w-3xl mx-auto px-4 py-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -97,7 +117,7 @@ export default function PortalQuotationsPage() {
 
         {loading ? (
           <div className="flex items-center justify-center py-20 text-gray-400">
-            <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading quotations…
+            <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading quotations&hellip;
           </div>
         ) : error ? (
           <div className="flex items-center gap-2 text-red-600 py-10 justify-center text-sm">
@@ -118,6 +138,7 @@ export default function PortalQuotationsPage() {
               const StatusIcon = cfg.icon
               const isExpanded = expandedId === q.id
               const canApprove = q.status === "SENT"
+              const hasSig     = !!(q.signature_data)
 
               return (
                 <Card key={q.id} className={isExpanded ? "border-teal-200" : ""}>
@@ -200,19 +221,41 @@ export default function PortalQuotationsPage() {
                         </div>
                       )}
 
-                      {/* Approval buttons */}
+                      {/* Existing signature preview */}
+                      {hasSig && (
+                        <div className="rounded-lg border border-teal-200 bg-teal-50 p-3 space-y-2">
+                          <p className="text-xs font-semibold text-teal-700 uppercase tracking-wide flex items-center gap-1.5">
+                            <PenLine className="h-3.5 w-3.5" /> Signed &amp; Approved
+                          </p>
+                          <div className="bg-white border border-teal-100 rounded p-1.5 inline-block">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={q.signature_data!} alt="Signature" className="max-h-16" />
+                          </div>
+                          {q.approved_by_name && (
+                            <p className="text-xs text-teal-600">
+                              {q.approved_by_name}
+                              {q.approved_at && ` · ${new Date(q.approved_at).toLocaleDateString("en-GB")}`}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Approval actions */}
                       {canApprove && (
                         <div className="flex gap-3 pt-1">
-                          <Button className="flex-1 gap-2 bg-teal-600 hover:bg-teal-700 text-white"
-                            disabled={!!approving}
-                            onClick={() => handleApprove(q.id, "ACCEPTED")}>
-                            {approving === q.id + "ACCEPTED" ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                            Accept Quotation
+                          <Button
+                            className="flex-1 gap-2 bg-teal-600 hover:bg-teal-700 text-white"
+                            onClick={() => setSigTarget(q)}
+                          >
+                            <PenLine className="h-4 w-4" />
+                            Approve with Signature
                           </Button>
-                          <Button variant="outline" className="flex-1 gap-2 text-red-600 border-red-200 hover:bg-red-50"
-                            disabled={!!approving}
-                            onClick={() => handleApprove(q.id, "REJECTED")}>
-                            {approving === q.id + "REJECTED" ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+                          <Button
+                            variant="outline"
+                            className="gap-2 text-red-600 border-red-200 hover:bg-red-50"
+                            onClick={() => handleReject(q.id)}
+                          >
+                            <XCircle className="h-4 w-4" />
                             Reject
                           </Button>
                         </div>

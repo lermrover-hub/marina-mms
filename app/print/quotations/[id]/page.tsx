@@ -172,6 +172,54 @@ export default function QuotationPrintPage() {
             </div>
           </section>
         )}
+
+        {/* Signature section */}
+        <section style={{ padding: "0 36px 36px", marginTop: 8 }}>
+          <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 20 }}>
+            <p style={{ margin: "0 0 16px", color: "#64748b", fontSize: 10, fontWeight: 700, letterSpacing: 1 }}>CUSTOMER ACCEPTANCE</p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32 }}>
+              {/* Signature display or blank line */}
+              <div>
+                <p style={{ margin: "0 0 8px", color: "#64748b", fontSize: 11 }}>Customer Signature:</p>
+                {quotation.signature_data ? (
+                  <div style={{ border: "1px solid #e2e8f0", borderRadius: 6, background: "#f8fafc", padding: 8, minHeight: 72, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={quotation.signature_data}
+                      alt="Customer signature"
+                      style={{ maxHeight: 64, maxWidth: "100%" }}
+                    />
+                  </div>
+                ) : (
+                  <div style={{ borderBottom: "1px solid #1e293b", height: 72, width: "100%" }} />
+                )}
+                {quotation.approved_by_name && (
+                  <p style={{ margin: "6px 0 0", color: "#374151", fontSize: 11 }}>
+                    {quotation.approved_by_name}
+                  </p>
+                )}
+              </div>
+              {/* Date / approved info */}
+              <div>
+                <p style={{ margin: "0 0 8px", color: "#64748b", fontSize: 11 }}>Date:</p>
+                {quotation.approved_at ? (
+                  <p style={{ color: "#374151", fontSize: 12, fontWeight: 600 }}>
+                    {new Date(quotation.approved_at).toLocaleDateString("en-GB", {
+                      day: "numeric", month: "long", year: "numeric",
+                    })}
+                  </p>
+                ) : (
+                  <div style={{ borderBottom: "1px solid #1e293b", height: 72, width: "80%" }} />
+                )}
+                {!quotation.signature_data && (
+                  <p style={{ margin: "6px 0 0", color: "#94a3b8", fontSize: 10, fontStyle: "italic" }}>
+                    Authorised signature
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
       </article>
     </PrintShell>
   )

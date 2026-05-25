@@ -5,13 +5,14 @@ import { useParams } from "next/navigation"
 import {
   Download, Send, CheckCircle, XCircle,
   AlertCircle, User, Ship, ChevronRight, FileText,
-  ArrowRight, Edit, Copy, Loader2,
+  ArrowRight, Edit, Copy, Loader2, PenLine,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { StatusBadge } from "@/components/shared/StatusBadge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { SignatureApprovalModal } from "@/components/ui/SignatureApprovalModal"
 import type { Quotation, QuotationItem } from "@/lib/supabase"
 import { formatTHB, formatDate, formatDateLong } from "@/lib/utils"
 import { cn } from "@/lib/utils"
@@ -53,6 +54,7 @@ export default function QuotationDetailPage() {
   const [error,      setError]      = useState<string | null>(null)
   const [dialog,     setDialog]     = useState<"send" | "accept" | "reject" | "convert" | null>(null)
   const [saving,     setSaving]     = useState(false)
+  const [showSigModal, setShowSigModal] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -108,11 +110,13 @@ export default function QuotationDetailPage() {
   }
 
   const isExpired  = quotation.valid_until ? new Date(quotation.valid_until) < new Date() : false
-  const canSend    = ["DRAFT"].includes(quotation.status)
-  const canAccept  = ["SENT"].includes(quotation.status)
-  const canReject  = ["SENT", "ACCEPTED"].includes(quotation.status)
-  const canConvert = ["ACCEPTED"].includes(quotation.status)
-  const canEdit    = ["DRAFT", "SENT"].includes(quotation.status)
+  const canSend       = ["DRAFT"].includes(quotation.status)
+  const canAccept     = ["SENT"].includes(quotation.status)
+  const canReject     = ["SENT", "ACCEPTED"].includes(quotation.status)
+  const canConvert    = ["ACCEPTED"].includes(quotation.status)
+  const canEdit       = ["DRAFT", "SENT"].includes(quotation.status)
+  const canSignApprove = ["SENT", "PENDING_APPROVAL"].includes(quotation.status)
+  const hasSignature  = !!(quotation.signature_data)
 
   // Derive totals from Quotation type fields
   const subtotal       = quotation.subtotal
@@ -123,6 +127,22 @@ export default function QuotationDetailPage() {
 
   return (
     <>
+      {showSigModal && (
+        <SignatureApprovalModal
+          quotation={{
+            id: quotation.id,
+            quote_number: quotation.quote_number,
+            title: quotation.title,
+            customer_name: quotation.customer_name,
+            total_amount: quotation.total_amount,
+          }}
+          onClose={() => setShowSigModal(false)}
+          onApproved={(updated) => {
+            setQuotation((prev) => prev ? { ...prev, ...(updated as Partial<Quotation>) } : prev)
+            setShowSigModal(false)
+          }}
+        />
+      )}
       {dialog === "send" && (
         <ConfirmDialog
           title="Send Quotation to Customer"
@@ -194,8 +214,13 @@ export default function QuotationDetailPage() {
                   <Send className="h-4 w-4" /> Send to Customer
                 </Button>
               )}
+              {canSignApprove && (
+                <Button size="sm" variant="teal" className="gap-2" onClick={() => setShowSigModal(true)}>
+                  <PenLine className="h-4 w-4" /> Approve with Signature
+                </Button>
+              )}
               {canAccept && (
-                <Button size="sm" variant="teal" className="gap-2" onClick={() => setDialog("accept")}>
+                <Button size="sm" variant="outline" className="gap-2" onClick={() => setDialog("accept")}>
                   <CheckCircle className="h-4 w-4" /> Mark Accepted
                 </Button>
               )}
@@ -330,6 +355,32 @@ export default function QuotationDetailPage() {
                 <CardHeader><CardTitle className="text-sm">Notes</CardTitle></CardHeader>
                 <CardContent>
                   <p className="text-sm text-gray-600 leading-relaxed">{quotation.notes}</p>
+                </CardContent>
+              </Card>
+            )}
+
+            {hasSignature && (
+              <Card>
+                <CardHeader><CardTitle className="text-sm flex items-center gap-2"><PenLine className="h-4 w-4 text-teal-600" /> Approval Signature</CardTitle></CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="border border-gray-200 rounded-lg overflow-hidden bg-gray-50 p-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={quotation.signature_data!}
+                      alt="Approval signature"
+                      className="max-h-24 mx-auto"
+                    />
+                  </div>
+                  {quotation.approved_by_name && (
+                    <p className="text-xs text-gray-500">
+                      Signed by: <span className="font-medium text-gray-700">{quotation.approved_by_name}</span>
+                    </p>
+                  )}
+                  {quotation.approved_at && (
+                    <p className="text-xs text-gray-500">
+                      Date: <span className="font-medium text-gray-700">{formatDateLong(quotation.approved_at)}</span>
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             )}

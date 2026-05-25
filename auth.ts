@@ -1,6 +1,11 @@
 import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 
+if (process.env.VERCEL === "1") {
+  if (process.env.AUTH_URL?.includes("localhost")) delete process.env.AUTH_URL
+  if (process.env.NEXTAUTH_URL?.includes("localhost")) delete process.env.NEXTAUTH_URL
+}
+
 // Development mock users — replace with Prisma DB lookup after DB is connected
 const MOCK_USERS = [
   { id: "user-001", name: "Admin User",       email: "admin@marina.com",   password: "admin123",   role: "SUPER_ADMIN",       customerId: null },

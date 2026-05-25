@@ -1,7 +1,7 @@
 "use client"
 import React, { useState, useEffect } from "react"
 import Link from "next/link"
-import { Anchor, Search, Plus, Loader2, Calendar, Ship } from "lucide-react"
+import { Anchor, Search, Plus, Loader2, Calendar, Ship, Waves } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { PageHeader } from "@/components/shared/PageHeader"
@@ -62,9 +62,14 @@ export default function RampBookingsPage() {
         title="Ramp Bookings"
         description="Launch, retrieval, and ramp operations management"
         actions={
-          <Button size="sm" variant="teal" className="gap-2" asChild>
-            <Link href="/ramp-bookings/new"><Plus className="h-4 w-4" /> New Booking</Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" className="gap-2" asChild>
+              <Link href="/ramp-bookings/tide-calculator"><Waves className="h-4 w-4" /> Tide Calculator →</Link>
+            </Button>
+            <Button size="sm" variant="teal" className="gap-2" asChild>
+              <Link href="/ramp-bookings/new"><Plus className="h-4 w-4" /> New Booking</Link>
+            </Button>
+          </div>
         }
       />
 

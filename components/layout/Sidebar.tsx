@@ -36,7 +36,8 @@ const navItems: NavItem[] = [
   {
     label: "Ramp & Launch", icon: Waves,
     children: [
-      { label: "Ramp Bookings",     href: "/ramp-bookings", icon: Waves },
+      { label: "Ramp Bookings",     href: "/ramp-bookings",                  icon: Waves },
+      { label: "Tide Calculator",   href: "/ramp-bookings/tide-calculator",  icon: Waves },
     ],
   },
   {

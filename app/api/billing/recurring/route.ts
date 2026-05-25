@@ -22,9 +22,31 @@
  */
 
 import { NextResponse } from "next/server"
+import { auth } from "@/auth"
 import { supabase } from "@/lib/supabase"
 
 export const dynamic = "force-dynamic"
+
+// ─── auth guard ───────────────────────────────────────────────────────────────
+
+/**
+ * Returns true when the request is authorised to call this endpoint.
+ *
+ * Two valid callers:
+ *  1. Vercel Cron — sends `x-vercel-cron: 1` header automatically.
+ *  2. Internal admin users — authenticated session with role SUPER_ADMIN or
+ *     ADMIN (for manual triggers from the UI).
+ */
+async function isAuthorised(req: Request): Promise<boolean> {
+  // 1. Vercel Cron header
+  if (req.headers.get("x-vercel-cron") === "1") return true
+
+  // 2. Admin session (NextAuth v5)
+  const session = await auth()
+  if (!session?.user) return false
+  const role = (session.user as { role?: string }).role ?? ""
+  return ["SUPER_ADMIN", "ADMIN"].includes(role)
+}
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -112,6 +134,10 @@ type SkipEntry = { contract_number: string; reason: string }
 // ─── handler ─────────────────────────────────────────────────────────────────
 
 export async function POST(req: Request) {
+  if (!(await isAuthorised(req))) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
   try {
     const { searchParams } = new URL(req.url)
     const periodParam  = searchParams.get("period")      // YYYY-MM override
@@ -287,7 +313,11 @@ export async function POST(req: Request) {
 
 /** GET: preview what would be generated (same as dry_run=true) */
 export async function GET(req: Request) {
-  const url    = new URL(req.url)
+  if (!(await isAuthorised(req))) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+  const url = new URL(req.url)
   url.searchParams.set("dry_run", "true")
-  return POST(new Request(url.toString(), { method: "POST" }))
+  // Pass auth headers to internal call
+  return POST(new Request(url.toString(), { method: "POST", headers: req.headers }))
 }

@@ -1,98 +1,101 @@
 "use client"
-import React, { useState } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import {
   Bell, AlertTriangle, Receipt, Wrench, ShieldAlert,
-  CheckCircle2, FileText, X, ExternalLink,
+  CheckCircle2, FileText, X, ExternalLink, Loader2,
 } from "lucide-react"
 
-// ── Mock notifications (in real app, fetched from API) ───────────────────────
-const INITIAL_NOTIFICATIONS = [
-  {
-    id: "n-001",
-    type: "OVERDUE_INVOICE",
-    title: "Overdue Invoice",
-    message: "INV-2026-0079 from Coastal Marine Co. is 15 days overdue.",
-    href: "/invoices",
-    time: "2 hours ago",
-    read: false,
-    priority: "HIGH",
-  },
-  {
-    id: "n-002",
-    type: "INSURANCE_EXPIRY",
-    title: "Insurance Expiring Soon",
-    message: "Sea Hawk — insurance expires in 103 days (31 Aug 2026). Arrange renewal.",
-    href: "/boats/boat-001",
-    time: "1 day ago",
-    read: false,
-    priority: "MEDIUM",
-  },
-  {
-    id: "n-003",
-    type: "WORK_ORDER_UPDATE",
-    title: "Work Order Update",
-    message: "WO-2026-0041: Engine overhaul — starboard engine parts have arrived.",
-    href: "/work-orders/wo-001",
-    time: "1 day ago",
-    read: false,
-    priority: "NORMAL",
-  },
-  {
-    id: "n-004",
-    type: "QUOTATION_SENT",
-    title: "Quotation Sent",
-    message: "QT-2026-0041 for Sea Hawk (antifouling) has been sent to James Thornton.",
-    href: "/quotations",
-    time: "3 days ago",
-    read: true,
-    priority: "NORMAL",
-  },
-  {
-    id: "n-005",
-    type: "PAYMENT_RECEIVED",
-    title: "Payment Received",
-    message: "฿234,000 received from Blue Horizon Charter — INV-2026-0082.",
-    href: "/payments",
-    time: "5 days ago",
-    read: true,
-    priority: "NORMAL",
-  },
-  {
-    id: "n-006",
-    type: "SERVICE_REQUEST",
-    title: "New Service Request",
-    message: "SR-2026-0035: Navigation lights & bilge pump failure — James Thornton.",
-    href: "/service-requests",
-    time: "1 week ago",
-    read: true,
-    priority: "NORMAL",
-  },
-]
+// ─── types ────────────────────────────────────────────────────────────────────
 
-type Notification = typeof INITIAL_NOTIFICATIONS[0]
-
-const TYPE_CONFIG: Record<string, { icon: React.ElementType; color: string }> = {
-  OVERDUE_INVOICE:  { icon: Receipt,       color: "text-red-500 bg-red-50"    },
-  INSURANCE_EXPIRY: { icon: ShieldAlert,   color: "text-amber-500 bg-amber-50" },
-  WORK_ORDER_UPDATE:{ icon: Wrench,        color: "text-teal-500 bg-teal-50"  },
-  QUOTATION_SENT:   { icon: FileText,      color: "text-blue-500 bg-blue-50"  },
-  PAYMENT_RECEIVED: { icon: CheckCircle2,  color: "text-green-500 bg-green-50"},
-  SERVICE_REQUEST:  { icon: AlertTriangle, color: "text-orange-500 bg-orange-50"},
+type Notification = {
+  id: string
+  type: string
+  title: string
+  message: string
+  link?: string | null
+  href?: string | null
+  read: boolean
+  created_at: string
+  /** Optional human-readable relative time from mock/DB */
+  time?: string
+  priority?: string
 }
 
+// ─── icon / colour config ────────────────────────────────────────────────────
+
+const TYPE_CONFIG: Record<string, { icon: React.ElementType; color: string }> = {
+  OVERDUE_INVOICE:  { icon: Receipt,       color: "text-red-500 bg-red-50"     },
+  INSURANCE_EXPIRY: { icon: ShieldAlert,   color: "text-amber-500 bg-amber-50" },
+  WORK_ORDER_UPDATE:{ icon: Wrench,        color: "text-teal-500 bg-teal-50"   },
+  QUOTATION_SENT:   { icon: FileText,      color: "text-blue-500 bg-blue-50"   },
+  PAYMENT_RECEIVED: { icon: CheckCircle2,  color: "text-green-500 bg-green-50" },
+  SERVICE_REQUEST:  { icon: AlertTriangle, color: "text-orange-500 bg-orange-50"},
+  warning:          { icon: AlertTriangle, color: "text-red-500 bg-red-50"     },
+  info:             { icon: Bell,          color: "text-blue-500 bg-blue-50"   },
+}
+
+// ─── helper ──────────────────────────────────────────────────────────────────
+
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  const mins  = Math.floor(diff / 60000)
+  if (mins < 60)  return `${mins}m ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  return `${days}d ago`
+}
+
+// ─── component ───────────────────────────────────────────────────────────────
+
 export function NotificationBell() {
-  const [notifications, setNotifications] = useState<Notification[]>(INITIAL_NOTIFICATIONS)
-  const [open, setOpen] = useState(false)
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [loading, setLoading]             = useState(true)
+  const [open, setOpen]                   = useState(false)
+
+  const fetchNotifications = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res  = await fetch("/api/db/notifications")
+      const data = await res.json()
+      if (Array.isArray(data)) setNotifications(data)
+    } catch {
+      // Network error — keep previous state
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  // Load on mount; refresh when dropdown is opened
+  useEffect(() => { fetchNotifications() }, [fetchNotifications])
+
+  useEffect(() => {
+    if (open) fetchNotifications()
+  }, [open, fetchNotifications])
 
   const unreadCount = notifications.filter(n => !n.read).length
 
-  function markRead(id: string) {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))
+  async function markRead(id: string) {
+    // Optimistic update
+    setNotifications(prev =>
+      prev.map(n => n.id === id ? { ...n, read: true } : n)
+    )
+    try {
+      await fetch(`/api/db/notifications/${id}`, { method: "PATCH" })
+    } catch {
+      // Re-fetch on failure to restore true state
+      fetchNotifications()
+    }
   }
 
-  function markAllRead() {
+  async function markAllRead() {
+    const unread = notifications.filter(n => !n.read)
+    // Optimistic
     setNotifications(prev => prev.map(n => ({ ...n, read: true })))
+    await Promise.allSettled(
+      unread.map(n => fetch(`/api/db/notifications/${n.id}`, { method: "PATCH" }))
+    )
   }
 
   function dismiss(id: string) {
@@ -107,7 +110,11 @@ export function NotificationBell() {
         className="relative flex h-9 w-9 items-center justify-center rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors"
         aria-label="Notifications"
       >
-        <Bell className="h-4 w-4" />
+        {loading && !open ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Bell className="h-4 w-4" />
+        )}
         {unreadCount > 0 && (
           <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white font-bold">
             {unreadCount > 9 ? "9+" : unreadCount}
@@ -149,7 +156,12 @@ export function NotificationBell() {
 
           {/* Notification list */}
           <div className="max-h-[420px] overflow-y-auto divide-y divide-gray-50">
-            {notifications.length === 0 ? (
+            {loading ? (
+              <div className="flex items-center justify-center py-10 text-gray-400">
+                <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                <span className="text-sm">Loading…</span>
+              </div>
+            ) : notifications.length === 0 ? (
               <div className="py-10 text-center">
                 <CheckCircle2 className="h-8 w-8 text-green-400 mx-auto mb-2" />
                 <p className="text-sm text-gray-500">All caught up!</p>
@@ -160,6 +172,9 @@ export function NotificationBell() {
                 const cfg = TYPE_CONFIG[n.type] ?? { icon: Bell, color: "text-gray-500 bg-gray-50" }
                 const Icon = cfg.icon
                 const [iconColor, bgColor] = cfg.color.split(" ")
+                const href = n.link ?? n.href ?? "/notifications"
+                const timeLabel = n.time ?? relativeTime(n.created_at)
+
                 return (
                   <div
                     key={n.id}
@@ -181,7 +196,7 @@ export function NotificationBell() {
                             )}
                           </p>
                           <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{n.message}</p>
-                          <p className="text-xs text-gray-400 mt-1">{n.time}</p>
+                          <p className="text-xs text-gray-400 mt-1">{timeLabel}</p>
                         </div>
                         {/* Actions */}
                         <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -205,7 +220,7 @@ export function NotificationBell() {
                       </div>
                       {/* Link */}
                       <Link
-                        href={n.href}
+                        href={href}
                         onClick={() => { markRead(n.id); setOpen(false) }}
                         className="mt-1.5 inline-flex items-center gap-1 text-xs text-teal-600 hover:underline font-medium"
                       >

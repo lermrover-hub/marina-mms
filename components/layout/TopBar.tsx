@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { getInitials } from "@/lib/utils"
 import { NotificationBell } from "@/components/layout/NotificationBell"
+import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher"
 
 interface TopBarProps {
   title?: string
@@ -39,6 +40,9 @@ export function TopBar({ title }: TopBarProps) {
             className="h-9 w-64 rounded-md border border-[#e5dfd2] bg-white pl-9 pr-3 text-sm text-[#1f2933] placeholder:text-[#8b969a] focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20"
           />
         </div>
+
+        {/* Language switcher */}
+        <LanguageSwitcher />
 
         {/* Notifications */}
         <NotificationBell />

@@ -1,6 +1,6 @@
 "use client"
 import React, { useState, useEffect } from "react"
-import { Building2, Users, Tag, FileText, Bell, ShieldCheck, Sliders, ChevronRight, Loader2, Upload, Download, Trash2, File, Receipt, PlayCircle, CheckCircle2, AlertTriangle } from "lucide-react"
+import { Building2, Users, Tag, FileText, Bell, ShieldCheck, Sliders, ChevronRight, Loader2, Upload, Download, Trash2, File, Receipt, PlayCircle, CheckCircle2, AlertTriangle, Globe, Mail } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { PageHeader } from "@/components/shared/PageHeader"
@@ -8,16 +8,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { supabase } from "@/lib/supabase"
 import type { Staff, DocumentTemplate } from "@/lib/supabase"
+import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher"
+import { useLocale } from "@/lib/i18n/LocaleContext"
 
 const SETTING_GROUPS = [
-  { id: "company",    label: "Company",        icon: Building2,  description: "Company profile, branding, and contact info" },
-  { id: "users",      label: "Users & Roles",  icon: Users,      description: "Manage staff accounts and access control" },
-  { id: "pricing",    label: "Pricing Rules",  icon: Tag,        description: "Service rates, packages, and markup rules" },
-  { id: "billing",    label: "Recurring Billing", icon: Receipt, description: "Auto-generate monthly invoices from active contracts" },
-  { id: "documents",  label: "Templates",      icon: FileText,   description: "Invoice, quotation, and contract templates" },
-  { id: "notify",     label: "Notifications",  icon: Bell,       description: "Alert triggers and delivery settings" },
-  { id: "compliance", label: "Compliance",     icon: ShieldCheck,description: "Audit log, data retention, regulatory settings" },
-  { id: "system",     label: "System",         icon: Sliders,    description: "VAT rate, currency, date format, locale" },
+  { id: "company",    label: "Company",           icon: Building2,  description: "Company profile, branding, and contact info" },
+  { id: "users",      label: "Users & Roles",     icon: Users,      description: "Manage staff accounts and access control" },
+  { id: "pricing",    label: "Pricing Rules",     icon: Tag,        description: "Service rates, packages, and markup rules" },
+  { id: "billing",    label: "Recurring Billing", icon: Receipt,    description: "Auto-generate monthly invoices from active contracts" },
+  { id: "documents",  label: "Templates",         icon: FileText,   description: "Invoice, quotation, and contract templates" },
+  { id: "notify",     label: "Notifications",     icon: Bell,       description: "Alert triggers and delivery settings" },
+  { id: "compliance", label: "Compliance",        icon: ShieldCheck,description: "Audit log, data retention, regulatory settings" },
+  { id: "email",      label: "Email",             icon: Mail,       description: "Resend email integration and test" },
+  { id: "language",   label: "Language & Region", icon: Globe,      description: "UI language, date format, and locale" },
+  { id: "system",     label: "System",            icon: Sliders,    description: "VAT rate, currency, date format, locale" },
 ]
 
 const ROLE_LABELS: Record<string, { label: string; color: string; desc: string }> = {
@@ -69,6 +73,7 @@ export default function SettingsPage() {
   const [activeGroup, setActiveGroup] = useState("company")
   const [staff, setStaff]             = useState<Staff[]>([])
   const [staffLoading, setStaffLoading] = useState(false)
+  const { locale } = useLocale()
 
   // Document templates state
   const [templates,         setTemplates]         = useState<DocumentTemplate[]>([])
@@ -83,6 +88,10 @@ export default function SettingsPage() {
   const [billingResult,   setBillingResult]   = useState<{ generated: number; skipped: number; invoices: object[]; skipped_detail: { contract_number: string; reason: string }[] } | null>(null)
   const [billingError,    setBillingError]    = useState<string | null>(null)
   const [billingDryRun,   setBillingDryRun]   = useState(true)
+
+  // Email configuration state
+  const [emailTestLoading,  setEmailTestLoading]  = useState(false)
+  const [emailTestResult,   setEmailTestResult]   = useState<{ configured?: boolean; sent?: boolean; to?: string; id?: string; message?: string; error?: string } | null>(null)
 
   useEffect(() => {
     if (activeGroup === "users") {
@@ -723,6 +732,81 @@ export default function SettingsPage() {
                   })}
                 </div>
               )}
+            </div>
+          )}
+
+          {activeGroup === "language" && (
+            <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Globe className="h-4 w-4 text-teal-500" />
+                    Language &amp; Region
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-700">UI Language / ภาษาระบบ</p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        Choose the display language for navigation, labels, and system messages.
+                        ตั้งค่าภาษาที่ใช้แสดงผลในระบบ
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <LanguageSwitcher />
+                      <span className="text-sm text-gray-500">
+                        {locale === "en" ? "Currently: English" : "ปัจจุบัน: ภาษาไทย"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="border-t pt-4 space-y-3">
+                    <p className="text-sm font-semibold text-gray-700">Regional Format</p>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label>Date Format</Label>
+                        <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                          <option value="DD/MM/YYYY">DD/MM/YYYY (Thai standard)</option>
+                          <option value="MM/DD/YYYY">MM/DD/YYYY (US)</option>
+                          <option value="YYYY-MM-DD">YYYY-MM-DD (ISO)</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Currency</Label>
+                        <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                          <option value="THB">THB — Thai Baht (฿)</option>
+                          <option value="USD">USD — US Dollar ($)</option>
+                          <option value="EUR">EUR — Euro (€)</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Time Zone</Label>
+                        <Input defaultValue="Asia/Bangkok (UTC+7)" readOnly className="bg-gray-50" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Number Format</Label>
+                        <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                          <option value="1,234.56">1,234.56 (comma thousands)</option>
+                          <option value="1.234,56">1.234,56 (dot thousands)</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-teal-100 bg-teal-50 p-4">
+                    <p className="text-xs text-teal-700">
+                      <span className="font-semibold">Bilingual support:</span> This system supports both Thai and English
+                      throughout the UI. Document templates can be generated in Thai, English, or bilingual format.
+                      ระบบรองรับทั้งภาษาไทยและอังกฤษ สามารถออกเอกสารได้ทั้งสองภาษา
+                    </p>
+                  </div>
+
+                  <div className="border-t pt-4">
+                    <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white">Save Region Settings</Button>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           )}
 

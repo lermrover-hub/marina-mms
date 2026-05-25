@@ -810,6 +810,182 @@ export default function SettingsPage() {
             </div>
           )}
 
+          {activeGroup === "email" && (
+            <div className="space-y-4">
+              {/* Status card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-teal-500" />
+                    Email Configuration
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-5">
+                  {/* Provider info */}
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label>Email Provider</Label>
+                      <div className="flex items-center gap-2 rounded-md border border-input bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                        <Mail className="h-3.5 w-3.5 text-gray-400" />
+                        Resend
+                        <a
+                          href="https://resend.com"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="ml-auto text-xs text-teal-600 hover:underline"
+                        >
+                          resend.com &#8599;
+                        </a>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Environment Variable</Label>
+                      <div className="flex items-center rounded-md border border-input bg-gray-50 px-3 py-2 text-sm text-gray-500 font-mono">
+                        RESEND_API_KEY
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Info banner */}
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm flex items-start gap-3 text-amber-800">
+                    <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium">API Key Status (Server-Side Only)</p>
+                      <p className="text-xs mt-0.5 text-amber-700">
+                        The <code className="bg-amber-100 px-1 rounded">RESEND_API_KEY</code> is read server-side only and cannot be displayed here.
+                        Use the &ldquo;Send Test Email&rdquo; button to verify configuration.
+                        If no key is set, emails are gracefully logged to console instead of sending.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Automated triggers list */}
+                  <div>
+                    <p className="text-sm font-semibold text-gray-700 mb-2">Automated Email Triggers</p>
+                    <div className="rounded-lg border border-gray-100 overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b bg-gray-50 text-xs text-gray-500 uppercase">
+                            <th className="px-4 py-2.5 text-left">Event</th>
+                            <th className="px-4 py-2.5 text-left">Trigger</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                          {[
+                            { event: "Invoice Issued",            trigger: "POST /api/db/invoices" },
+                            { event: "Quotation Sent",            trigger: "POST /api/db/quotations" },
+                            { event: "Payment Confirmed",         trigger: "POST /api/email/send" },
+                            { event: "Work Order Status Update",  trigger: "POST /api/email/send" },
+                            { event: "Contract Expiring Soon",    trigger: "POST /api/email/send" },
+                            { event: "Welcome Customer Portal",   trigger: "POST /api/email/send" },
+                          ].map((row, i) => (
+                            <tr key={i} className="hover:bg-gray-50">
+                              <td className="px-4 py-2.5 font-medium text-gray-800">{row.event}</td>
+                              <td className="px-4 py-2.5 text-xs text-gray-400 font-mono">{row.trigger}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Test email */}
+                  <div className="border-t pt-4 space-y-3">
+                    <p className="text-sm font-semibold text-gray-700">Send Test Email</p>
+                    <p className="text-xs text-gray-500">
+                      Sends a sample invoice email to the address in <code className="bg-gray-100 px-1 rounded">EMAIL_TEST_TO</code>.
+                      Verifies your Resend API key is working correctly.
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-2"
+                      disabled={emailTestLoading}
+                      onClick={async () => {
+                        setEmailTestLoading(true)
+                        setEmailTestResult(null)
+                        try {
+                          const res = await fetch("/api/email/test")
+                          const d = await res.json()
+                          setEmailTestResult(d)
+                        } catch (e) {
+                          setEmailTestResult({ error: String(e) })
+                        } finally {
+                          setEmailTestLoading(false)
+                        }
+                      }}
+                    >
+                      {emailTestLoading
+                        ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Sending&#8230;</>
+                        : <><Mail className="h-3.5 w-3.5" /> Send Test Email</>
+                      }
+                    </Button>
+
+                    {emailTestResult && (
+                      <div
+                        className={`rounded-lg border px-4 py-3 text-sm flex items-start gap-2 ${
+                          emailTestResult.error
+                            ? "border-red-200 bg-red-50 text-red-700"
+                            : emailTestResult.configured === false
+                            ? "border-amber-200 bg-amber-50 text-amber-800"
+                            : emailTestResult.sent
+                            ? "border-green-200 bg-green-50 text-green-700"
+                            : "border-red-200 bg-red-50 text-red-700"
+                        }`}
+                      >
+                        {emailTestResult.error || !emailTestResult.configured || !emailTestResult.sent ? (
+                          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                        ) : (
+                          <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" />
+                        )}
+                        <div>
+                          <p className="font-medium">
+                            {emailTestResult.error
+                              ? "Error"
+                              : emailTestResult.configured === false
+                              ? "Not Configured"
+                              : emailTestResult.sent
+                              ? "Test Email Sent"
+                              : "Send Failed"}
+                          </p>
+                          <p className="text-xs mt-0.5 opacity-80">
+                            {emailTestResult.message ?? emailTestResult.error ?? ""}
+                          </p>
+                          {emailTestResult.id && (
+                            <p className="text-xs mt-1 font-mono opacity-60">ID: {emailTestResult.id}</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Setup instructions */}
+                  <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+                    <p className="font-semibold mb-1.5">Setup Instructions</p>
+                    <ol className="list-decimal list-inside space-y-1 text-xs text-blue-600">
+                      <li>
+                        Create a free account at{" "}
+                        <a href="https://resend.com" target="_blank" rel="noopener noreferrer" className="underline">
+                          resend.com
+                        </a>
+                      </li>
+                      <li>Generate an API key in the Resend dashboard under API Keys</li>
+                      <li>
+                        Add <code className="bg-blue-100 px-1 rounded">RESEND_API_KEY=re_xxx</code> to your{" "}
+                        <code className="bg-blue-100 px-1 rounded">.env.local</code> file or Vercel Environment Variables
+                      </li>
+                      <li>
+                        Optionally set <code className="bg-blue-100 px-1 rounded">EMAIL_FROM</code> (sender address) and{" "}
+                        <code className="bg-blue-100 px-1 rounded">EMAIL_TEST_TO</code> (test recipient)
+                      </li>
+                      <li>Restart the dev server and click &ldquo;Send Test Email&rdquo; to verify</li>
+                    </ol>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
           {activeGroup === "compliance" && (
             <div className="space-y-4">
               <Card>

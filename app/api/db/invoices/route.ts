@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
+import { sendEmail } from "@/lib/email"
+import { invoiceIssued } from "@/lib/email-templates"
 
 export const dynamic = "force-dynamic"
 
@@ -32,6 +34,46 @@ export async function POST(req: Request) {
       .select()
       .single()
     if (error) throw error
+
+    // Send invoice email — wrapped so it never breaks the main flow
+    try {
+      // Fetch customer email if we have a customer_id
+      if (data?.customer_id) {
+        const { data: customer } = await supabase
+          .from("mms_customers")
+          .select("full_name, company_name, email")
+          .eq("id", data.customer_id)
+          .single()
+
+        const recipientEmail = customer?.email
+        const customerName   =
+          customer?.full_name ?? customer?.company_name ?? "Valued Customer"
+
+        if (recipientEmail) {
+          await sendEmail({
+            to:      recipientEmail,
+            subject: `Invoice ${data.invoice_number ?? data.id} — Ocean Rover Marina`,
+            html:    invoiceIssued({
+              customerName,
+              invoiceNumber: data.invoice_number ?? String(data.id),
+              amount:        Number(data.total_amount ?? 0),
+              currency:      "THB",
+              dueDate:       data.due_date
+                ? new Date(data.due_date).toLocaleDateString("en-GB", {
+                    day:   "2-digit",
+                    month: "short",
+                    year:  "numeric",
+                  })
+                : "—",
+              invoiceUrl: `${process.env.NEXTAUTH_URL ?? ""}/invoices/${data.id}`,
+            }),
+          })
+        }
+      }
+    } catch (emailErr) {
+      console.error("[Invoice email trigger error]", emailErr)
+    }
+
     return NextResponse.json(data, { status: 201 })
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 })

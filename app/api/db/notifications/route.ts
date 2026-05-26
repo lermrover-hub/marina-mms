@@ -51,7 +51,9 @@ function isTableMissing(error: { code?: string; message?: string } | null): bool
   if (!error) return false
   return (
     error.code === "42P01" ||
+    error.code === "PGRST205" ||
     (typeof error.message === "string" && error.message.includes("does not exist"))
+    || (typeof error.message === "string" && error.message.includes("schema cache"))
   )
 }
 

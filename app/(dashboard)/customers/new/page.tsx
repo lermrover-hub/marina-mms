@@ -63,6 +63,7 @@ function SelectField({ value, onChange, options, placeholder }: {
 export default function NewCustomerPage() {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   // Form fields
   const [customerType, setCustomerType]     = useState("PRIVATE_OWNER")
@@ -87,8 +88,8 @@ export default function NewCustomerPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
+    setError(null)
     try {
-      const now = new Date().toISOString()
       const body = {
         customer_type:     customerType,
         first_name:        firstName || null,
@@ -103,12 +104,12 @@ export default function NewCustomerPage() {
         preferred_language: preferredLang || null,
         payment_terms:     paymentTerms ? parseInt(paymentTerms) : null,
         credit_limit:      creditLimit ? parseFloat(creditLimit) : null,
-        emergency_contact: emergencyContact || null,
-        risk_flag:         riskFlag,
-        notes:             notes || null,
+        notes:             [
+          notes.trim(),
+          emergencyContact.trim() ? `Emergency contact: ${emergencyContact.trim()}` : "",
+          riskFlag ? "Risk flag: yes" : "",
+        ].filter(Boolean).join("\n") || null,
         status:            "ACTIVE",
-        created_at:        now,
-        updated_at:        now,
       }
       const res = await fetch("/api/db/customers", {
         method: "POST",
@@ -118,7 +119,8 @@ export default function NewCustomerPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error ?? "Save failed")
       router.push(data?.id ? `/customers/${data.id}` : "/customers")
-    } catch {
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
       setSaving(false)
     }
   }
@@ -139,6 +141,11 @@ export default function NewCustomerPage() {
       />
 
       <form id="customer-form" onSubmit={handleSubmit}>
+        {error && (
+          <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
+          </div>
+        )}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Left: identity */}
           <div className="lg:col-span-2 space-y-5">

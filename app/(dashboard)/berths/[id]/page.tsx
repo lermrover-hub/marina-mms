@@ -10,12 +10,14 @@ import {
 import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import type { Berth } from "@/lib/supabase"
+import type { Berth, Boat, Customer } from "@/lib/supabase"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Assignment = {
   id: string
   berth_id: string
+  boat_id: string | null
+  customer_id: string | null
   boat_name: string | null
   customer_name: string | null
   start_date: string
@@ -58,8 +60,11 @@ function AssignModal({
   onClose: () => void
   onSaved: () => void
 }) {
-  const [boatName,    setBoatName]    = useState("")
-  const [customer,    setCustomer]    = useState("")
+  const [customers,   setCustomers]   = useState<Customer[]>([])
+  const [boats,       setBoats]       = useState<Boat[]>([])
+  const [customerId,  setCustomerId]  = useState("")
+  const [boatId,      setBoatId]      = useState("")
+  const [loadingRefs, setLoadingRefs] = useState(true)
   const [startDate,   setStart]       = useState(new Date().toISOString().slice(0, 10))
   const [endDate,     setEnd]         = useState("")
   const [asgnStatus,  setAsgnStatus]  = useState<"ACTIVE" | "RESERVED">("ACTIVE")
@@ -67,15 +72,43 @@ function AssignModal({
   const [saving,      setSaving]      = useState(false)
   const [error,       setError]       = useState<string | null>(null)
 
+  useEffect(() => {
+    setLoadingRefs(true)
+    Promise.all([
+      fetch("/api/db/customers").then((r) => r.json()),
+      fetch("/api/db/boats").then((r) => r.json()),
+    ])
+      .then(([customerData, boatData]) => {
+        if (!Array.isArray(customerData)) throw new Error(customerData?.error ?? "Failed to load customers")
+        if (!Array.isArray(boatData)) throw new Error(boatData?.error ?? "Failed to load boats")
+        setCustomers(customerData)
+        setBoats(boatData)
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+      .finally(() => setLoadingRefs(false))
+  }, [])
+
+  const customerBoats = customerId ? boats.filter((boat) => boat.owner_id === customerId) : boats
+  const selectedCustomer = customers.find((item) => item.id === customerId)
+  const selectedBoat = boats.find((item) => item.id === boatId)
+  const selectedCustomerPersonName = selectedCustomer
+    ? [selectedCustomer.first_name, selectedCustomer.last_name].filter(Boolean).join(" ")
+    : ""
+  const customerName = selectedCustomer
+    ? selectedCustomer.company_name ?? (selectedCustomerPersonName || selectedCustomer.id)
+    : ""
+
   async function handleSave() {
-    if (!boatName.trim() || !customer.trim() || !startDate) return
+    if (!boatId || !customerId || !startDate || !selectedBoat || !selectedCustomer) return
     setSaving(true)
     setError(null)
     try {
       const payload = {
         berth_id:      berth.id,
-        boat_name:     boatName.trim(),
-        customer_name: customer.trim(),
+        boat_id:       selectedBoat.id,
+        customer_id:   selectedCustomer.id,
+        boat_name:     selectedBoat.name,
+        customer_name: customerName,
         start_date:    startDate,
         end_date:      endDate || startDate,
         status:        asgnStatus,
@@ -91,12 +124,23 @@ function AssignModal({
       await fetch(`/api/db/berths/${berth.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: asgnStatus === "RESERVED" ? "RESERVED" : "OCCUPIED" }),
+        body: JSON.stringify({
+          status: asgnStatus === "RESERVED" ? "RESERVED" : "OCCUPIED",
+          current_boat_id: selectedBoat.id,
+        }),
+      })
+      await fetch(`/api/db/boats/${selectedBoat.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          current_location_code: berth.code,
+          status: asgnStatus === "RESERVED" ? selectedBoat.status : "IN_STORAGE",
+        }),
       })
       onSaved()
       onClose()
-    } catch {
-      setError("Failed to save assignment. Please try again.")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save assignment. Please try again.")
     } finally {
       setSaving(false)
     }
@@ -132,17 +176,43 @@ function AssignModal({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-gray-700">Boat Name *</label>
-            <input value={boatName} onChange={e => setBoatName(e.target.value)}
-              placeholder="e.g. Sea Hawk"
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20" />
+            <label className="text-xs font-medium text-gray-700">Customer / Owner *</label>
+            <select
+              value={customerId}
+              onChange={(e) => {
+                setCustomerId(e.target.value)
+                setBoatId("")
+              }}
+              disabled={loadingRefs}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+            >
+              <option value="">{loadingRefs ? "Loading customers..." : "- Select customer -"}</option>
+              {customers.map((item) => {
+                const personName = [item.first_name, item.last_name].filter(Boolean).join(" ")
+                const label = item.company_name ?? (personName || item.id)
+                return <option key={item.id} value={item.id}>{label}</option>
+              })}
+            </select>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-gray-700">Customer / Owner *</label>
-            <input value={customer} onChange={e => setCustomer(e.target.value)}
-              placeholder="Customer name"
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20" />
+            <label className="text-xs font-medium text-gray-700">Boat *</label>
+            <select
+              value={boatId}
+              onChange={(e) => setBoatId(e.target.value)}
+              disabled={loadingRefs || !customerId}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+            >
+              <option value="">{customerId ? "- Select boat -" : "Select customer first"}</option>
+              {customerBoats.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}{item.loa_ft ? ` - ${item.loa_ft} ft` : ""}{item.status ? ` (${item.status})` : ""}
+                </option>
+              ))}
+            </select>
+            {customerId && customerBoats.length === 0 && (
+              <p className="text-xs text-amber-600">No boats registered for this customer. Register the boat first.</p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -170,7 +240,7 @@ function AssignModal({
 
         <div className="p-5 border-t border-gray-100 flex justify-end gap-2">
           <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
-          <Button onClick={handleSave} disabled={saving || !boatName || !customer}
+          <Button onClick={handleSave} disabled={saving || loadingRefs || !boatId || !customerId}
             className="bg-teal-600 hover:bg-teal-700 text-white">
             {saving ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5"/>Saving…</> : "Assign Boat"}
           </Button>

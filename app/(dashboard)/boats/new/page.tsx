@@ -191,7 +191,7 @@ export default function NewBoatPage() {
         insurance_expiry: insuranceExpiry || null,
         special_handling: specialHandling || null,
         notes: notes || null,
-        status: "active",
+        status: "ACTIVE",
       }
       const res = await fetch("/api/db/boats", {
         method: "POST",
@@ -250,7 +250,7 @@ export default function NewBoatPage() {
                       <p className="text-xs text-red-500 mt-1">Failed to load customers: {customersError}</p>
                     )}
                     {!customersLoading && !customersError && customers.length === 0 && (
-                      <p className="text-xs text-amber-600 mt-1">No customers found. <a href="/customers/new" className="underline">Add a customer first.</a></p>
+                      <p className="text-xs text-amber-600 mt-1">No customers found. <Link href="/customers/new" className="underline">Add a customer first.</Link></p>
                     )}
                   </div>
                   <div className="space-y-1.5">

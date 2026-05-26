@@ -19,7 +19,7 @@ const JOB_CATEGORIES = [
 
 const PRIORITY_OPTIONS = [
   { value: "LOW",    label: "Low",    color: "bg-gray-100 text-gray-600 border-gray-300" },
-  { value: "NORMAL", label: "Normal", color: "bg-blue-100 text-blue-700 border-blue-300" },
+  { value: "MEDIUM", label: "Medium", color: "bg-blue-100 text-blue-700 border-blue-300" },
   { value: "HIGH",   label: "High",   color: "bg-orange-100 text-orange-700 border-orange-300" },
   { value: "URGENT", label: "Urgent", color: "bg-red-100 text-red-700 border-red-300" },
 ]
@@ -36,6 +36,7 @@ const LOCATION_OPTIONS = [
 export default function NewServiceRequestPage() {
   const router = useRouter()
   const [saving,         setSaving]         = useState(false)
+  const [saveError,      setSaveError]      = useState<string | null>(null)
   const [customers,      setCustomers]      = useState<Customer[]>([])
   const [customersError, setCustomersError] = useState<string | null>(null)
   const [boats,          setBoats]          = useState<Boat[]>([])
@@ -62,7 +63,7 @@ export default function NewServiceRequestPage() {
   const [customerId, setCustomerId]     = useState("")
   const [boatId, setBoatId]             = useState("")
   const [category, setCategory]         = useState("")
-  const [priority, setPriority]         = useState("NORMAL")
+  const [priority, setPriority]         = useState("MEDIUM")
   const [location, setLocation]         = useState("")
   const [description, setDescription]   = useState("")
   const [symptomDetail, setSymptom]     = useState("")
@@ -90,6 +91,7 @@ export default function NewServiceRequestPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    setSaveError(null)
     setSaving(true)
     try {
       const selectedC = customers.find(c => c.id === customerId)
@@ -110,7 +112,7 @@ export default function NewServiceRequestPage() {
         deposit_pct:         depositPct ? parseFloat(depositPct) : null,
         labor_rate:          laborRate ? parseFloat(laborRate) : null,
         contractor_markup:   contractorMarkup ? parseFloat(contractorMarkup) : null,
-        notes:               internalNote || null,
+        notes:               [attachNote, internalNote].filter(Boolean).join("\n") || null,
         status:              "NEW_REQUEST",
         reference:           `SR-${Date.now().toString().slice(-6)}`,
       }
@@ -122,7 +124,8 @@ export default function NewServiceRequestPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error ?? "Save failed")
       router.push(data?.id ? `/service-requests/${data.id}` : "/service-requests")
-    } catch {
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Save failed")
       setSaving(false)
     }
   }
@@ -453,6 +456,13 @@ export default function NewServiceRequestPage() {
           <div className="flex items-center gap-2 rounded-md bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-700">
             <AlertTriangle className="h-4 w-4 shrink-0" />
             Please select a customer, a boat, a category, and provide a description (min 10 chars).
+          </div>
+        )}
+
+        {saveError && (
+          <div className="flex items-center gap-2 rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            {saveError}
           </div>
         )}
 

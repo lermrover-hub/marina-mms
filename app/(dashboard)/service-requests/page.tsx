@@ -22,7 +22,7 @@ const STATUS_STYLE: Record<string, { label: string; color: string }> = {
 
 const PRIORITY_STYLE: Record<string, string> = {
   LOW:    "bg-gray-100 text-gray-500",
-  NORMAL: "bg-blue-100 text-blue-600",
+  MEDIUM: "bg-blue-100 text-blue-600",
   HIGH:   "bg-orange-100 text-orange-700",
   URGENT: "bg-red-100 text-red-600",
 }
@@ -67,7 +67,9 @@ export default function ServiceRequestsPage() {
         title="Service Requests"
         description={loading ? "Loading…" : `${services.length} requests total`}
         actions={
-          <Button size="sm" className="gap-2"><Plus className="h-4 w-4" /> New Request</Button>
+          <Button size="sm" className="gap-2" asChild>
+            <Link href="/service-requests/new"><Plus className="h-4 w-4" /> New Request</Link>
+          </Button>
         }
       />
 

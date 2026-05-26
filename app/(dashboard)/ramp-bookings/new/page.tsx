@@ -85,9 +85,16 @@ export default function NewRampBookingPage() {
     fetch(`/api/db/boats?limit=200`)
       .then(r => r.json())
       .then(d => {
-        if (Array.isArray(d)) setBoats(d)
+        if (Array.isArray(d)) {
+          setBoats(d)
+        } else if (d?.error) {
+          setFormError(`Failed to load boats: ${d.error}`)
+          console.error("Boats load error:", d.error)
+        }
       })
-      .catch(() => {/* ignore */})
+      .catch((e) => {
+        console.error("Boats fetch failed:", e)
+      })
       .finally(() => setBoatsLoading(false))
   }, [])
 

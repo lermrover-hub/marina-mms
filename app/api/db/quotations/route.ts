@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { supabase } from "@/lib/supabase"
+import { createServerClient } from "@/lib/supabase-server"
 import { sendEmail } from "@/lib/email"
 import { quotationSent } from "@/lib/email-templates"
 
@@ -10,14 +10,15 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url)
     const customerId = searchParams.get("customer_id")
     const boatId     = searchParams.get("boat_id")
+    const supabase = createServerClient()
 
     let query = supabase.from("mms_quotations").select("*").order("created_at", { ascending: false })
     if (customerId) query = query.eq("customer_id", customerId)
     if (boatId)     query = query.eq("boat_id", boatId)
 
     const { data, error } = await query
-    if (error) throw error
-    return NextResponse.json(data)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json(data ?? [])
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 })
   }
@@ -26,12 +27,13 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json()
+    const supabase = createServerClient()
     const { data, error } = await supabase
       .from("mms_quotations")
       .insert(body)
       .select()
       .single()
-    if (error) throw error
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
     // Send quotation email — wrapped so it never breaks the main flow
     try {

@@ -74,16 +74,29 @@ function SimpleSelect({ value, onChange, options }: {
 
 export default function NewBoatPage() {
   const router = useRouter()
-  const [saving,    setSaving]    = useState(false)
-  const [customers, setCustomers] = useState<Customer[]>([])
-  const [boatSpecs, setBoatSpecs] = useState<BoatSpec[]>([])
-  const [selectedSpecId, setSelectedSpecId] = useState("")
+  const [saving,          setSaving]          = useState(false)
+  const [customers,       setCustomers]       = useState<Customer[]>([])
+  const [customersLoading,setCustomersLoading]= useState(true)
+  const [customersError,  setCustomersError]  = useState<string | null>(null)
+  const [boatSpecs,       setBoatSpecs]       = useState<BoatSpec[]>([])
+  const [selectedSpecId,  setSelectedSpecId]  = useState("")
 
   useEffect(() => {
     fetch("/api/db/customers")
       .then(r => r.json())
-      .then(d => { if (Array.isArray(d)) setCustomers(d) })
-      .catch(() => {})
+      .then(d => {
+        if (Array.isArray(d)) {
+          setCustomers(d)
+        } else if (d?.error) {
+          setCustomersError(d.error)
+          console.error("Customers load error:", d.error)
+        }
+      })
+      .catch((e) => {
+        setCustomersError(String(e))
+        console.error("Customers fetch failed:", e)
+      })
+      .finally(() => setCustomersLoading(false))
     fetch("/api/db/boat-specs?limit=1000")
       .then(r => r.json())
       .then(d => { if (Array.isArray(d)) setBoatSpecs(d) })
@@ -222,11 +235,23 @@ export default function NewBoatPage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label>Owner <span className="text-red-500">*</span></Label>
-                    <SelectField value={ownerId} onChange={setOwnerId} placeholder="— Select owner —"
-                      options={customers.map((c) => ({
-                        value: c.id,
-                        label: c.company_name ?? ([c.first_name, c.last_name].filter(Boolean).join(" ") || c.id),
-                      }))} />
+                    {customersLoading ? (
+                      <select disabled className="w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-400">
+                        <option>Loading customers…</option>
+                      </select>
+                    ) : (
+                      <SelectField value={ownerId} onChange={setOwnerId} placeholder="— Select owner —"
+                        options={customers.map((c) => ({
+                          value: c.id,
+                          label: c.company_name ?? ([c.first_name, c.last_name].filter(Boolean).join(" ") || c.id),
+                        }))} />
+                    )}
+                    {customersError && (
+                      <p className="text-xs text-red-500 mt-1">Failed to load customers: {customersError}</p>
+                    )}
+                    {!customersLoading && !customersError && customers.length === 0 && (
+                      <p className="text-xs text-amber-600 mt-1">No customers found. <a href="/customers/new" className="underline">Add a customer first.</a></p>
+                    )}
                   </div>
                   <div className="space-y-1.5">
                     <Label>Boat Type <span className="text-red-500">*</span></Label>

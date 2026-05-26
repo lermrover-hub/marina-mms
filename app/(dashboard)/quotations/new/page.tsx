@@ -114,11 +114,25 @@ export default function NewQuotationPage() {
   const router = useRouter()
 
   // Live data
-  const [customers, setCustomers] = useState<Customer[]>([])
-  const [boats,     setBoats]     = useState<Boat[]>([])
+  const [customers,      setCustomers]      = useState<Customer[]>([])
+  const [customersError, setCustomersError] = useState<string | null>(null)
+  const [boats,          setBoats]          = useState<Boat[]>([])
 
   useEffect(() => {
-    fetch("/api/db/customers").then(r => r.json()).then(d => { if (Array.isArray(d)) setCustomers(d) }).catch(() => {})
+    fetch("/api/db/customers")
+      .then(r => r.json())
+      .then(d => {
+        if (Array.isArray(d)) {
+          setCustomers(d)
+        } else if (d?.error) {
+          setCustomersError(d.error)
+          console.error("Customers load error:", d.error)
+        }
+      })
+      .catch((e) => {
+        setCustomersError(String(e))
+        console.error("Customers fetch failed:", e)
+      })
     fetch("/api/db/boats").then(r => r.json()).then(d => { if (Array.isArray(d)) setBoats(d) }).catch(() => {})
   }, [])
 
@@ -253,6 +267,9 @@ export default function NewQuotationPage() {
                     </option>
                   ))}
                 </select>
+                {customersError && (
+                  <p className="text-xs text-red-500 mt-1">Failed to load customers: {customersError}</p>
+                )}
               </div>
 
               {customerId && customerBoats.length > 0 && (

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { getServiceRequests } from "@/lib/db"
-import { supabase } from "@/lib/supabase"
+import { createServerClient } from "@/lib/supabase-server"
+
+const supabase = createServerClient()
 
 export const dynamic = "force-dynamic"
 

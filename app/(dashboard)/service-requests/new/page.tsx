@@ -35,18 +35,27 @@ const LOCATION_OPTIONS = [
 // ── component ────────────────────────────────────────────────────────────────
 export default function NewServiceRequestPage() {
   const router = useRouter()
-  const [saving,    setSaving]    = useState(false)
-  const [customers, setCustomers] = useState<Customer[]>([])
-  const [boats,     setBoats]     = useState<Boat[]>([])
+  const [saving,         setSaving]         = useState(false)
+  const [customers,      setCustomers]      = useState<Customer[]>([])
+  const [customersError, setCustomersError] = useState<string | null>(null)
+  const [boats,          setBoats]          = useState<Boat[]>([])
 
   useEffect(() => {
     Promise.all([
       fetch("/api/db/customers").then(r => r.json()),
       fetch("/api/db/boats").then(r => r.json()),
     ]).then(([c, b]) => {
-      if (Array.isArray(c)) setCustomers(c)
+      if (Array.isArray(c)) {
+        setCustomers(c)
+      } else if (c?.error) {
+        setCustomersError(c.error)
+        console.error("Customers load error:", c.error)
+      }
       if (Array.isArray(b)) setBoats(b)
-    }).catch(() => {})
+    }).catch((e) => {
+      setCustomersError(String(e))
+      console.error("Customers/boats fetch failed:", e)
+    })
   }, [])
 
   // ── form state ──────────────────────────────────────────────────────────
@@ -161,6 +170,9 @@ export default function NewServiceRequestPage() {
                   </option>
                 ))}
               </select>
+              {customersError && (
+                <p className="text-xs text-red-500 mt-1">Failed to load customers: {customersError}</p>
+              )}
               {selectedCustomer && (
                 <p className="text-xs text-gray-500">
                   {selectedCustomer.phone} · {selectedCustomer.email}

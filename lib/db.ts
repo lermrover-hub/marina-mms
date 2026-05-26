@@ -2,8 +2,11 @@
  * Marina MMS — Database query helpers
  * All functions return data from Supabase mms_* tables
  */
-import { supabase } from "./supabase"
+import { createServerClient } from "./supabase-server"
 import type { Customer, Boat, Berth, ServiceRequest, Quotation, WorkOrder, Invoice, Payment, MaterialUsage } from "./supabase"
+
+// Use server client (service role key when available, falls back to anon key)
+const supabase = createServerClient()
 
 // ── Customers ─────────────────────────────────────────────────────────────────
 export async function getCustomers() {

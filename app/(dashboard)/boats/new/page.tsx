@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { Customer } from "@/lib/supabase"
 
 const BOAT_TYPES = [
-  { value: "SPEED_BOAT",        label: "Speed Boat" },
+  { value: "SPEEDBOAT",         label: "Speed Boat" },
   { value: "MOTOR_YACHT",       label: "Motor Yacht" },
   { value: "SAILING_YACHT",     label: "Sailing Yacht" },
   { value: "CATAMARAN",         label: "Catamaran" },
@@ -141,7 +141,7 @@ export default function NewBoatPage() {
 
     setBrand(spec.brand ?? "")
     setModel(spec.model ?? "")
-    setBoatType(spec.boat_type ?? "OTHER")
+    setBoatType(spec.boat_type === "SPEED_BOAT" ? "SPEEDBOAT" : spec.boat_type ?? "OTHER")
     setLoaFt(spec.loa_ft != null ? String(spec.loa_ft) : "")
     setBeamFt(spec.beam_ft != null ? String(spec.beam_ft) : "")
     setDraftFt(spec.draft_ft != null ? String(spec.draft_ft) : "")

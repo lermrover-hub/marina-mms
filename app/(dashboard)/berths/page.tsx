@@ -390,7 +390,7 @@ function AssignBoatDialog({
       .finally(() => setLoadingRefs(false))
   }, [])
 
-  const availableBerths = berths.filter((b) => b.status === "AVAILABLE" || b.status === "RESERVED")
+  const availableBerths = [...berths].sort((a, b) => a.code.localeCompare(b.code))
   const selectedBerth   = berths.find((b) => b.id === berthId)
   const customerBoats   = customerId ? boats.filter((b) => b.owner_id === customerId) : boats
   const selectedCustomer = customers.find((c) => c.id === customerId)
@@ -517,16 +517,13 @@ function AssignBoatDialog({
               <option value="">- Select berth -</option>
               {availableBerths.map((b) => (
                 <option key={b.id} value={b.id}>
-                  {b.code} — {b.berth_type}{b.max_loa_ft ? ` · max ${b.max_loa_ft} ft` : ""} ({b.status})
+                  {b.code} — {b.berth_type}{b.max_loa_ft ? ` · max ${b.max_loa_ft} ft` : ""} [{b.status}]
                 </option>
               ))}
               {availableBerths.length === 0 && (
-                <option disabled>No available berths</option>
+                <option disabled>No berths found</option>
               )}
             </select>
-            {availableBerths.length === 0 && berths.length > 0 && (
-              <p className="text-xs text-amber-600">All berths are occupied or in maintenance.</p>
-            )}
           </div>
 
           {/* Customer selector */}

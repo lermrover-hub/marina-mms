@@ -1,12 +1,12 @@
 "use client"
 
-import React, { useMemo } from "react"
+import React, { useMemo, useState, useEffect } from "react"
 import Link from "next/link"
-import { CalendarDays, Download, Loader2, Plus, SlidersHorizontal } from "lucide-react"
+import { CalendarDays, Download, Loader2, Plus, SlidersHorizontal, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { Card, CardContent } from "@/components/ui/card"
-import type { Berth } from "@/lib/supabase"
+import type { Berth, Boat, Customer } from "@/lib/supabase"
 import { useApiList } from "@/hooks/useApiList"
 
 const STATUS_STYLE: Record<string, string> = {
@@ -350,10 +350,266 @@ function BerthMap({ berths }: { berths: Berth[] }) {
   )
 }
 
+// ─── Assign Boat Dialog ───────────────────────────────────────────────────────
+function AssignBoatDialog({
+  berths,
+  onClose,
+  onSaved,
+}: {
+  berths: Berth[]
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const [customers,  setCustomers]  = useState<Customer[]>([])
+  const [boats,      setBoats]      = useState<Boat[]>([])
+  const [berthId,    setBerthId]    = useState("")
+  const [customerId, setCustomerId] = useState("")
+  const [boatId,     setBoatId]     = useState("")
+  const [startDate,  setStart]      = useState(new Date().toISOString().slice(0, 10))
+  const [endDate,    setEnd]        = useState("")
+  const [asgnStatus, setAsgnStatus] = useState<"ACTIVE" | "RESERVED">("ACTIVE")
+  const [notes,      setNotes]      = useState("")
+  const [saving,     setSaving]     = useState(false)
+  const [loadingRefs,setLoadingRefs]= useState(true)
+  const [error,      setError]      = useState<string | null>(null)
+
+  useEffect(() => {
+    setLoadingRefs(true)
+    Promise.all([
+      fetch("/api/db/customers").then((r) => r.json()),
+      fetch("/api/db/boats").then((r) => r.json()),
+    ])
+      .then(([customerData, boatData]) => {
+        if (!Array.isArray(customerData)) throw new Error(customerData?.error ?? "Failed to load customers")
+        if (!Array.isArray(boatData))     throw new Error(boatData?.error     ?? "Failed to load boats")
+        setCustomers(customerData)
+        setBoats(boatData)
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+      .finally(() => setLoadingRefs(false))
+  }, [])
+
+  const availableBerths = berths.filter((b) => b.status === "AVAILABLE" || b.status === "RESERVED")
+  const selectedBerth   = berths.find((b) => b.id === berthId)
+  const customerBoats   = customerId ? boats.filter((b) => b.owner_id === customerId) : boats
+  const selectedCustomer = customers.find((c) => c.id === customerId)
+  const selectedBoat     = boats.find((b) => b.id === boatId)
+
+  const customerName = selectedCustomer
+    ? (selectedCustomer.company_name ??
+      ([selectedCustomer.first_name, selectedCustomer.last_name].filter(Boolean).join(" ") ||
+      selectedCustomer.id))
+    : ""
+
+  async function handleSave() {
+    if (!berthId || !boatId || !customerId || !startDate || !selectedBerth || !selectedBoat || !selectedCustomer) {
+      setError("Please fill in all required fields.")
+      return
+    }
+    setSaving(true)
+    setError(null)
+    try {
+      const payload = {
+        berth_id:      berthId,
+        boat_id:       selectedBoat.id,
+        customer_id:   selectedCustomer.id,
+        boat_name:     selectedBoat.name,
+        customer_name: customerName,
+        start_date:    startDate,
+        end_date:      endDate || startDate,
+        status:        asgnStatus,
+        notes:         notes.trim() || null,
+      }
+      const res = await fetch("/api/db/berth-assignments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        throw new Error(j?.error ?? "Failed to save assignment")
+      }
+      // Update berth status
+      await fetch(`/api/db/berths/${berthId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: asgnStatus === "RESERVED" ? "RESERVED" : "OCCUPIED",
+          current_boat_id: selectedBoat.id,
+        }),
+      })
+      // Update boat location
+      await fetch(`/api/db/boats/${selectedBoat.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          current_location_code: selectedBerth.code,
+          status: asgnStatus === "RESERVED" ? selectedBoat.status : "IN_STORAGE",
+        }),
+      })
+      onSaved()
+      onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save. Please try again.")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const canSave = berthId && boatId && customerId && startDate && !saving
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between p-5 border-b border-gray-100 sticky top-0 bg-white rounded-t-xl">
+          <div>
+            <h3 className="font-bold text-gray-900">Assign Boat to Berth</h3>
+            <p className="text-xs text-gray-500 mt-0.5">Select berth, customer, and boat</p>
+          </div>
+          <button onClick={onClose} className="p-1 rounded hover:bg-gray-100">
+            <X className="h-4 w-4 text-gray-400" />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {error && (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+          )}
+
+          {/* Assignment type */}
+          <div className="flex gap-2">
+            {(["ACTIVE", "RESERVED"] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setAsgnStatus(s)}
+                className={`flex-1 rounded-lg py-2 text-xs font-semibold border-2 transition-colors ${
+                  asgnStatus === s
+                    ? s === "ACTIVE"
+                      ? "border-blue-500 bg-blue-50 text-blue-700"
+                      : "border-amber-400 bg-amber-50 text-amber-700"
+                    : "border-gray-200 bg-white text-gray-400 hover:border-gray-300"
+                }`}
+              >
+                {s === "ACTIVE" ? "Occupied / Check-in" : "Reserve"}
+              </button>
+            ))}
+          </div>
+
+          {/* Berth selector */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-gray-700">Berth / Slot *</label>
+            <select
+              value={berthId}
+              onChange={(e) => setBerthId(e.target.value)}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+            >
+              <option value="">- Select berth -</option>
+              {availableBerths.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.code} — {b.berth_type}{b.max_loa_ft ? ` · max ${b.max_loa_ft} ft` : ""} ({b.status})
+                </option>
+              ))}
+              {availableBerths.length === 0 && (
+                <option disabled>No available berths</option>
+              )}
+            </select>
+            {availableBerths.length === 0 && berths.length > 0 && (
+              <p className="text-xs text-amber-600">All berths are occupied or in maintenance.</p>
+            )}
+          </div>
+
+          {/* Customer selector */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-gray-700">Customer / Owner *</label>
+            <select
+              value={customerId}
+              onChange={(e) => { setCustomerId(e.target.value); setBoatId("") }}
+              disabled={loadingRefs}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+            >
+              <option value="">{loadingRefs ? "Loading..." : "- Select customer -"}</option>
+              {customers.map((c) => {
+                const label = c.company_name ?? ([c.first_name, c.last_name].filter(Boolean).join(" ") || c.id)
+                return <option key={c.id} value={c.id}>{label}</option>
+              })}
+            </select>
+          </div>
+
+          {/* Boat selector */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-gray-700">Boat *</label>
+            <select
+              value={boatId}
+              onChange={(e) => setBoatId(e.target.value)}
+              disabled={loadingRefs || !customerId}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+            >
+              <option value="">{customerId ? "- Select boat -" : "Select customer first"}</option>
+              {customerBoats.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}{b.loa_ft ? ` · ${b.loa_ft} ft` : ""}{b.boat_type ? ` (${b.boat_type})` : ""}
+                </option>
+              ))}
+            </select>
+            {customerId && customerBoats.length === 0 && !loadingRefs && (
+              <p className="text-xs text-amber-600">No boats for this customer. Register a boat first.</p>
+            )}
+          </div>
+
+          {/* Dates */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-gray-700">Start Date *</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStart(e.target.value)}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-gray-700">End Date</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEnd(e.target.value)}
+                min={startDate}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-gray-700">Notes</label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              placeholder="Optional notes..."
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none resize-none"
+            />
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end gap-3 px-5 pb-5">
+          <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
+          <Button onClick={handleSave} disabled={!canSave}>
+            {saving ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Saving...</> : "Assign Boat"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function BerthsPage() {
-  const { data: berths, loading, error } = useApiList<Berth>("/api/db/berths", {
+  const { data: berths, loading, error, reload } = useApiList<Berth>("/api/db/berths", {
     errorMessage: "Failed to load berths",
   })
+  const [showAssign, setShowAssign] = useState(false)
 
   const stats = useMemo(() => {
     const total = berths.length
@@ -384,7 +640,7 @@ export default function BerthsPage() {
                 <SlidersHorizontal className="h-4 w-4" /> Management
               </Button>
             </Link>
-            <Button size="sm" className="gap-2">
+            <Button size="sm" className="gap-2" onClick={() => setShowAssign(true)}>
               <Plus className="h-4 w-4" /> Assign Boat
             </Button>
           </>
@@ -429,6 +685,14 @@ export default function BerthsPage() {
         <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-green-500 align-middle" />
         Live database - {berths.length} berths loaded - click any mapped slot to open details
       </p>
+
+      {showAssign && (
+        <AssignBoatDialog
+          berths={berths}
+          onClose={() => setShowAssign(false)}
+          onSaved={() => { void reload(); setShowAssign(false) }}
+        />
+      )}
     </div>
   )
 }

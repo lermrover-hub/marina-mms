@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { ArrowLeft, CalendarDays, ChevronLeft, ChevronRight, Loader2, Map as MapIcon } from "lucide-react"
+import { ArrowLeft, CalendarDays, ChevronLeft, ChevronRight, Loader2, Map as MapIcon, Pencil, Trash2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { Card, CardContent } from "@/components/ui/card"
@@ -17,6 +17,210 @@ type Assignment = {
   end_date: string | null
   status: "ACTIVE" | "RESERVED" | "COMPLETED" | "CANCELLED"
   notes: string | null
+}
+
+// ─── Edit Assignment Modal ─────────────────────────────────────────────────────
+function EditAssignmentModal({
+  assignment,
+  berthCode,
+  onClose,
+  onSaved,
+}: {
+  assignment: Assignment
+  berthCode: string
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const [startDate, setStart]   = useState(assignment.start_date)
+  const [endDate,   setEnd]     = useState(assignment.end_date ?? "")
+  const [status,    setStatus]  = useState(assignment.status)
+  const [notes,     setNotes]   = useState(assignment.notes ?? "")
+  const [saving,    setSaving]  = useState(false)
+  const [deleting,  setDeleting]= useState(false)
+  const [error,     setError]   = useState<string | null>(null)
+  const [confirmDel,setConfirm] = useState(false)
+
+  async function handleSave() {
+    setSaving(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/db/berth-assignments?id=${assignment.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          start_date: startDate,
+          end_date:   endDate || startDate,
+          status,
+          notes: notes.trim() || null,
+        }),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        throw new Error(j?.error ?? "Failed to save")
+      }
+      // If marked COMPLETED or CANCELLED, free up the berth
+      if (status === "COMPLETED" || status === "CANCELLED") {
+        await fetch(`/api/db/berths/${assignment.berth_id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "AVAILABLE", current_boat_id: null }),
+        })
+      }
+      onSaved()
+      onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Save failed")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleDelete() {
+    setDeleting(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/db/berth-assignments?id=${assignment.id}`, { method: "DELETE" })
+      if (!res.ok) throw new Error("Failed to delete")
+      // Free berth
+      await fetch(`/api/db/berths/${assignment.berth_id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "AVAILABLE", current_boat_id: null }),
+      })
+      onSaved()
+      onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Delete failed")
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const STATUS_OPTIONS: Assignment["status"][] = ["ACTIVE", "RESERVED", "COMPLETED", "CANCELLED"]
+  const STATUS_LABEL: Record<string, string> = {
+    ACTIVE: "Occupied / Check-in", RESERVED: "Reserved",
+    COMPLETED: "Completed / Check-out", CANCELLED: "Cancelled",
+  }
+  const STATUS_COLOR: Record<string, string> = {
+    ACTIVE:    "border-blue-500 bg-blue-50 text-blue-700",
+    RESERVED:  "border-amber-400 bg-amber-50 text-amber-700",
+    COMPLETED: "border-gray-400 bg-gray-50 text-gray-600",
+    CANCELLED: "border-red-400 bg-red-50 text-red-700",
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
+        {/* Header */}
+        <div className="flex items-center justify-between p-5 border-b border-gray-100">
+          <div>
+            <h3 className="font-bold text-gray-900 flex items-center gap-2">
+              <Pencil className="h-4 w-4 text-teal-600" />
+              Edit Assignment — {berthCode}
+            </h3>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {assignment.boat_name ?? "—"} · {assignment.customer_name ?? "—"}
+            </p>
+          </div>
+          <button onClick={onClose} className="p-1 rounded hover:bg-gray-100">
+            <X className="h-4 w-4 text-gray-400" />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {error && (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+          )}
+
+          {/* Status */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-gray-700">Status</label>
+            <div className="grid grid-cols-2 gap-2">
+              {STATUS_OPTIONS.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setStatus(s)}
+                  className={`rounded-lg py-2 text-xs font-semibold border-2 transition-colors ${
+                    status === s ? STATUS_COLOR[s] : "border-gray-200 bg-white text-gray-400 hover:border-gray-300"
+                  }`}
+                >
+                  {STATUS_LABEL[s]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Dates */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-gray-700">Start Date *</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStart(e.target.value)}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-gray-700">End Date</label>
+              <input
+                type="date"
+                value={endDate}
+                min={startDate}
+                onChange={(e) => setEnd(e.target.value)}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-gray-700">Notes</label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              placeholder="e.g. own trailer, company trailer, extended by customer..."
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none resize-none"
+            />
+          </div>
+
+          {/* Confirm delete */}
+          {confirmDel && (
+            <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              <p className="font-medium mb-2">Remove this assignment?</p>
+              <p className="text-xs mb-3">Berth will be set back to AVAILABLE.</p>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => setConfirm(false)} disabled={deleting}>Cancel</Button>
+                <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white" onClick={handleDelete} disabled={deleting}>
+                  {deleting ? <Loader2 className="h-3 w-3 animate-spin" /> : "Yes, Remove"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between px-5 pb-5">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-red-600 hover:text-red-700 hover:bg-red-50 gap-1"
+            onClick={() => setConfirm(true)}
+            disabled={saving || confirmDel}
+          >
+            <Trash2 className="h-3.5 w-3.5" /> Remove
+          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
+            <Button onClick={handleSave} disabled={saving || !startDate}>
+              {saving ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Saving...</> : "Save Changes"}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 const MONTH_NAMES = [
@@ -70,6 +274,7 @@ export default function BerthManagementPage() {
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [editing, setEditing] = useState<{ assignment: Assignment; berthCode: string } | null>(null)
   const [startMonth, setStartMonth] = useState(() => {
     const now = new Date()
     return new Date(now.getFullYear(), now.getMonth(), 1)
@@ -229,11 +434,13 @@ export default function BerthManagementPage() {
                           return (
                             <div
                               key={assignment.id}
-                              className={`absolute top-1 flex h-6 items-center justify-center overflow-hidden border text-xs font-medium ${barClass(assignment.status, assignment.notes)}`}
+                              onClick={() => setEditing({ assignment, berthCode: berth.code })}
+                              className={`absolute top-1 flex h-6 cursor-pointer items-center justify-center overflow-hidden border text-xs font-medium transition-opacity hover:opacity-80 hover:shadow-md ${barClass(assignment.status, assignment.notes)}`}
                               style={{ left: start * DAY_WIDTH, width }}
-                              title={`${assignment.boat_name ?? "Booking"} - ${assignment.customer_name ?? ""}`}
+                              title={`Click to edit · ${assignment.boat_name ?? "Booking"} · ${assignment.start_date} → ${assignment.end_date ?? "open"}`}
                             >
                               <span className="truncate px-2">{assignment.boat_name ?? assignment.customer_name ?? "Reserved"}</span>
+                              <Pencil className="ml-1 h-2.5 w-2.5 shrink-0 opacity-60" />
                             </div>
                           )
                         })}
@@ -249,8 +456,17 @@ export default function BerthManagementPage() {
 
       <div className="flex items-center gap-2 text-xs text-gray-400">
         <ArrowLeft className="h-3 w-3" />
-        <span>Use the board to scan conflicts across C, W and B slots before assigning a boat.</span>
+        <span>Use the board to scan conflicts across C, W and B slots · Click any bar to edit dates or status.</span>
       </div>
+
+      {editing && (
+        <EditAssignmentModal
+          assignment={editing.assignment}
+          berthCode={editing.berthCode}
+          onClose={() => setEditing(null)}
+          onSaved={() => { setEditing(null); fetchData() }}
+        />
+      )}
     </div>
   )
 }

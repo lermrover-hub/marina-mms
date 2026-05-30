@@ -11,6 +11,7 @@ import type { Berth } from "@/lib/supabase"
 type Assignment = {
   id: string
   berth_id: string
+  boat_id: string | null
   boat_name: string | null
   customer_name: string | null
   start_date: string
@@ -40,6 +41,39 @@ function EditAssignmentModal({
   const [error,     setError]   = useState<string | null>(null)
   const [confirmDel,setConfirm] = useState(false)
 
+  async function patchJson(url: string, body: Record<string, unknown>) {
+    const res = await fetch(url, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}))
+      throw new Error(j?.error ?? "Update failed")
+    }
+  }
+
+  async function syncBerthAndBoat(nextStatus: Assignment["status"]) {
+    if (nextStatus === "COMPLETED" || nextStatus === "CANCELLED") {
+      await patchJson(`/api/db/berths/${assignment.berth_id}`, {
+        status: "AVAILABLE",
+        current_boat_id: null,
+      })
+      if (assignment.boat_id) {
+        await patchJson(`/api/db/boats/${assignment.boat_id}`, {
+          status: "ACTIVE",
+          current_location_code: null,
+        })
+      }
+      return
+    }
+
+    await patchJson(`/api/db/berths/${assignment.berth_id}`, {
+      status: nextStatus === "RESERVED" ? "RESERVED" : "OCCUPIED",
+      current_boat_id: assignment.boat_id,
+    })
+  }
+
   async function handleSave() {
     setSaving(true)
     setError(null)
@@ -58,14 +92,7 @@ function EditAssignmentModal({
         const j = await res.json().catch(() => ({}))
         throw new Error(j?.error ?? "Failed to save")
       }
-      // If marked COMPLETED or CANCELLED, free up the berth
-      if (status === "COMPLETED" || status === "CANCELLED") {
-        await fetch(`/api/db/berths/${assignment.berth_id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: "AVAILABLE", current_boat_id: null }),
-        })
-      }
+      await syncBerthAndBoat(status)
       onSaved()
       onClose()
     } catch (err) {
@@ -81,12 +108,7 @@ function EditAssignmentModal({
     try {
       const res = await fetch(`/api/db/berth-assignments?id=${assignment.id}`, { method: "DELETE" })
       if (!res.ok) throw new Error("Failed to delete")
-      // Free berth
-      await fetch(`/api/db/berths/${assignment.berth_id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "AVAILABLE", current_boat_id: null }),
-      })
+      await syncBerthAndBoat("CANCELLED")
       onSaved()
       onClose()
     } catch (err) {

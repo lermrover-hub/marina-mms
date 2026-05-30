@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { Card, CardContent } from "@/components/ui/card"
 import { formatTHB } from "@/lib/utils"
+import { exportRowsCsv } from "@/lib/client-export"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type InventoryItem = {
@@ -83,7 +84,28 @@ export default function InventoryPage() {
         description={loading ? "Loading…" : `${stats.total} items · Stock value ${formatTHB(stats.totalValue)}`}
         actions={
           <>
-            <Button variant="outline" size="sm" className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() =>
+                exportRowsCsv(
+                  `inventory-${new Date().toISOString().slice(0, 10)}.csv`,
+                  filtered.map((item) => ({
+                    item_code: item.item_code,
+                    name: item.name,
+                    category: item.category,
+                    unit: item.unit,
+                    on_hand: item.on_hand,
+                    min_stock: item.min_stock,
+                    avg_cost: item.avg_cost,
+                    selling_price: item.selling_price,
+                    supplier: item.supplier,
+                    status: item.status,
+                  })),
+                )
+              }
+            >
               <Download className="h-4 w-4" /> Export
             </Button>
             <Button size="sm" className="gap-2" asChild>

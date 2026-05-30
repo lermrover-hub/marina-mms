@@ -12,6 +12,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { formatTHB, formatDate } from "@/lib/utils"
 import type { Customer } from "@/lib/supabase"
 import { useApiList } from "@/hooks/useApiList"
+import { exportRowsCsv } from "@/lib/client-export"
 
 const STATUS_FILTERS = ["All", "ACTIVE", "PROSPECT", "INACTIVE", "BLOCKED"]
 
@@ -56,7 +57,25 @@ export default function CustomersPage() {
             <Button variant="outline" size="sm" className="gap-2" asChild>
               <Link href="/customers/segmentation"><PieChart className="h-4 w-4" /> Segmentation</Link>
             </Button>
-            <Button variant="outline" size="sm" className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() =>
+                exportRowsCsv(
+                  `customers-${new Date().toISOString().slice(0, 10)}.csv`,
+                  filtered.map((c) => ({
+                    name: displayName(c),
+                    type: c.customer_type,
+                    status: c.status,
+                    email: c.email,
+                    phone: c.phone,
+                    credit_limit: c.credit_limit,
+                    created_at: c.created_at,
+                  })),
+                )
+              }
+            >
               <Download className="h-4 w-4" /> Export
             </Button>
             <Button size="sm" className="gap-2" asChild>

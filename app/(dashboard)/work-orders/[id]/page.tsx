@@ -144,6 +144,25 @@ export default function WorkOrderDetailPage() {
     finally { setUpdatingTask(null) }
   }
 
+  async function handleWorkOrderStatus(newStatus: string, progressPercent?: number) {
+    try {
+      const res = await fetch(`/api/db/work-orders/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: newStatus,
+          ...(progressPercent !== undefined ? { progress_percent: progressPercent } : {}),
+          ...(newStatus === "COMPLETED" ? { actual_end_date: new Date().toISOString().slice(0, 10) } : {}),
+        }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok || data?.error) throw new Error(data?.error ?? "Failed to update work order")
+      setWo(data)
+    } catch (e) {
+      alert("Failed to update work order: " + (e instanceof Error ? e.message : String(e)))
+    }
+  }
+
   async function handleDeleteTask(taskId: string) {
     if (!confirm("Delete this task?")) return
     try {
@@ -224,12 +243,12 @@ export default function WorkOrderDetailPage() {
         actions={
           <div className="flex gap-2">
             {wo.status === "IN_PROGRESS" && (
-              <Button size="sm" variant="teal" className="gap-2">
+              <Button size="sm" variant="teal" className="gap-2" onClick={() => handleWorkOrderStatus("COMPLETED", 100)}>
                 <CheckCircle2 className="h-4 w-4" /> Mark Completed
               </Button>
             )}
             {wo.status === "WAITING_CUSTOMER_APPROVAL" && (
-              <Button size="sm" variant="teal" className="gap-2">
+              <Button size="sm" variant="teal" className="gap-2" onClick={() => handleWorkOrderStatus("APPROVED")}>
                 <CheckCircle2 className="h-4 w-4" /> Confirm Approval
               </Button>
             )}

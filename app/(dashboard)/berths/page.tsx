@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/shared/PageHeader"
 import { Card, CardContent } from "@/components/ui/card"
 import type { Berth, Boat, Customer } from "@/lib/supabase"
 import { useApiList } from "@/hooks/useApiList"
+import { exportRowsCsv } from "@/lib/client-export"
 
 const STATUS_STYLE: Record<string, string> = {
   AVAILABLE: "opacity-100",
@@ -430,7 +431,7 @@ function AssignBoatDialog({
         throw new Error(j?.error ?? "Failed to save assignment")
       }
       // Update berth status
-      await fetch(`/api/db/berths/${berthId}`, {
+      const berthUpdate = await fetch(`/api/db/berths/${berthId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -438,8 +439,12 @@ function AssignBoatDialog({
           current_boat_id: selectedBoat.id,
         }),
       })
+      if (!berthUpdate.ok) {
+        const j = await berthUpdate.json().catch(() => ({}))
+        throw new Error(j?.error ?? "Assignment saved, but berth status update failed")
+      }
       // Update boat location
-      await fetch(`/api/db/boats/${selectedBoat.id}`, {
+      const boatUpdate = await fetch(`/api/db/boats/${selectedBoat.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -447,6 +452,10 @@ function AssignBoatDialog({
           status: asgnStatus === "RESERVED" ? selectedBoat.status : "IN_STORAGE",
         }),
       })
+      if (!boatUpdate.ok) {
+        const j = await boatUpdate.json().catch(() => ({}))
+        throw new Error(j?.error ?? "Assignment saved, but boat location update failed")
+      }
       onSaved()
       onClose()
     } catch (err) {
@@ -467,7 +476,7 @@ function AssignBoatDialog({
             <h3 className="font-bold text-gray-900">Assign Boat to Berth</h3>
             <p className="text-xs text-gray-500 mt-0.5">Select berth, customer, and boat</p>
           </div>
-          <button onClick={onClose} className="p-1 rounded hover:bg-gray-100">
+          <button type="button" onClick={onClose} className="p-1 rounded hover:bg-gray-100">
             <X className="h-4 w-4 text-gray-400" />
           </button>
         </div>
@@ -482,6 +491,7 @@ function AssignBoatDialog({
             {(["ACTIVE", "RESERVED"] as const).map((s) => (
               <button
                 key={s}
+                type="button"
                 onClick={() => setAsgnStatus(s)}
                 className={`flex-1 rounded-lg py-2 text-xs font-semibold border-2 transition-colors ${
                   asgnStatus === s
@@ -620,6 +630,24 @@ export default function BerthsPage() {
     return { total, available, occupied, reserved, maintenance }
   }, [berths])
 
+  function handleExport() {
+    exportRowsCsv(
+      `berths-${new Date().toISOString().slice(0, 10)}.csv`,
+      berths.map((berth) => ({
+        code: berth.code,
+        type: berth.berth_type,
+        zone: berth.zone,
+        section: berth.location_section,
+        status: berth.status,
+        max_loa_ft: berth.max_loa_ft,
+        max_beam_ft: berth.max_beam_ft,
+        depth_m: berth.depth_m,
+        monthly_rate: berth.monthly_rate,
+        current_boat_id: berth.current_boat_id,
+      })),
+    )
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -627,19 +655,19 @@ export default function BerthsPage() {
         description="Phase 2 hardstand, workshop, speedboat, and big-yacht berth layout"
         actions={
           <>
-            <Button variant="outline" size="sm" className="gap-2">
+            <Button variant="outline" size="sm" className="gap-2" onClick={handleExport}>
               <Download className="h-4 w-4" /> Export
             </Button>
-            <Link href="/berths/calendar">
-              <Button variant="outline" size="sm" className="gap-2">
+            <Button variant="outline" size="sm" className="gap-2" asChild>
+              <Link href="/berths/calendar">
                 <CalendarDays className="h-4 w-4" /> Calendar View
-              </Button>
-            </Link>
-            <Link href="/berths/management">
-              <Button variant="outline" size="sm" className="gap-2">
+              </Link>
+            </Button>
+            <Button variant="outline" size="sm" className="gap-2" asChild>
+              <Link href="/berths/management">
                 <SlidersHorizontal className="h-4 w-4" /> Management
-              </Button>
-            </Link>
+              </Link>
+            </Button>
             <Button size="sm" className="gap-2" onClick={() => setShowAssign(true)}>
               <Plus className="h-4 w-4" /> Assign Boat
             </Button>

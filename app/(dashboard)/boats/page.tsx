@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { formatDate, formatFt, BOAT_TYPE_LABELS } from "@/lib/utils"
 import type { Boat } from "@/lib/supabase"
 import { useApiList } from "@/hooks/useApiList"
+import { exportRowsCsv } from "@/lib/client-export"
 
 const STATUS_FILTERS = ["All", "ACTIVE", "IN_WATER", "IN_STORAGE", "IN_REPAIR", "INACTIVE"]
 
@@ -39,7 +40,26 @@ export default function BoatsPage() {
         description={loading ? "Loading…" : `${boats.length} boats in the system`}
         actions={
           <>
-            <Button variant="outline" size="sm" className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() =>
+                exportRowsCsv(
+                  `boats-${new Date().toISOString().slice(0, 10)}.csv`,
+                  filtered.map((boat) => ({
+                    name: boat.name,
+                    owner: boat.owner_name,
+                    type: boat.boat_type,
+                    loa_ft: boat.loa_ft,
+                    beam_ft: boat.beam_ft,
+                    registration_number: boat.registration_number,
+                    status: boat.status,
+                    current_location_code: boat.current_location_code,
+                  })),
+                )
+              }
+            >
               <Download className="h-4 w-4" /> Export
             </Button>
             <Button size="sm" className="gap-2" asChild>

@@ -202,7 +202,7 @@ export default function ReportsPage() {
         title="Reports & Analytics"
         description="Business intelligence — Fiscal Year 2026 (Jan–Dec)"
         actions={
-          <Button variant="outline" size="sm" className="gap-2">
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => window.print()}>
             <Download className="h-4 w-4" /> Export All
           </Button>
         }
@@ -470,7 +470,7 @@ export default function ReportsPage() {
               >
                 MoM vs 2025
               </button>
-              <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
+              <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => window.print()}>
                 <Download className="h-3 w-3" /> Export
               </Button>
             </div>
@@ -657,7 +657,7 @@ export default function ReportsPage() {
               <Wrench className="h-4 w-4 text-orange-600" />
               Job Profitability — Recent Work Orders
             </CardTitle>
-            <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
+            <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => window.print()}>
               <Download className="h-3 w-3" /> Export
             </Button>
           </div>
@@ -747,7 +747,7 @@ export default function ReportsPage() {
                     </div>
                     {available ? (
                       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
+                        <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => window.print()}>
                           <Download className="h-3 w-3" /> Export
                         </Button>
                         <ArrowRight className="h-4 w-4 text-gray-400" />

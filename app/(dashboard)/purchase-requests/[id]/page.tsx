@@ -342,7 +342,7 @@ export default function PurchaseRequestDetailPage() {
                 <Button onClick={handleMarkOrdered} className="bg-purple-600 hover:bg-purple-700 text-white">
                   <ShoppingCart className="h-4 w-4 mr-2" /> Mark as Ordered
                 </Button>
-                <Button variant="outline">
+                <Button variant="outline" disabled title="Purchase order document generation is not available yet">
                   <FileText className="h-4 w-4 mr-2" /> Create Purchase Order
                 </Button>
               </CardContent>

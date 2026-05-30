@@ -201,7 +201,7 @@ export default function QuotationDetailPage() {
               >
                 <Download className="h-4 w-4" /> PDF
               </Button>
-              <Button variant="outline" size="sm" className="gap-2">
+              <Button variant="outline" size="sm" className="gap-2" disabled title="Duplicate quotation is not available yet">
                 <Copy className="h-4 w-4" /> Duplicate
               </Button>
               {canEdit && (

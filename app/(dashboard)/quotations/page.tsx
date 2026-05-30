@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/shared/EmptyState"
 import { Card, CardContent } from "@/components/ui/card"
 import { formatTHB, formatDate } from "@/lib/utils"
 import type { Quotation } from "@/lib/supabase"
+import { exportRowsCsv } from "@/lib/client-export"
 
 const STATUS_FILTERS = ["All", "DRAFT", "PENDING_APPROVAL", "SENT", "ACCEPTED", "REJECTED", "EXPIRED", "CONVERTED", "CANCELLED"]
 
@@ -51,7 +52,25 @@ export default function QuotationsPage() {
         description={loading ? "Loading…" : `${quotations.length} quotations total`}
         actions={
           <>
-            <Button variant="outline" size="sm" className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() =>
+                exportRowsCsv(
+                  `quotations-${new Date().toISOString().slice(0, 10)}.csv`,
+                  filtered.map((q) => ({
+                    quote_number: q.quote_number,
+                    customer_name: q.customer_name,
+                    boat_name: q.boat_name,
+                    status: q.status,
+                    total_amount: q.total_amount,
+                    valid_until: q.valid_until,
+                    created_at: q.created_at,
+                  })),
+                )
+              }
+            >
               <Download className="h-4 w-4" /> Export
             </Button>
             <Button size="sm" className="gap-2" asChild>

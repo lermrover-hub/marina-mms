@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/shared/EmptyState"
 import { Card, CardContent } from "@/components/ui/card"
 import { formatTHB, formatDate } from "@/lib/utils"
 import type { Payment } from "@/lib/supabase"
+import { exportRowsCsv } from "@/lib/client-export"
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -145,7 +146,25 @@ export default function PaymentsPage() {
         description={loading ? "Loading…" : `${payments.length} payments total`}
         actions={
           <>
-            <Button variant="outline" size="sm" className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() =>
+                exportRowsCsv(
+                  `payments-${new Date().toISOString().slice(0, 10)}.csv`,
+                  filtered.map((payment) => ({
+                    customer_name: payment.customer_name,
+                    invoice_id: payment.invoice_id,
+                    amount: payment.amount,
+                    payment_method: normaliseMethod(payment.payment_method),
+                    status: normaliseStatus(payment.status),
+                    payment_date: payment.payment_date,
+                    reference_no: payment.reference_no,
+                  })),
+                )
+              }
+            >
               <Download className="h-4 w-4" /> Export
             </Button>
             <Button size="sm" className="gap-2" asChild>

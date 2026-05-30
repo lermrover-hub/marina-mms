@@ -88,8 +88,10 @@ export default function BoatDetailPage() {
         breadcrumb={[{ label: "Boats", href: "/boats" }, { label: boat.name }]}
         actions={
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="gap-2">
-              <Navigation className="h-4 w-4" /> Move Boat
+            <Button variant="outline" size="sm" className="gap-2" asChild>
+              <Link href={`/movements/new?boat_id=${id}`}>
+                <Navigation className="h-4 w-4" /> Move Boat
+              </Link>
             </Button>
             <Button size="sm" className="gap-2" asChild>
               <Link href={`/boats/${id}/edit`}><Edit className="h-4 w-4" /> Edit</Link>

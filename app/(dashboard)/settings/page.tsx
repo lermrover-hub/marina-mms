@@ -93,6 +93,10 @@ export default function SettingsPage() {
   const [emailTestLoading,  setEmailTestLoading]  = useState(false)
   const [emailTestResult,   setEmailTestResult]   = useState<{ configured?: boolean; sent?: boolean; to?: string; id?: string; message?: string; error?: string } | null>(null)
 
+  function showSettingsNotice(feature: string) {
+    alert(`${feature} is not connected to a save API yet.`)
+  }
+
   useEffect(() => {
     if (activeGroup === "users") {
       setStaffLoading(true)
@@ -266,7 +270,7 @@ export default function SettingsPage() {
                   </div>
                 </div>
                 <div className="border-t pt-4">
-                  <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white">Save Changes</Button>
+                  <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white" onClick={() => showSettingsNotice("Company settings")}>Save Changes</Button>
                 </div>
               </CardContent>
             </Card>
@@ -305,7 +309,7 @@ export default function SettingsPage() {
                   </div>
                 </div>
                 <div className="border-t pt-4">
-                  <Button size="sm">Save Changes</Button>
+                  <Button size="sm" onClick={() => showSettingsNotice("System settings")}>Save Changes</Button>
                 </div>
               </CardContent>
             </Card>
@@ -315,7 +319,7 @@ export default function SettingsPage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Staff & Access Control</CardTitle>
-                <Button size="sm" variant="teal" className="gap-2"><span>+</span> Add Staff</Button>
+                <Button size="sm" variant="teal" className="gap-2" onClick={() => showSettingsNotice("Staff creation")}><span>+</span> Add Staff</Button>
               </CardHeader>
               <CardContent className="p-0">
                 {staffLoading ? (
@@ -360,7 +364,7 @@ export default function SettingsPage() {
                               </span>
                             </td>
                             <td className="px-5 py-3 text-right">
-                              <Button variant="ghost" size="sm" className="text-xs">Edit</Button>
+                              <Button variant="ghost" size="sm" className="text-xs" onClick={() => showSettingsNotice("Staff editing")}>Edit</Button>
                             </td>
                           </tr>
                         )
@@ -397,7 +401,7 @@ export default function SettingsPage() {
                         <td className="px-5 py-2.5 text-right font-medium">{p.price.toLocaleString()}</td>
                         <td className="px-5 py-2.5 text-center text-gray-500">/{p.unit}</td>
                         <td className="px-5 py-2.5 text-right">
-                          <Button variant="ghost" size="sm" className="text-xs h-7">Edit</Button>
+                          <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => showSettingsNotice("Pricing rule editing")}>Edit</Button>
                         </td>
                       </tr>
                     ))}
@@ -405,7 +409,7 @@ export default function SettingsPage() {
                 </table>
                 <div className="px-5 py-3 border-t flex items-center justify-between">
                   <p className="text-xs text-gray-400">All prices exclude VAT (7%) unless marked</p>
-                  <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white gap-1">+ Add Rate</Button>
+                  <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white gap-1" onClick={() => showSettingsNotice("Pricing rate creation")}>+ Add Rate</Button>
                 </div>
               </CardContent>
             </Card>
@@ -455,7 +459,7 @@ export default function SettingsPage() {
                     </tbody>
                   </table>
                   <div className="px-5 py-3 border-t">
-                    <Button size="sm">Save Notification Settings</Button>
+                    <Button size="sm" onClick={() => showSettingsNotice("Notification settings")}>Save Notification Settings</Button>
                   </div>
                 </CardContent>
               </Card>
@@ -480,7 +484,7 @@ export default function SettingsPage() {
                       <Input defaultValue="Ocean Rover Marina" />
                     </div>
                   </div>
-                  <Button size="sm" variant="outline">Test Email</Button>
+                  <Button size="sm" variant="outline" onClick={() => showSettingsNotice("SMTP test email")}>Test Email</Button>
                 </CardContent>
               </Card>
             </div>
@@ -803,7 +807,7 @@ export default function SettingsPage() {
                   </div>
 
                   <div className="border-t pt-4">
-                    <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white">Save Region Settings</Button>
+                    <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white" onClick={() => showSettingsNotice("Region settings")}>Save Region Settings</Button>
                   </div>
                 </CardContent>
               </Card>
@@ -1024,7 +1028,7 @@ export default function SettingsPage() {
                   </table>
                   <div className="px-5 py-3 border-t flex items-center justify-between">
                     <p className="text-xs text-gray-400">Showing last 8 entries · Full log retained for 2 years</p>
-                    <Button variant="outline" size="sm">Export CSV</Button>
+                    <Button variant="outline" size="sm" onClick={() => window.print()}>Export CSV</Button>
                   </div>
                 </CardContent>
               </Card>
@@ -1049,7 +1053,7 @@ export default function SettingsPage() {
                       <Input defaultValue="60" type="number" />
                     </div>
                   </div>
-                  <Button size="sm">Save Settings</Button>
+                  <Button size="sm" onClick={() => showSettingsNotice("Compliance settings")}>Save Settings</Button>
                 </CardContent>
               </Card>
             </div>

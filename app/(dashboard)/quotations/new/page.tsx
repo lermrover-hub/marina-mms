@@ -22,9 +22,9 @@ interface LineItem {
 }
 
 const CATEGORIES = [
-  "Engine", "Electrical", "Fiberglass", "Painting", "Antifouling",
-  "Interior", "Canvas", "Stainless / Metal", "Cleaning", "Plumbing",
-  "Generator", "Air Conditioning", "Berth Fee", "Ramp Service",
+  "Engine", "Electrical", "Fiberglass", "Painting", "Paint & Coating",
+  "Antifouling", "Interior", "Canvas", "Stainless / Metal", "Cleaning",
+  "Plumbing", "Generator", "Air Conditioning", "Berth Fee", "Ramp Service",
   "Labour", "Material", "Other",
 ]
 

@@ -2,7 +2,7 @@
 import React from "react"
 import Link from "next/link"
 import { signOut, useSession } from "next-auth/react"
-import { Search, LogOut, User, Settings, ChevronDown, HelpCircle } from "lucide-react"
+import { Search, LogOut, User, Settings, ChevronDown, HelpCircle, Menu, X } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -14,17 +14,33 @@ import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher"
 
 interface TopBarProps {
   title?: string
+  sidebarOpen?: boolean
+  onSidebarToggle?: () => void
 }
 
-export function TopBar({ title }: TopBarProps) {
+export function TopBar({ title, sidebarOpen = false, onSidebarToggle }: TopBarProps) {
   const { data: session } = useSession()
   const userName = session?.user?.name ?? "User"
   const userRole = (session?.user as { role?: string })?.role ?? ""
 
   return (
     <header className="flex h-16 items-center justify-between border-b border-[#d7efed] bg-white/90 px-6 shadow-[0_10px_28px_rgba(19,152,143,0.07)] backdrop-blur">
-      {/* Left: page title */}
-      <div>
+      {/* Left: hamburger + page title */}
+      <div className="flex items-center gap-3">
+        {/* Hamburger Icon — Mobile Only */}
+        <button
+          onClick={onSidebarToggle}
+          className="md:hidden flex items-center justify-center p-1 rounded-md hover:bg-gray-100 transition-colors"
+          aria-label="Toggle sidebar"
+        >
+          {sidebarOpen ? (
+            <X className="h-5 w-5 text-[#1f2933]" />
+          ) : (
+            <Menu className="h-5 w-5 text-[#1f2933]" />
+          )}
+        </button>
+
+        {/* Page Title */}
         {title && <h1 className="text-lg font-semibold text-[#1f2933]">{title}</h1>}
       </div>
 

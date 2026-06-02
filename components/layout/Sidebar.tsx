@@ -72,7 +72,7 @@ const navItems: NavItem[] = [
   { label: "Settings",        href: "/settings",     icon: Settings   },
 ]
 
-function NavGroup({ item, depth = 0 }: { item: NavItem; depth?: number }) {
+function NavGroup({ item, depth = 0, onNavigate }: { item: NavItem; depth?: number; onNavigate?: () => void }) {
   const pathname = usePathname() ?? ""
   const [open, setOpen] = useState(() =>
     item.children?.some((c) => c.href && pathname.startsWith(c.href)) ?? false
@@ -83,6 +83,7 @@ function NavGroup({ item, depth = 0 }: { item: NavItem; depth?: number }) {
     return (
       <Link
         href={item.href ?? "#"}
+        onClick={onNavigate}
         className={cn(
           "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors group",
           depth > 0 ? "pl-9" : "",
@@ -120,7 +121,7 @@ function NavGroup({ item, depth = 0 }: { item: NavItem; depth?: number }) {
       {open && (
         <div className="mt-0.5 space-y-0.5">
           {item.children.map((child) => (
-            <NavGroup key={child.label} item={child} depth={depth + 1} />
+            <NavGroup key={child.label} item={child} depth={depth + 1} onNavigate={onNavigate} />
           ))}
         </div>
       )}
@@ -128,9 +129,13 @@ function NavGroup({ item, depth = 0 }: { item: NavItem; depth?: number }) {
   )
 }
 
-export function Sidebar() {
+interface SidebarProps {
+  onClose?: () => void
+}
+
+export function Sidebar({ onClose }: SidebarProps) {
   return (
-    <aside className="hidden h-screen w-60 shrink-0 flex-col border-r border-[#d7efed] shadow-[10px_0_28px_rgba(19,152,143,0.08)] lg:flex"
+    <aside className="flex h-screen w-60 shrink-0 flex-col border-r border-[#d7efed] shadow-[10px_0_28px_rgba(19,152,143,0.08)] bg-white"
            style={{ backgroundColor: "var(--color-sidebar)" }}>
 
       {/* Brand */}
@@ -147,7 +152,7 @@ export function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
         {navItems.map((item) => (
-          <NavGroup key={item.label} item={item} />
+          <NavGroup key={item.label} item={item} onNavigate={onClose} />
         ))}
       </nav>
 

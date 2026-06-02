@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@prisma/client"
+import { createPricingMaster, getPricingMaster } from "@/lib/pricing-master"
 
-const prisma = new PrismaClient()
+export const dynamic = "force-dynamic"
 
 // GET /api/pricing-master - List all pricing
 export async function GET(req: NextRequest) {
@@ -10,15 +10,7 @@ export async function GET(req: NextRequest) {
     const category = searchParams.get("category")
     const isActive = searchParams.get("isActive") === "true"
 
-    const where = {
-      ...(category && { category: { contains: category, mode: "insensitive" as const } }),
-      ...(isActive && { isActive: true })
-    }
-
-    const pricing = await prisma.pricingMaster.findMany({
-      where,
-      orderBy: { code: "asc" }
-    })
+    const pricing = await getPricingMaster(category, isActive)
 
     return NextResponse.json({ data: pricing })
   } catch (error) {
@@ -40,24 +32,22 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const pricing = await prisma.pricingMaster.create({
-      data: {
-        code,
-        serviceNameEn,
-        serviceNameTh,
-        category,
-        unit,
-        rateThb: parseFloat(rateThb),
-        description,
-        notes,
-        isActive: true
-      }
+    const pricing = await createPricingMaster({
+      code,
+      serviceNameEn,
+      serviceNameTh,
+      category,
+      unit,
+      rateThb,
+      description,
+      notes,
     })
 
     return NextResponse.json({ data: pricing }, { status: 201 })
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error creating pricing:", error)
-    if (error.code === "P2002") {
+    const code = typeof error === "object" && error !== null && "code" in error ? String(error.code) : ""
+    if (code === "23505") {
       return NextResponse.json({ error: "Code already exists" }, { status: 400 })
     }
     return NextResponse.json({ error: "Failed to create pricing" }, { status: 500 })

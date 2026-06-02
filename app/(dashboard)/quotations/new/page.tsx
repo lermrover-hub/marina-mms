@@ -23,13 +23,23 @@ interface LineItem {
 }
 
 const CATEGORIES = [
+  "Ramp Access", "Haul-out", "Towing Truck Cost", "Yard Services",
+  "Storage - Speedboat", "Storage - Small Craft", "Repair Yard",
+  "Wash & Cleaning", "Utilities", "Wet Berth", "OT / After-Hours Labor",
+  "VAT & Discounts", "Additional Rates", "Paint Services",
   "Engine", "Electrical", "Fiberglass", "Painting", "Paint & Coating",
   "Antifouling", "Interior", "Canvas", "Stainless / Metal", "Cleaning",
   "Plumbing", "Generator", "Air Conditioning", "Berth Fee", "Ramp Service",
   "Labour", "Material", "Other",
 ]
 
-const UNITS = ["job", "hr", "day", "pc", "set", "m", "m²", "kg", "litre", "unit", "year", "qtr", "month"]
+const UNITS = [
+  "job", "hr", "day", "week", "month", "trip", "round trip", "event",
+  "stand/day", "stand/wk", "stand/mo", "ft", "ft/day", "ft/week",
+  "ft/month", "ft/round trip", "1000L", "litre", "kWh", "invoice",
+  "hr add-on", "persons", "%", "% off", "package", "sqm", "zone",
+  "pc", "set", "m", "m²", "kg", "unit", "year", "qtr", "quotation",
+]
 
 const DISCOUNT_TYPES = [
   { value: "NONE",    label: "No discount" },

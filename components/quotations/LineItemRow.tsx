@@ -9,6 +9,7 @@ interface PricingOption {
   id: string
   code: string
   serviceNameEn: string
+  category: string
   unit: string
   rateThb: number
 }
@@ -42,19 +43,43 @@ export function LineItemRow({
   const [pricingOptions, setPricingOptions] = useState<PricingOption[]>([])
   const [loadingPricing, setLoadingPricing] = useState(false)
 
-  // Load pricing options when category is Paint & Coating or Paint Service
+  const pricingCategoryAliases: Record<string, string> = {
+    "Paint & Coating": "Paint Services",
+    "Paint Service": "Paint Services",
+    "Ramp Service": "Ramp Access",
+    "Berth Fee": "Wet Berth",
+    Cleaning: "Wash & Cleaning",
+    Labour: "OT / After-Hours Labor",
+  }
+
+  const rateCardCategory = pricingCategoryAliases[item.category] ?? item.category
+
+  // Load matching rate-card options for the selected quotation category.
   useEffect(() => {
-    if (item.category === "Paint & Coating" || item.category === "Paint Service") {
+    let cancelled = false
+    setPricingOptions([])
+
+    if (item.category) {
       setLoadingPricing(true)
-      fetch("/api/pricing-master?category=Paint%20Service")
+      fetch(`/api/pricing-master?category=${encodeURIComponent(rateCardCategory)}&isActive=true`)
         .then((r) => r.json())
-        .then((json) => setPricingOptions(json.data || []))
-        .catch(() => setPricingOptions([]))
-        .finally(() => setLoadingPricing(false))
+        .then((json) => {
+          if (!cancelled) setPricingOptions(json.data || [])
+        })
+        .catch(() => {
+          if (!cancelled) setPricingOptions([])
+        })
+        .finally(() => {
+          if (!cancelled) setLoadingPricing(false)
+        })
     } else {
       setPricingOptions([])
     }
-  }, [item.category])
+
+    return () => {
+      cancelled = true
+    }
+  }, [item.category, rateCardCategory])
 
   const amount = item.qty * item.unitPrice
 
@@ -63,6 +88,7 @@ export function LineItemRow({
     if (!pricing) return
 
     onChange(item.id, "description", `${pricing.code} - ${pricing.serviceNameEn}`)
+    onChange(item.id, "category", pricing.category)
     onChange(item.id, "unit", pricing.unit)
     onChange(item.id, "unitPrice", Number(pricing.rateThb))
   }
@@ -91,9 +117,8 @@ export function LineItemRow({
           ))}
         </select>
 
-        {/* Paint Services Pricing Quick Select */}
-        {(item.category === "Paint & Coating" || item.category === "Paint Service") &&
-          pricingOptions.length > 0 && (
+        {/* Rate card quick select */}
+        {pricingOptions.length > 0 && (
             <div className="mt-2">
               <select
                 defaultValue=""
@@ -103,7 +128,7 @@ export function LineItemRow({
                 }}
                 className="w-full rounded-md border border-teal-300 bg-teal-50 px-2 py-1.5 text-xs text-gray-900 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
               >
-                <option value="">📎 Pick Paint Service...</option>
+                <option value="">Pick rate card...</option>
                 {pricingOptions.map((p) => (
                   <option key={p.code} value={p.code}>
                     {p.code} - {p.serviceNameEn} (฿{Number(p.rateThb).toLocaleString()}/{p.unit})
@@ -114,7 +139,7 @@ export function LineItemRow({
           )}
 
         {loadingPricing && (
-          <p className="mt-1 text-xs text-gray-400">Loading paint services...</p>
+          <p className="mt-1 text-xs text-gray-400">Loading rate card...</p>
         )}
       </td>
       <td className="py-2 pr-2 w-20">

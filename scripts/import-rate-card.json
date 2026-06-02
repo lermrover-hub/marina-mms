@@ -1,0 +1,992 @@
+[
+  {
+    "code": "RAMP_JETSKI",
+    "service_en": "Jet ski ramp in/out + fresh water",
+    "service_th": "แรมป์เจ็ทสกี+น้ำจืด",
+    "category": "Ramp Access",
+    "unit": "trip",
+    "rate": "300",
+    "description": "Vessel: Jet Ski | GL: 4100 | P&L: A.Access & Ramp | Source unit: THB/trip",
+    "notes": "Unchanged v3.2"
+  },
+  {
+    "code": "RAMP_1OB",
+    "service_en": "Boat <24 ft / 1 outboard",
+    "service_th": "เรือ<24ฟุต/1เครื่อง",
+    "category": "Ramp Access",
+    "unit": "trip",
+    "rate": "1000",
+    "description": "Vessel: Speedboat | GL: 4100 | P&L: A.Access & Ramp | Source unit: THB/trip",
+    "notes": "Unchanged"
+  },
+  {
+    "code": "RAMP_2OB",
+    "service_en": "Boat 24–30 ft / 2 outboards",
+    "service_th": "เรือ24-30ฟุต/2เครื่อง",
+    "category": "Ramp Access",
+    "unit": "trip",
+    "rate": "1500",
+    "description": "Vessel: Speedboat | GL: 4100 | P&L: A.Access & Ramp | Source unit: THB/trip",
+    "notes": "Unchanged"
+  },
+  {
+    "code": "RAMP_3OB",
+    "service_en": "Boat >30 ft / 3 outboards",
+    "service_th": "เรือ>30ฟุต/3เครื่อง",
+    "category": "Ramp Access",
+    "unit": "trip",
+    "rate": "2000",
+    "description": "Vessel: Speedboat | GL: 4100 | P&L: A.Access & Ramp | Source unit: THB/trip",
+    "notes": "Unchanged"
+  },
+  {
+    "code": "RAMP_FISHING",
+    "service_en": "Local fishing boat ramp",
+    "service_th": "เรือประมงท้องถิ่น",
+    "category": "Ramp Access",
+    "unit": "trip",
+    "rate": "0",
+    "description": "Vessel: Fishing | GL: 4100 | P&L: A.Access & Ramp | Source unit: THB/trip",
+    "notes": "Complimentary"
+  },
+  {
+    "code": "HAUL_SB_S",
+    "service_en": "Speedboat haul-out <24 ft (round trip: up+down)",
+    "service_th": "ยกสปีดโบ๊ท<24ฟุต (ขึ้น+ลง รวม)",
+    "category": "Haul-out",
+    "unit": "round trip",
+    "rate": "4500",
+    "description": "Vessel: Speedboat | GL: 4110 | P&L: B.Haul-out | Source unit: THB/round trip",
+    "notes": "NEW v3.2 flat rate SB"
+  },
+  {
+    "code": "HAUL_SB_M",
+    "service_en": "Speedboat haul-out 24–30 ft (round trip)",
+    "service_th": "ยกสปีดโบ๊ท24-30ฟุต (ขึ้น+ลง รวม)",
+    "category": "Haul-out",
+    "unit": "round trip",
+    "rate": "6000",
+    "description": "Vessel: Speedboat | GL: 4110 | P&L: B.Haul-out | Source unit: THB/round trip",
+    "notes": "NEW v3.2"
+  },
+  {
+    "code": "HAUL_SB_L",
+    "service_en": "Speedboat haul-out >30 ft (round trip)",
+    "service_th": "ยกสปีดโบ๊ท>30ฟุต (ขึ้น+ลง รวม)",
+    "category": "Haul-out",
+    "unit": "round trip",
+    "rate": "8000",
+    "description": "Vessel: Speedboat | GL: 4110 | P&L: B.Haul-out | Source unit: THB/round trip",
+    "notes": "NEW v3.2"
+  },
+  {
+    "code": "YACHT_MONO_FT",
+    "service_en": "Yacht monohull haul-out (up+down round trip)",
+    "service_th": "ยอชต์โมโนฮัลล์ยก ขึ้น+ลง รวม",
+    "category": "Haul-out",
+    "unit": "ft/round trip",
+    "rate": "420",
+    "description": "Vessel: Monohull | GL: 4110 | P&L: B.Haul-out | Source unit: THB/ft/round trip",
+    "notes": "REVISED +20% v3.2"
+  },
+  {
+    "code": "YACHT_PCAT_FT",
+    "service_en": "Power catamaran haul-out (round trip)",
+    "service_th": "คาตามารันเครื่อง ขึ้น+ลง รวม",
+    "category": "Haul-out",
+    "unit": "ft/round trip",
+    "rate": "700",
+    "description": "Vessel: Power Cat | GL: 4110 | P&L: B.Haul-out | Source unit: THB/ft/round trip",
+    "notes": "REVISED +8%"
+  },
+  {
+    "code": "YACHT_SCAT_FT",
+    "service_en": "Sail catamaran haul-out (round trip)",
+    "service_th": "คาตามารันใบ ขึ้น+ลง รวม",
+    "category": "Haul-out",
+    "unit": "ft/round trip",
+    "rate": "750",
+    "description": "Vessel: Sail Cat | GL: 4110 | P&L: B.Haul-out | Source unit: THB/ft/round trip",
+    "notes": "REVISED +11%"
+  },
+  {
+    "code": "TRUCK_MINI_DAY",
+    "service_en": "Mini truck tow — daytime (own boat cost)",
+    "service_th": "รถมินิทรัค กลางวัน (ต้นทุน)",
+    "category": "Towing Truck Cost",
+    "unit": "trip",
+    "rate": "1500",
+    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/trip",
+    "notes": "Cost ref NEW v3.2"
+  },
+  {
+    "code": "TRUCK_MINI_NIGHT",
+    "service_en": "Mini truck tow — night before midnight",
+    "service_th": "รถมินิทรัค กลางคืนก่อนเที่ยงคืน (ต้นทุน)",
+    "category": "Towing Truck Cost",
+    "unit": "trip",
+    "rate": "2000",
+    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/trip",
+    "notes": "Cost ref NEW v3.2"
+  },
+  {
+    "code": "TRUCK_MINI_LATE",
+    "service_en": "Mini truck tow — night after midnight",
+    "service_th": "รถมินิทรัค กลางคืนหลังเที่ยงคืน (ต้นทุน)",
+    "category": "Towing Truck Cost",
+    "unit": "trip",
+    "rate": "2500",
+    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/trip",
+    "notes": "Cost ref NEW v3.2"
+  },
+  {
+    "code": "TRUCK_BIG_DAY",
+    "service_en": "Big truck tow — daytime (own boat cost)",
+    "service_th": "รถใหญ่ กลางวัน (ต้นทุน)",
+    "category": "Towing Truck Cost",
+    "unit": "trip",
+    "rate": "2500",
+    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/trip",
+    "notes": "Cost ref NEW v3.2"
+  },
+  {
+    "code": "TRUCK_BIG_BEFORE_MID",
+    "service_en": "Big truck tow — night before midnight",
+    "service_th": "รถใหญ่ กลางคืนก่อนเที่ยงคืน (ต้นทุน)",
+    "category": "Towing Truck Cost",
+    "unit": "trip",
+    "rate": "3000",
+    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/trip",
+    "notes": "Cost ref NEW v3.2"
+  },
+  {
+    "code": "TRUCK_BIG_AFTER_MID",
+    "service_en": "Big truck tow — night after midnight",
+    "service_th": "รถใหญ่ กลางคืนหลังเที่ยงคืน (ต้นทุน)",
+    "category": "Towing Truck Cost",
+    "unit": "trip",
+    "rate": "3500",
+    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/trip",
+    "notes": "Cost ref NEW v3.2"
+  },
+  {
+    "code": "LIFT_HYD_12T",
+    "service_en": "Hydraulic lift ≤12T (lift from trailer to stand)",
+    "service_th": "ยกไฮดรอลิก≤12ตัน (ยกจากเทรลเลอร์ขึ้นขาตั้ง)",
+    "category": "Yard Services",
+    "unit": "event",
+    "rate": "6000",
+    "description": "Vessel: ≤12T vessel | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/event",
+    "notes": "From haul-out section → Yard Service v3.2"
+  },
+  {
+    "code": "LIFT_CRANE_12_18",
+    "service_en": "Crane car 12–18T (>12T use crane instead)",
+    "service_th": "รถเครน12-18ตัน (เรือ>12ตันใช้รถเครนแทน)",
+    "category": "Yard Services",
+    "unit": "event",
+    "rate": "13500",
+    "description": "Vessel: 12–18T vessel | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/event",
+    "notes": "REVISED +13% → Yard Service v3.2"
+  },
+  {
+    "code": "LIFT_CRANE_OVER18",
+    "service_en": "Crane car >18T — Quotation required",
+    "service_th": "รถเครน>18ตัน — ต้องขอใบเสนอราคา",
+    "category": "Yard Services",
+    "unit": "Quotation",
+    "rate": "28000",
+    "description": "Vessel: ≥18T vessel | GL: 4140 | P&L: E.Equipment & Yard | Source unit: Quotation",
+    "notes": "Floor 28,000 THB"
+  },
+  {
+    "code": "TRAILER_GENERAL",
+    "service_en": "Trailer rent – general use",
+    "service_th": "เช่าพ่วงทั่วไป",
+    "category": "Yard Services",
+    "unit": "day",
+    "rate": "2500",
+    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/day",
+    "notes": "Unchanged"
+  },
+  {
+    "code": "TRAILER_REPAIR",
+    "service_en": "Trailer rent – repair project",
+    "service_th": "เช่าพ่วงงานซ่อม",
+    "category": "Yard Services",
+    "unit": "day",
+    "rate": "3000",
+    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/day",
+    "notes": "Unchanged"
+  },
+  {
+    "code": "STAND_DAY",
+    "service_en": "Cradle / boat stand daily",
+    "service_th": "ขาตั้งเรือรายวัน",
+    "category": "Yard Services",
+    "unit": "stand/day",
+    "rate": "150",
+    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/stand/day",
+    "notes": "Unchanged"
+  },
+  {
+    "code": "STAND_WEEK",
+    "service_en": "Cradle / boat stand weekly",
+    "service_th": "ขาตั้งเรือรายสัปดาห์",
+    "category": "Yard Services",
+    "unit": "stand/wk",
+    "rate": "500",
+    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/stand/wk",
+    "notes": "Unchanged"
+  },
+  {
+    "code": "STAND_MONTH",
+    "service_en": "Cradle / boat stand monthly",
+    "service_th": "ขาตั้งเรือรายเดือน",
+    "category": "Yard Services",
+    "unit": "stand/mo",
+    "rate": "700",
+    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/stand/mo",
+    "notes": "Unchanged"
+  },
+  {
+    "code": "YARD_MOVE",
+    "service_en": "Yard move / tractor positioning",
+    "service_th": "เคลื่อนย้ายในลาน (แทรกเตอร์)",
+    "category": "Yard Services",
+    "unit": "event",
+    "rate": "1000",
+    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/event",
+    "notes": "Unchanged"
+  },
+  {
+    "code": "YARD_BIG_TRUCK",
+    "service_en": "Big truck / bulldozer yard move",
+    "service_th": "รถบดใหญ่เคลื่อนย้าย",
+    "category": "Yard Services",
+    "unit": "event",
+    "rate": "3500",
+    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/event",
+    "notes": "Unchanged"
+  },
+  {
+    "code": "YARD_EMERGENCY",
+    "service_en": "Emergency yard move (after hours)",
+    "service_th": "เคลื่อนย้ายฉุกเฉินนอกเวลา",
+    "category": "Yard Services",
+    "unit": "event",
+    "rate": "5000",
+    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/event",
+    "notes": "NEW v3.2"
+  },
+  {
+    "code": "STORE_SB_S_D",
+    "service_en": "Speedboat <24 ft hardstand storage daily (C-slots)",
+    "service_th": "สปีดโบ๊ท<24ฟุต จอดลาน รายวัน",
+    "category": "Storage - Speedboat",
+    "unit": "day",
+    "rate": "350",
+    "description": "Vessel: Speedboat | GL: 4120 | P&L: C.Storage | Source unit: THB/day",
+    "notes": "v3.2 SB pricing"
+  },
+  {
+    "code": "STORE_SB_S_W",
+    "service_en": "Speedboat <24 ft hardstand storage weekly",
+    "service_th": "สปีดโบ๊ท<24ฟุต จอดลาน รายสัปดาห์",
+    "category": "Storage - Speedboat",
+    "unit": "week",
+    "rate": "2000",
+    "description": "Vessel: Speedboat | GL: 4120 | P&L: C.Storage | Source unit: THB/week",
+    "notes": "v3.2"
+  },
+  {
+    "code": "STORE_SB_S_M",
+    "service_en": "Speedboat <24 ft hardstand storage monthly",
+    "service_th": "สปีดโบ๊ท<24ฟุต จอดลาน รายเดือน",
+    "category": "Storage - Speedboat",
+    "unit": "month",
+    "rate": "6000",
+    "description": "Vessel: Speedboat | GL: 4120 | P&L: C.Storage | Source unit: THB/month",
+    "notes": "v3.2"
+  },
+  {
+    "code": "STORE_SB_M_D",
+    "service_en": "Speedboat 24–30 ft hardstand storage daily",
+    "service_th": "สปีดโบ๊ท24-30ฟุต จอดลาน รายวัน",
+    "category": "Storage - Speedboat",
+    "unit": "day",
+    "rate": "500",
+    "description": "Vessel: Speedboat | GL: 4120 | P&L: C.Storage | Source unit: THB/day",
+    "notes": "v3.2"
+  },
+  {
+    "code": "STORE_SB_M_M",
+    "service_en": "Speedboat 24–30 ft hardstand storage monthly",
+    "service_th": "สปีดโบ๊ท24-30ฟุต จอดลาน รายเดือน",
+    "category": "Storage - Speedboat",
+    "unit": "month",
+    "rate": "9000",
+    "description": "Vessel: Speedboat | GL: 4120 | P&L: C.Storage | Source unit: THB/month",
+    "notes": "v3.2"
+  },
+  {
+    "code": "STORE_SB_L_D",
+    "service_en": "Speedboat >30 ft hardstand storage daily",
+    "service_th": "สปีดโบ๊ท>30ฟุต จอดลาน รายวัน",
+    "category": "Storage - Speedboat",
+    "unit": "day",
+    "rate": "700",
+    "description": "Vessel: Speedboat | GL: 4120 | P&L: C.Storage | Source unit: THB/day",
+    "notes": "v3.2"
+  },
+  {
+    "code": "STORE_SB_L_M",
+    "service_en": "Speedboat >30 ft hardstand storage monthly",
+    "service_th": "สปีดโบ๊ท>30ฟุต จอดลาน รายเดือน",
+    "category": "Storage - Speedboat",
+    "unit": "month",
+    "rate": "12000",
+    "description": "Vessel: Speedboat | GL: 4120 | P&L: C.Storage | Source unit: THB/month",
+    "notes": "v3.2"
+  },
+  {
+    "code": "STORE_JETSKI_D",
+    "service_en": "Jet ski / PWC daily",
+    "service_th": "จอดเจ็ทสกีรายวัน",
+    "category": "Storage - Small Craft",
+    "unit": "day",
+    "rate": "350",
+    "description": "Vessel: Jet Ski | GL: 4120 | P&L: C.Storage | Source unit: THB/day",
+    "notes": "REVISED"
+  },
+  {
+    "code": "STORE_JETSKI_M",
+    "service_en": "Jet ski / PWC monthly",
+    "service_th": "จอดเจ็ทสกีรายเดือน",
+    "category": "Storage - Small Craft",
+    "unit": "month",
+    "rate": "6500",
+    "description": "Vessel: Jet Ski | GL: 4120 | P&L: C.Storage | Source unit: THB/month",
+    "notes": "REVISED"
+  },
+  {
+    "code": "STORE_DINGHY_M",
+    "service_en": "Dinghy / small outboard monthly",
+    "service_th": "เรือเล็กรายเดือน",
+    "category": "Storage - Small Craft",
+    "unit": "month",
+    "rate": "7000",
+    "description": "Vessel: Dinghy | GL: 4120 | P&L: C.Storage | Source unit: THB/month",
+    "notes": "Unchanged"
+  },
+  {
+    "code": "REPAIR_MONO_D",
+    "service_en": "Monohull repair yard daily",
+    "service_th": "อู่ซ่อมโมโนฮัลล์รายวัน",
+    "category": "Repair Yard",
+    "unit": "ft/day",
+    "rate": "40",
+    "description": "Vessel: Monohull | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/ft/day",
+    "notes": "REVISED +14%"
+  },
+  {
+    "code": "REPAIR_MONO_W",
+    "service_en": "Monohull repair yard weekly",
+    "service_th": "อู่ซ่อมโมโนฮัลล์รายสัปดาห์",
+    "category": "Repair Yard",
+    "unit": "ft/week",
+    "rate": "240",
+    "description": "Vessel: Monohull | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/ft/week",
+    "notes": "REVISED +14%"
+  },
+  {
+    "code": "REPAIR_MONO_M",
+    "service_en": "Monohull repair yard monthly",
+    "service_th": "อู่ซ่อมโมโนฮัลล์รายเดือน",
+    "category": "Repair Yard",
+    "unit": "ft/month",
+    "rate": "800",
+    "description": "Vessel: Monohull | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/ft/month",
+    "notes": "REVISED +14%"
+  },
+  {
+    "code": "REPAIR_CAT_D",
+    "service_en": "Catamaran repair yard daily",
+    "service_th": "อู่ซ่อมคาตามารันรายวัน",
+    "category": "Repair Yard",
+    "unit": "ft/day",
+    "rate": "60",
+    "description": "Vessel: Catamaran | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/ft/day",
+    "notes": "REVISED +14%"
+  },
+  {
+    "code": "REPAIR_CAT_W",
+    "service_en": "Catamaran repair yard weekly",
+    "service_th": "อู่ซ่อมคาตามารันรายสัปดาห์",
+    "category": "Repair Yard",
+    "unit": "ft/week",
+    "rate": "360",
+    "description": "Vessel: Catamaran | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/ft/week",
+    "notes": "REVISED +14%"
+  },
+  {
+    "code": "REPAIR_CAT_M",
+    "service_en": "Catamaran repair yard monthly",
+    "service_th": "อู่ซ่อมคาตามารันรายเดือน",
+    "category": "Repair Yard",
+    "unit": "ft/month",
+    "rate": "1200",
+    "description": "Vessel: Catamaran | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/ft/month",
+    "notes": "REVISED +14%"
+  },
+  {
+    "code": "FOAM_FT",
+    "service_en": "Foam wash",
+    "service_th": "ล้างโฟม",
+    "category": "Wash & Cleaning",
+    "unit": "ft",
+    "rate": "100",
+    "description": "Vessel: All | GL: 4150 | P&L: F.Wash | Source unit: THB/ft",
+    "notes": "Unchanged"
+  },
+  {
+    "code": "BOTTOM_FT",
+    "service_en": "Bottom pressure wash (pre-antifouling)",
+    "service_th": "ล้างท้องเรือแรงดัน",
+    "category": "Wash & Cleaning",
+    "unit": "ft",
+    "rate": "120",
+    "description": "Vessel: All | GL: 4150 | P&L: F.Wash | Source unit: THB/ft",
+    "notes": "×2 cat"
+  },
+  {
+    "code": "WATER_1000L",
+    "service_en": "Water supply",
+    "service_th": "น้ำจืด",
+    "category": "Utilities",
+    "unit": "1000L",
+    "rate": "80",
+    "description": "Vessel: All | GL: 4160 | P&L: G.Utilities | Source unit: THB/1000L",
+    "notes": "Min 80 THB"
+  },
+  {
+    "code": "FUEL_LT200",
+    "service_en": "Fuel surcharge <200L",
+    "service_th": "ค่าน้ำมัน<200ลิตร",
+    "category": "Utilities",
+    "unit": "litre",
+    "rate": "2",
+    "description": "Vessel: All | GL: 4160 | P&L: G.Utilities | Source unit: THB/litre",
+    "notes": "REVISED +33%"
+  },
+  {
+    "code": "FUEL_GE200",
+    "service_en": "Fuel surcharge ≥200L",
+    "service_th": "ค่าน้ำมัน≥200ลิตร",
+    "category": "Utilities",
+    "unit": "litre",
+    "rate": "1.5",
+    "description": "Vessel: All | GL: 4160 | P&L: G.Utilities | Source unit: THB/litre",
+    "notes": "REVISED +50%"
+  },
+  {
+    "code": "SHORE_16A",
+    "service_en": "Shore power 16A/240V",
+    "service_th": "ไฟฟ้า16A",
+    "category": "Utilities",
+    "unit": "kWh",
+    "rate": "9",
+    "description": "Vessel: All | GL: 4160 | P&L: G.Utilities | Source unit: THB/kWh",
+    "notes": "NEW metered"
+  },
+  {
+    "code": "SHORE_32A",
+    "service_en": "Shore power 32A/240V",
+    "service_th": "ไฟฟ้า32A",
+    "category": "Utilities",
+    "unit": "kWh",
+    "rate": "9",
+    "description": "Vessel: All | GL: 4160 | P&L: G.Utilities | Source unit: THB/kWh",
+    "notes": "NEW metered"
+  },
+  {
+    "code": "SHORE_MIN",
+    "service_en": "Shore power minimum charge",
+    "service_th": "ค่าไฟฟ้าขั้นต่ำ",
+    "category": "Utilities",
+    "unit": "invoice",
+    "rate": "100",
+    "description": "Vessel: All | GL: 4160 | P&L: G.Utilities | Source unit: THB/invoice",
+    "notes": "If <11kWh"
+  },
+  {
+    "code": "BERTH_JETSKI_M",
+    "service_en": "Jet ski / PWC berth monthly (W-slots)",
+    "service_th": "ท่าจอดเจ็ทสกีรายเดือน",
+    "category": "Wet Berth",
+    "unit": "month",
+    "rate": "6000",
+    "description": "Vessel: Jet Ski | GL: 4200 | P&L: H.Wet Berth | Source unit: THB/month",
+    "notes": "NEW"
+  },
+  {
+    "code": "BERTH_SB1_M",
+    "service_en": "Speedboat <24 ft W-berth monthly",
+    "service_th": "ท่าจอดสปีดโบ๊ท<24ฟุต",
+    "category": "Wet Berth",
+    "unit": "ft/month",
+    "rate": "350",
+    "description": "Vessel: Speedboat | GL: 4200 | P&L: H.Wet Berth | Source unit: THB/ft/month",
+    "notes": "NEW SB-specific"
+  },
+  {
+    "code": "BERTH_SB2_M",
+    "service_en": "Speedboat 24–30 ft W-berth monthly",
+    "service_th": "ท่าจอดสปีดโบ๊ท24-30ฟุต",
+    "category": "Wet Berth",
+    "unit": "ft/month",
+    "rate": "380",
+    "description": "Vessel: Speedboat | GL: 4200 | P&L: H.Wet Berth | Source unit: THB/ft/month",
+    "notes": "NEW SB-specific"
+  },
+  {
+    "code": "BERTH_YACHT_M",
+    "service_en": "Yacht/motor 30–50 ft berth monthly",
+    "service_th": "ท่าจอดยอชต์30-50ฟุต",
+    "category": "Wet Berth",
+    "unit": "ft/month",
+    "rate": "450",
+    "description": "Vessel: Yacht | GL: 4200 | P&L: H.Wet Berth | Source unit: THB/ft/month",
+    "notes": "NEW Yacht"
+  },
+  {
+    "code": "BERTH_LARGE_M",
+    "service_en": "Yacht/motor >50 ft berth monthly",
+    "service_th": "ท่าจอดยอชต์>50ฟุต",
+    "category": "Wet Berth",
+    "unit": "ft/month",
+    "rate": "550",
+    "description": "Vessel: Large Yacht | GL: 4200 | P&L: H.Wet Berth | Source unit: THB/ft/month",
+    "notes": "NEW"
+  },
+  {
+    "code": "BERTH_TRANS_D",
+    "service_en": "Transient daily <30 ft",
+    "service_th": "ท่าจอดชั่วคราว<30ฟุต",
+    "category": "Wet Berth",
+    "unit": "ft/day",
+    "rate": "18",
+    "description": "Vessel: All | GL: 4200 | P&L: H.Wet Berth | Source unit: THB/ft/day",
+    "notes": "NEW"
+  },
+  {
+    "code": "BERTH_TRANS_D2",
+    "service_en": "Transient daily 30–50 ft",
+    "service_th": "ท่าจอดชั่วคราว30-50ฟุต",
+    "category": "Wet Berth",
+    "unit": "ft/day",
+    "rate": "22",
+    "description": "Vessel: All | GL: 4200 | P&L: H.Wet Berth | Source unit: THB/ft/day",
+    "notes": "NEW"
+  },
+  {
+    "code": "BERTH_TRANS_D3",
+    "service_en": "Transient daily >50 ft",
+    "service_th": "ท่าจอดชั่วคราว>50ฟุต",
+    "category": "Wet Berth",
+    "unit": "ft/day",
+    "rate": "28",
+    "description": "Vessel: All | GL: 4200 | P&L: H.Wet Berth | Source unit: THB/ft/day",
+    "notes": "NEW"
+  },
+  {
+    "code": "OT_MONO_H1_2",
+    "service_en": "Temp labor fee — Monohull hrs 1–2 (base)",
+    "service_th": "ค่าแรงชั่วคราว โมโนฮัลล์ ชั่วโมงที่ 1-2",
+    "category": "OT / After-Hours Labor",
+    "unit": "event",
+    "rate": "300",
+    "description": "Vessel: Monohull | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/event",
+    "notes": "Per Ref.ADM 003/2568"
+  },
+  {
+    "code": "OT_MULTI_H1_2",
+    "service_en": "Temp labor fee — Multi-hull hrs 1–2 (base)",
+    "service_th": "ค่าแรงชั่วคราว มัลติฮัลล์ ชั่วโมงที่ 1-2",
+    "category": "OT / After-Hours Labor",
+    "unit": "event",
+    "rate": "350",
+    "description": "Vessel: Multihull | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/event",
+    "notes": "Per Ref.ADM 003/2568"
+  },
+  {
+    "code": "OT_MONO_H3",
+    "service_en": "Temp labor fee — Monohull hr 3 add-on",
+    "service_th": "ค่าแรงชั่วคราว โมโน ชั่วโมงที่ 3",
+    "category": "OT / After-Hours Labor",
+    "unit": "hr add-on",
+    "rate": "50",
+    "description": "Vessel: Monohull | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/hr add-on",
+    "notes": "Per Ref.ADM 003/2568"
+  },
+  {
+    "code": "OT_MONO_H4",
+    "service_en": "Temp labor fee — Monohull hr 4 add-on",
+    "service_th": "ค่าแรงชั่วคราว โมโน ชั่วโมงที่ 4",
+    "category": "OT / After-Hours Labor",
+    "unit": "hr add-on",
+    "rate": "70",
+    "description": "Vessel: Monohull | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/hr add-on",
+    "notes": "Per Ref.ADM 003/2568"
+  },
+  {
+    "code": "OT_MONO_H5",
+    "service_en": "Temp labor fee — Monohull hr 5 add-on",
+    "service_th": "ค่าแรงชั่วคราว โมโน ชั่วโมงที่ 5",
+    "category": "OT / After-Hours Labor",
+    "unit": "hr add-on",
+    "rate": "90",
+    "description": "Vessel: Monohull | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/hr add-on",
+    "notes": "Per Ref.ADM 003/2568"
+  },
+  {
+    "code": "OT_MULTI_H3",
+    "service_en": "Temp labor fee — Multi-hull hr 3 add-on",
+    "service_th": "ค่าแรงชั่วคราว มัลติ ชั่วโมงที่ 3",
+    "category": "OT / After-Hours Labor",
+    "unit": "hr add-on",
+    "rate": "50",
+    "description": "Vessel: Multihull | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/hr add-on",
+    "notes": "Per Ref.ADM 003/2568"
+  },
+  {
+    "code": "OT_MULTI_H4",
+    "service_en": "Temp labor fee — Multi-hull hr 4 add-on",
+    "service_th": "ค่าแรงชั่วคราว มัลติ ชั่วโมงที่ 4",
+    "category": "OT / After-Hours Labor",
+    "unit": "hr add-on",
+    "rate": "70",
+    "description": "Vessel: Multihull | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/hr add-on",
+    "notes": "Per Ref.ADM 003/2568"
+  },
+  {
+    "code": "OT_MULTI_H5",
+    "service_en": "Temp labor fee — Multi-hull hr 5 add-on",
+    "service_th": "ค่าแรงชั่วคราว มัลติ ชั่วโมงที่ 5",
+    "category": "OT / After-Hours Labor",
+    "unit": "hr add-on",
+    "rate": "90",
+    "description": "Vessel: Multihull | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/hr add-on",
+    "notes": "Per Ref.ADM 003/2568"
+  },
+  {
+    "code": "OT_MANPOWER_MAX_MONO",
+    "service_en": "Max manpower — Monohull",
+    "service_th": "จำนวนคนสูงสุด โมโนฮัลล์",
+    "category": "OT / After-Hours Labor",
+    "unit": "persons",
+    "rate": "3",
+    "description": "Vessel: Monohull | GL: 4140 | P&L: E.Equipment & Yard | Source unit: persons",
+    "notes": "Per Ref.ADM 003/2568"
+  },
+  {
+    "code": "OT_MANPOWER_MAX_MULTI",
+    "service_en": "Max manpower — Multi-hull",
+    "service_th": "จำนวนคนสูงสุด มัลติฮัลล์",
+    "category": "OT / After-Hours Labor",
+    "unit": "persons",
+    "rate": "5",
+    "description": "Vessel: Multihull | GL: 4140 | P&L: E.Equipment & Yard | Source unit: persons",
+    "notes": "Per Ref.ADM 003/2568"
+  },
+  {
+    "code": "VAT_RATE",
+    "service_en": "VAT rate (7% unchanged)",
+    "service_th": "ภาษีมูลค่าเพิ่ม 7%",
+    "category": "VAT & Discounts",
+    "unit": "%",
+    "rate": "0.07",
+    "description": "Vessel: All | GL: 2100 | P&L: VAT Payable | Source unit: %",
+    "notes": "Unchanged"
+  },
+  {
+    "code": "DISC_ANNUAL",
+    "service_en": "Annual contract discount (prepaid 12m)",
+    "service_th": "ส่วนลดสัญญารายปี (จ่ายล่วงหน้า)",
+    "category": "VAT & Discounts",
+    "unit": "% off",
+    "rate": "0.08",
+    "description": "Vessel: All | GL: 4900 | P&L: Discount | Source unit: % off",
+    "notes": "NEW"
+  },
+  {
+    "code": "DISC_LOW",
+    "service_en": "Low season discount May–Oct",
+    "service_th": "ส่วนลด Low Season พ.ค.–ต.ค.",
+    "category": "VAT & Discounts",
+    "unit": "% off",
+    "rate": "0.1",
+    "description": "Vessel: All | GL: 4900 | P&L: Discount | Source unit: % off",
+    "notes": "NEW"
+  },
+  {
+    "code": "RAMP_SMALL_TRUCK",
+    "service_en": "Small truck ramp use",
+    "service_th": "รถขนาดเล็กใช้แรมป์",
+    "category": "Additional Rates",
+    "unit": "trip",
+    "rate": "1000",
+    "description": "Vessel: Truck | GL: 4100 | P&L: A.Access & Ramp | Source unit: THB/trip",
+    "notes": "From MasterPriceBook v3"
+  },
+  {
+    "code": "RAMP_BIG_TRUCK",
+    "service_en": "Big truck / bulldozer ramp",
+    "service_th": "รถใหญ่/รถบดใช้แรมป์",
+    "category": "Additional Rates",
+    "unit": "trip",
+    "rate": "3500",
+    "description": "Vessel: Truck | GL: 4100 | P&L: A.Access & Ramp | Source unit: THB/trip",
+    "notes": "From MasterPriceBook v3"
+  },
+  {
+    "code": "STORE_JETSKI_W",
+    "service_en": "Jet ski / PWC weekly storage",
+    "service_th": "จอดเจ็ทสกีรายสัปดาห์",
+    "category": "Additional Rates",
+    "unit": "week",
+    "rate": "2000",
+    "description": "Vessel: Jet Ski | GL: 4120 | P&L: C.Storage | Source unit: THB/week",
+    "notes": "Added v3.3"
+  },
+  {
+    "code": "STORE_DINGHY_D",
+    "service_en": "Dinghy / small outboard daily",
+    "service_th": "เรือเล็กรายวัน",
+    "category": "Additional Rates",
+    "unit": "day",
+    "rate": "400",
+    "description": "Vessel: Dinghy | GL: 4120 | P&L: C.Storage | Source unit: THB/day",
+    "notes": "Added v3.3"
+  },
+  {
+    "code": "STORE_DINGHY_W",
+    "service_en": "Dinghy / small outboard weekly",
+    "service_th": "เรือเล็กรายสัปดาห์",
+    "category": "Additional Rates",
+    "unit": "week",
+    "rate": "2400",
+    "description": "Vessel: Dinghy | GL: 4120 | P&L: C.Storage | Source unit: THB/week",
+    "notes": "Added v3.3"
+  },
+  {
+    "code": "STORE_SB1_W",
+    "service_en": "Speedboat <24 ft hardstand storage weekly",
+    "service_th": "สปีดโบ๊ท<24ฟุต จอดลาน รายสัปดาห์",
+    "category": "Additional Rates",
+    "unit": "week",
+    "rate": "2000",
+    "description": "Vessel: Speedboat | GL: 4120 | P&L: C.Storage | Source unit: THB/week",
+    "notes": "Added v3.3"
+  },
+  {
+    "code": "STORE_SB2_D",
+    "service_en": "Speedboat 24-30 ft hardstand storage daily",
+    "service_th": "สปีดโบ๊ท24-30ฟุต จอดลาน รายวัน",
+    "category": "Additional Rates",
+    "unit": "day",
+    "rate": "500",
+    "description": "Vessel: Speedboat | GL: 4120 | P&L: C.Storage | Source unit: THB/day",
+    "notes": "Added v3.3"
+  },
+  {
+    "code": "STORE_SB2_W",
+    "service_en": "Speedboat 24-30 ft hardstand storage weekly",
+    "service_th": "สปีดโบ๊ท24-30ฟุต จอดลาน รายสัปดาห์",
+    "category": "Additional Rates",
+    "unit": "week",
+    "rate": "3000",
+    "description": "Vessel: Speedboat | GL: 4120 | P&L: C.Storage | Source unit: THB/week",
+    "notes": "Added v3.3"
+  },
+  {
+    "code": "STORE_SB3_D",
+    "service_en": "Speedboat >30 ft hardstand storage daily",
+    "service_th": "สปีดโบ๊ท>30ฟุต จอดลาน รายวัน",
+    "category": "Additional Rates",
+    "unit": "day",
+    "rate": "700",
+    "description": "Vessel: Speedboat | GL: 4120 | P&L: C.Storage | Source unit: THB/day",
+    "notes": "Added v3.3"
+  },
+  {
+    "code": "STORE_SB3_W",
+    "service_en": "Speedboat >30 ft hardstand storage weekly",
+    "service_th": "สปีดโบ๊ท>30ฟุต จอดลาน รายสัปดาห์",
+    "category": "Additional Rates",
+    "unit": "week",
+    "rate": "4500",
+    "description": "Vessel: Speedboat | GL: 4120 | P&L: C.Storage | Source unit: THB/week",
+    "notes": "Added v3.3"
+  },
+  {
+    "code": "BERTH_SY_M",
+    "service_en": "Superyacht >80 ft berth monthly — min floor",
+    "service_th": "ท่าจอดซุปเปอร์ยอชต์>80ฟุต (ราคาขั้นต่ำ)",
+    "category": "Additional Rates",
+    "unit": "ft/month",
+    "rate": "2500",
+    "description": "Vessel: Superyacht | GL: 4200 | P&L: H.Wet Berth | Source unit: THB/ft/month",
+    "notes": "Floor 2,500/ft/mo. Separate SY agreement"
+  },
+  {
+    "code": "SURCHARGE_HI",
+    "service_en": "High-season surcharge Dec–Apr",
+    "service_th": "ค่าธรรมเนียม High Season ธ.ค.–เม.ย.",
+    "category": "Additional Rates",
+    "unit": "%",
+    "rate": "0",
+    "description": "Vessel: All | GL: 4900 | P&L: Discount | Source unit: %",
+    "notes": "No surcharge currently — maintain occupancy"
+  },
+  {
+    "code": "PAINT_COMPOUND",
+    "service_en": "Compound & Polish – Speedboat (fibreglass topside)",
+    "service_th": "ขัดเงาสปีดโบ๊ท ผิวไฟเบอร์",
+    "category": "Paint Services",
+    "unit": "sqm",
+    "rate": "150",
+    "description": "Vessel: Speedboat | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/sqm",
+    "notes": "Min 5,000 THB | Added v3.3"
+  },
+  {
+    "code": "PAINT_COMPOUND_Y",
+    "service_en": "Compound & Polish – Yacht/Motorboat ≥30 ft",
+    "service_th": "ขัดเงายอชต์/มอเตอร์โบ๊ท≥30ฟุต",
+    "category": "Paint Services",
+    "unit": "sqm",
+    "rate": "200",
+    "description": "Vessel: Yacht | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/sqm",
+    "notes": "Min 5,000 THB | Added v3.3"
+  },
+  {
+    "code": "PAINT_ANTIFOUL_L",
+    "service_en": "Antifouling Labor – Economy (excl. paint)",
+    "service_th": "แรงงานทาสีกันเพรียง – ประหยัด (ไม่รวมสี)",
+    "category": "Paint Services",
+    "unit": "sqm",
+    "rate": "160",
+    "description": "Vessel: All | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/sqm",
+    "notes": "Sand light + 2 coats | Added v3.3"
+  },
+  {
+    "code": "PAINT_ANTIFOUL_M",
+    "service_en": "Antifouling Labor – Standard (excl. paint)",
+    "service_th": "แรงงานทาสีกันเพรียง – มาตรฐาน (ไม่รวมสี)",
+    "category": "Paint Services",
+    "unit": "sqm",
+    "rate": "250",
+    "description": "Vessel: All | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/sqm",
+    "notes": "Strip+sand+prime+2 coats | Added v3.3"
+  },
+  {
+    "code": "PAINT_ANTIFOUL_H",
+    "service_en": "Antifouling Full System – Labor (excl. paint)",
+    "service_th": "แรงงานระบบสีกันเพรียงเต็มระบบ (ไม่รวมสี)",
+    "category": "Paint Services",
+    "unit": "sqm",
+    "rate": "380",
+    "description": "Vessel: All | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/sqm",
+    "notes": "Full strip+epoxy barrier+2 coats | v3.3"
+  },
+  {
+    "code": "PAINT_TOPSIDE_2K",
+    "service_en": "Topside Polyurethane 2K Labor (Interthane/Awlgrip)",
+    "service_th": "แรงงานพ่นสี 2K PU ด้านบน",
+    "category": "Paint Services",
+    "unit": "sqm",
+    "rate": "750",
+    "description": "Vessel: All | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/sqm",
+    "notes": "Subcontract; spray booth required | v3.3"
+  },
+  {
+    "code": "PAINT_GELCOAT_PT",
+    "service_en": "Gelcoat Spot Repair (per repair zone ≤0.1 sqm)",
+    "service_th": "ซ่อมเจลโค้ตจุด (ต่อจุด≤0.1ตรม.)",
+    "category": "Paint Services",
+    "unit": "zone",
+    "rate": "1500",
+    "description": "Vessel: All | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/zone",
+    "notes": "Colour match+sand+polish | v3.3"
+  },
+  {
+    "code": "PAINT_GELCOAT_FH",
+    "service_en": "Gelcoat Repair – Full Hull Section",
+    "service_th": "ซ่อมเจลโค้ตทั้งส่วน",
+    "category": "Paint Services",
+    "unit": "sqm",
+    "rate": "1000",
+    "description": "Vessel: All | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/sqm",
+    "notes": "Grind+laminate+gelcoat+polish | v3.3"
+  },
+  {
+    "code": "PAINT_STRIP",
+    "service_en": "Paint Stripping – Old Antifouling (per layer)",
+    "service_th": "ลอกสีกันเพรียงเก่า (ต่อชั้น)",
+    "category": "Paint Services",
+    "unit": "sqm",
+    "rate": "220",
+    "description": "Vessel: All | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/sqm",
+    "notes": "+80 THB/sqm per extra layer | v3.3"
+  },
+  {
+    "code": "PAINT_PRIMER_EP",
+    "service_en": "Epoxy Primer Coat – Labor only (per coat)",
+    "service_th": "แรงงานทารองพื้น Epoxy (ต่อชั้น)",
+    "category": "Paint Services",
+    "unit": "sqm",
+    "rate": "200",
+    "description": "Vessel: All | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/sqm",
+    "notes": "Typically 2 coats required | v3.3"
+  },
+  {
+    "code": "PAINT_NONSKID",
+    "service_en": "Non-Skid Deck Coating – Labor",
+    "service_th": "แรงงานทาพื้นผิว Non-Skid",
+    "category": "Paint Services",
+    "unit": "sqm",
+    "rate": "400",
+    "description": "Vessel: All | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/sqm",
+    "notes": "Deck prep+epoxy+texture | v3.3"
+  },
+  {
+    "code": "PAINT_SPEEDBOAT_PKG",
+    "service_en": "Bottom Paint Package – Speedboat <30 ft (labor+economy paint)",
+    "service_th": "แพ็กเกจสีก้นเรือสปีดโบ๊ท<30ฟุต (แรง+สีประหยัด)",
+    "category": "Paint Services",
+    "unit": "package",
+    "rate": "12000",
+    "description": "Vessel: Speedboat | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/package",
+    "notes": "Excl. haul-out fee | v3.3"
+  },
+  {
+    "code": "PAINT_YACHT_PKG",
+    "service_en": "Bottom Paint Package – Yacht 35–45 ft (labor+mid paint)",
+    "service_th": "แพ็กเกจสีก้นเรือยอชต์ 35-45ฟุต (แรง+สีกลาง)",
+    "category": "Paint Services",
+    "unit": "package",
+    "rate": "28000",
+    "description": "Vessel: Yacht | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/package",
+    "notes": "Jotun Active equiv. Excl. haul-out | v3.3"
+  },
+  {
+    "code": "PAINT_CAT_PKG",
+    "service_en": "Bottom Paint Package – Catamaran 40–50 ft (labor+mid paint)",
+    "service_th": "แพ็กเกจสีก้นเรือคาตามารัน 40-50ฟุต",
+    "category": "Paint Services",
+    "unit": "package",
+    "rate": "48000",
+    "description": "Vessel: Catamaran | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/package",
+    "notes": "Cat hull factor 1.5-2x | v3.3"
+  }
+]

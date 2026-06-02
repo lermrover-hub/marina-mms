@@ -1,13 +1,12 @@
-import { PrismaClient } from "@prisma/client"
-
-const globalForPrisma = global as unknown as { prisma: PrismaClient }
-
-export const prisma =
-  globalForPrisma.prisma ||
-  new PrismaClient({
-    log: process.env.NODE_ENV === "development" ? ["query"] : []
-  })
-
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma
-}
+// Legacy compatibility module.
+// This project currently uses Supabase clients for app API routes. Prisma 7 in
+// this repo is generated under app/generated/prisma and requires an explicit
+// adapter/accelerate configuration, so do not instantiate it from this helper.
+export const prisma = new Proxy(
+  {},
+  {
+    get() {
+      throw new Error("Prisma helper is not configured. Use Supabase server APIs instead.")
+    },
+  }
+) as never

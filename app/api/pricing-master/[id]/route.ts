@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@prisma/client"
+import { getPricingMasterById, updatePricingMaster } from "@/lib/pricing-master"
 
-const prisma = new PrismaClient()
+export const dynamic = "force-dynamic"
 
 // GET /api/pricing-master/:id - Get single pricing
 export async function GET(
@@ -10,9 +10,7 @@ export async function GET(
 ) {
   const { id } = await params
   try {
-    const pricing = await prisma.pricingMaster.findUnique({
-      where: { id }
-    })
+    const pricing = await getPricingMasterById(id)
 
     if (!pricing) {
       return NextResponse.json({ error: "Pricing not found" }, { status: 404 })
@@ -35,26 +33,24 @@ export async function PATCH(
     const body = await req.json()
     const { serviceNameEn, serviceNameTh, category, unit, rateThb, description, notes, isActive } = body
 
-    const pricing = await prisma.pricingMaster.update({
-      where: { id },
-      data: {
-        ...(serviceNameEn && { serviceNameEn }),
-        ...(serviceNameTh && { serviceNameTh }),
-        ...(category && { category }),
-        ...(unit && { unit }),
-        ...(rateThb !== undefined && { rateThb: parseFloat(rateThb) }),
-        ...(description !== undefined && { description }),
-        ...(notes !== undefined && { notes }),
-        ...(isActive !== undefined && { isActive })
-      }
+    const pricing = await updatePricingMaster(id, {
+      serviceNameEn,
+      serviceNameTh,
+      category,
+      unit,
+      rateThb,
+      description,
+      notes,
+      isActive,
     })
 
-    return NextResponse.json({ data: pricing })
-  } catch (error: any) {
-    console.error("Error updating pricing:", error)
-    if (error.code === "P2025") {
+    if (!pricing) {
       return NextResponse.json({ error: "Pricing not found" }, { status: 404 })
     }
+
+    return NextResponse.json({ data: pricing })
+  } catch (error) {
+    console.error("Error updating pricing:", error)
     return NextResponse.json({ error: "Failed to update pricing" }, { status: 500 })
   }
 }
@@ -66,17 +62,15 @@ export async function DELETE(
 ) {
   const { id } = await params
   try {
-    const pricing = await prisma.pricingMaster.update({
-      where: { id },
-      data: { isActive: false }
-    })
+    const pricing = await updatePricingMaster(id, { isActive: false })
 
-    return NextResponse.json({ data: pricing })
-  } catch (error: any) {
-    console.error("Error deleting pricing:", error)
-    if (error.code === "P2025") {
+    if (!pricing) {
       return NextResponse.json({ error: "Pricing not found" }, { status: 404 })
     }
+
+    return NextResponse.json({ data: pricing })
+  } catch (error) {
+    console.error("Error deleting pricing:", error)
     return NextResponse.json({ error: "Failed to delete pricing" }, { status: 500 })
   }
 }

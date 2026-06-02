@@ -2,12 +2,13 @@
 import React, { useState, useCallback, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Plus, Trash2, Save, Send } from "lucide-react"
+import { Plus, Save, Send } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { LineItemRow } from "@/components/quotations/LineItemRow"
 import type { Customer, Boat } from "@/lib/supabase"
 import { formatTHB, cn } from "@/lib/utils"
 
@@ -37,77 +38,6 @@ const DISCOUNT_TYPES = [
 ]
 
 function uid() { return Math.random().toString(36).slice(2, 9) }
-
-// ─── Line item row ────────────────────────────────────────────────────────────
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function LineItemRow({
-  item, index, onChange, onRemove,
-}: {
-  item: LineItem; index: number
-  onChange: (id: string, field: keyof LineItem, value: string | number) => void
-  onRemove: (id: string) => void
-}) {
-  const amount = item.qty * item.unitPrice
-
-  return (
-    <tr className="group border-b border-gray-100 last:border-0">
-      <td className="py-2 pr-2 text-xs text-gray-400 w-6 text-center">{index + 1}</td>
-      <td className="py-2 pr-2">
-        <Input
-          value={item.description}
-          onChange={(e) => onChange(item.id, "description", e.target.value)}
-          placeholder="Describe the service or item…"
-          className="text-sm"
-        />
-      </td>
-      <td className="py-2 pr-2 w-36">
-        <select
-          value={item.category}
-          onChange={(e) => onChange(item.id, "category", e.target.value)}
-          className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-        >
-          {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
-        </select>
-      </td>
-      <td className="py-2 pr-2 w-20">
-        <select
-          value={item.unit}
-          onChange={(e) => onChange(item.id, "unit", e.target.value)}
-          className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-        >
-          {UNITS.map((u) => <option key={u}>{u}</option>)}
-        </select>
-      </td>
-      <td className="py-2 pr-2 w-20">
-        <Input
-          type="number" min={0} step="0.5"
-          value={item.qty}
-          onChange={(e) => onChange(item.id, "qty", parseFloat(e.target.value) || 0)}
-          className="text-sm text-right tabular-nums"
-        />
-      </td>
-      <td className="py-2 pr-2 w-32">
-        <Input
-          type="number" min={0} step="100"
-          value={item.unitPrice}
-          onChange={(e) => onChange(item.id, "unitPrice", parseFloat(e.target.value) || 0)}
-          className="text-sm text-right tabular-nums"
-        />
-      </td>
-      <td className="py-2 pr-2 w-32 text-right tabular-nums text-sm font-semibold text-gray-900">
-        {formatTHB(amount)}
-      </td>
-      <td className="py-2 w-8">
-        <button
-          onClick={() => onRemove(item.id)}
-          className="opacity-0 group-hover:opacity-100 transition-opacity rounded-md p-1 hover:bg-red-50 hover:text-red-500 text-gray-300"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
-      </td>
-    </tr>
-  )
-}
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function NewQuotationPage() {
@@ -386,43 +316,15 @@ export default function NewQuotationPage() {
                   </thead>
                   <tbody className="px-5">
                     {items.map((item, index) => (
-                      <tr key={item.id} className="group border-b border-gray-100 last:border-0">
-                        <td className="pl-5 py-2 pr-2 text-xs text-gray-400 text-center">{index + 1}</td>
-                        <td className="py-2 pr-2">
-                          <Input value={item.description} onChange={(e) => updateItem(item.id,"description",e.target.value)} placeholder="Service or item description…" className="text-sm" />
-                        </td>
-                        <td className="py-2 pr-2">
-                          <select value={item.category} onChange={(e) => updateItem(item.id,"category",e.target.value)}
-                            className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20">
-                            {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
-                          </select>
-                        </td>
-                        <td className="py-2 pr-2">
-                          <select value={item.unit} onChange={(e) => updateItem(item.id,"unit",e.target.value)}
-                            className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20">
-                            {UNITS.map((u) => <option key={u}>{u}</option>)}
-                          </select>
-                        </td>
-                        <td className="py-2 pr-2">
-                          <Input type="number" min={0} step="0.5" value={item.qty}
-                            onChange={(e) => updateItem(item.id,"qty",parseFloat(e.target.value)||0)}
-                            className="text-sm text-right tabular-nums" />
-                        </td>
-                        <td className="py-2 pr-2">
-                          <Input type="number" min={0} step="100" value={item.unitPrice}
-                            onChange={(e) => updateItem(item.id,"unitPrice",parseFloat(e.target.value)||0)}
-                            className="text-sm text-right tabular-nums" />
-                        </td>
-                        <td className="py-2 pr-2 text-right tabular-nums text-sm font-semibold text-gray-900">
-                          {formatTHB(item.qty * item.unitPrice)}
-                        </td>
-                        <td className="py-2 pr-5">
-                          <button onClick={() => removeItem(item.id)}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity rounded p-1 hover:bg-red-50 hover:text-red-500 text-gray-300">
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </td>
-                      </tr>
+                      <LineItemRow
+                        key={item.id}
+                        item={item}
+                        index={index}
+                        categories={CATEGORIES}
+                        units={UNITS}
+                        onChange={updateItem}
+                        onRemove={removeItem}
+                      />
                     ))}
                   </tbody>
                 </table>

@@ -47,7 +47,13 @@ const navItems: NavItem[] = [
       { label: "Work Orders",       href: "/work-orders",      icon: Wrench },
     ],
   },
-  { label: "Quotations",      href: "/quotations",  icon: FileText },
+  {
+    label: "Pricing & Quotations", icon: FileText,
+    children: [
+      { label: "Quotations",      href: "/quotations",       icon: FileText },
+      { label: "Pricing Master",  href: "/pricing-master",   icon: BarChart3 },
+    ],
+  },
   { label: "Invoices",        href: "/invoices",    icon: Receipt },
   { label: "Payments",        href: "/payments",    icon: CreditCard },
   {

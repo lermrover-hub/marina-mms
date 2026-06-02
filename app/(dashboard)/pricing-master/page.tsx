@@ -4,11 +4,23 @@ import React, { useEffect, useState } from "react"
 import Link from "next/link"
 import { Plus, Edit2, Trash2, Search } from "lucide-react"
 import { PageHeader } from "@/components/layout/PageHeader"
-import { PricingMaster } from "@prisma/client"
+
+interface PricingItem {
+  id: string
+  code: string
+  serviceNameEn: string
+  serviceNameTh: string
+  category: string
+  unit: string
+  rateThb: number
+  description: string
+  notes: string
+  isActive: boolean
+}
 
 export default function PricingMasterPage() {
-  const [pricingList, setPricingList] = useState<PricingMaster[]>([])
-  const [filteredList, setFilteredList] = useState<PricingMaster[]>([])
+  const [pricingList, setPricingList] = useState<PricingItem[]>([])
+  const [filteredList, setFilteredList] = useState<PricingItem[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
@@ -19,7 +31,7 @@ export default function PricingMasterPage() {
       try {
         const res = await fetch("/api/pricing-master")
         const json = await res.json()
-        const activeOnly = json.data.filter((p: PricingMaster) => p.isActive)
+        const activeOnly = json.data.filter((p: PricingItem) => p.isActive)
         setPricingList(activeOnly)
         setFilteredList(activeOnly)
       } catch (error) {

@@ -6,11 +6,12 @@ const prisma = new PrismaClient()
 // GET /api/pricing-master/:id - Get single pricing
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const pricing = await prisma.pricingMaster.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!pricing) {
@@ -27,14 +28,15 @@ export async function GET(
 // PATCH /api/pricing-master/:id - Update pricing
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const body = await req.json()
     const { serviceNameEn, serviceNameTh, category, unit, rateThb, description, notes, isActive } = body
 
     const pricing = await prisma.pricingMaster.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         ...(serviceNameEn && { serviceNameEn }),
         ...(serviceNameTh && { serviceNameTh }),
@@ -60,11 +62,12 @@ export async function PATCH(
 // DELETE /api/pricing-master/:id - Delete pricing (soft delete via isActive)
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const pricing = await prisma.pricingMaster.update({
-      where: { id: params.id },
+      where: { id },
       data: { isActive: false }
     })
 

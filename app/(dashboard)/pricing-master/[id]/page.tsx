@@ -5,7 +5,6 @@ import { useRouter, useParams } from "next/navigation"
 import { ArrowLeft, Save, Loader } from "lucide-react"
 import Link from "next/link"
 import { PageHeader } from "@/components/layout/PageHeader"
-import { PricingMaster } from "@prisma/client"
 
 export default function PricingMasterEditPage() {
   const router = useRouter()

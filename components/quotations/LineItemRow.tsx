@@ -4,7 +4,14 @@ import React, { useEffect, useState } from "react"
 import { Trash2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { formatTHB } from "@/lib/utils"
-import { PricingMaster } from "@prisma/client"
+
+interface PricingOption {
+  id: string
+  code: string
+  serviceNameEn: string
+  unit: string
+  rateThb: number
+}
 
 interface LineItem {
   id: string
@@ -32,7 +39,7 @@ export function LineItemRow({
   onChange,
   onRemove,
 }: LineItemRowProps) {
-  const [pricingOptions, setPricingOptions] = useState<PricingMaster[]>([])
+  const [pricingOptions, setPricingOptions] = useState<PricingOption[]>([])
   const [loadingPricing, setLoadingPricing] = useState(false)
 
   // Load pricing options when category is Paint & Coating or Paint Service

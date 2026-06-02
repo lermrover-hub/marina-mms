@@ -1,20 +1,13 @@
-// Prisma singleton — prevents multiple connections in development (hot reload)
-// Import path matches generator output in schema.prisma
-import { PrismaClient } from "@/app/generated/prisma/client"
+import { PrismaClient } from "@prisma/client"
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined
-}
-
-const prismaOptions = {
-  datasourceUrl: process.env.DATABASE_URL,
-  log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
-} as unknown as ConstructorParameters<typeof PrismaClient>[0]
+const globalForPrisma = global as unknown as { prisma: PrismaClient }
 
 export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient(prismaOptions)
+  globalForPrisma.prisma ||
+  new PrismaClient({
+    log: process.env.NODE_ENV === "development" ? ["query"] : []
+  })
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma
-
-export default prisma
+if (process.env.NODE_ENV !== "production") {
+  globalForPrisma.prisma = prisma
+}

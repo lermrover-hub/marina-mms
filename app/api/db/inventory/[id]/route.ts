@@ -5,6 +5,14 @@ const supabase = createServerClient()
 
 export const dynamic = "force-dynamic"
 
+function errorMessage(error: unknown) {
+  if (error instanceof Error) return error.message
+  if (error && typeof error === "object" && "message" in error) {
+    return String((error as { message?: unknown }).message)
+  }
+  return String(error)
+}
+
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
@@ -12,11 +20,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       .from("mms_inventory_items")
       .select("*")
       .eq("id", id)
-      .single()
+      .maybeSingle()
     if (error) throw error
+    if (!data) return NextResponse.json({ error: "Inventory item not found" }, { status: 404 })
     return NextResponse.json(data)
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    console.error("[Inventory detail error]", e)
+    return NextResponse.json({ error: errorMessage(e) }, { status: 500 })
   }
 }
 
@@ -33,7 +43,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (error) throw error
     return NextResponse.json(data)
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    console.error("[Inventory update error]", e)
+    return NextResponse.json({ error: errorMessage(e) }, { status: 500 })
   }
 }
 
@@ -47,6 +58,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     if (error) throw error
     return NextResponse.json({ success: true })
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    console.error("[Inventory delete error]", e)
+    return NextResponse.json({ error: errorMessage(e) }, { status: 500 })
   }
 }

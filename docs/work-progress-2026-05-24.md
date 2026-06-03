@@ -182,6 +182,50 @@ Validation:
 - Direct Supabase verification: PASS, all five line items were saved and generated `line_total` values match the PDF math.
 - `npx.cmd tsc --noEmit --pretty false`: PASS.
 
+## Codex Verification - Inventory Create/Delete Workflow - 2026-06-03
+
+Scope: checked Claude Code's latest inventory commits:
+
+- `f15056e` Add error handling to create form and refetch list on save.
+- `29b3d7d` Add delete functionality for inventory items.
+
+Blocking issues found and fixed:
+
+- `npx.cmd tsc --noEmit --pretty false` failed before the inventory workflow could be tested because legacy `/api/quotations` routes still referenced `prisma.quotation` after the project moved away from Prisma runtime. Fixed `app/api/quotations/route.ts` and `app/api/quotations/[id]/route.ts` to use Supabase `mms_quotations` / `mms_quotation_items` instead.
+- Inventory create failed with `POST /api/db/inventory` returning HTTP 500. Expected: save item, return to `/inventory`, and show the item. Actual: form showed `Error saving inventory item: [object Object]`. Root cause: the create form sent `status: "ACTIVE"`, but `mms_inventory_items.status` only accepts stock states such as `OK`, `LOW`, and `OUT`. Fixed `app/(dashboard)/inventory/new/page.tsx` and `app/api/db/inventory/route.ts` to derive status from `on_hand` and `min_stock`.
+- Inventory create API error output was unreadable because Supabase error objects were converted with `String(error)`. Fixed readable error handling in `app/api/db/inventory/route.ts` and `app/api/db/inventory/[id]/route.ts`.
+- After a successful create, the browser stayed on `/inventory/new` with the Save button stuck on `Saving...`. Root cause: the create page called `router.push()` and then immediately called `router.refresh()`. Fixed by pushing to `/inventory?created=<id>` and letting the list page refetch from URL params.
+- The list page delete workflow used native `confirm()`, which blocked browser automation and is less consistent with the detail page. Fixed `app/(dashboard)/inventory/page.tsx` to use an in-page confirmation modal like the detail page.
+- After deletion, `GET /api/db/inventory/:id` returned HTTP 500 for missing rows. Fixed detail GET to use `maybeSingle()` and return HTTP 404 with `Inventory item not found`.
+
+Validation:
+
+- Browser create workflow on `http://localhost:3002/inventory/new`: PASS after fix.
+  - Created `TEST-CODEX-631093`.
+  - Redirected to `/inventory?created=f3353c37-d890-4493-99c6-2d0703f2d6b1`.
+  - Inventory list showed the new item and count increased.
+- Direct app workflow with auth cookie on `http://localhost:3002`: PASS.
+  - `/inventory` page: HTTP 200.
+  - `POST /api/db/inventory`: HTTP 200, created status `LOW`.
+  - `GET /api/db/inventory`: HTTP 200 and new item found.
+  - `/inventory/:id` page: HTTP 200.
+  - `GET /api/db/inventory/:id`: HTTP 200.
+  - `DELETE /api/db/inventory/:id`: HTTP 200.
+  - `GET /api/db/inventory/:id` after delete: HTTP 404 with `Inventory item not found`.
+- Test inventory rows with prefix `TEST-CODEX-` were cleaned up.
+- `npx.cmd tsc --noEmit --pretty false`: PASS.
+
+Production follow-up:
+
+- User reproduced the issue on `https://marina-mms.vercel.app/inventory/new`: saving `Glove / Latex glove` returned to Inventory, but the item was not shown because production was still on the old create workflow.
+- Deployed the inventory fixes to production with Vercel deployment `dpl_56vfvTVoEJ8sNCezHg88ihFQjoie`.
+- Production smoke test on `https://marina-mms.vercel.app`: PASS.
+  - `/inventory`: HTTP 200.
+  - `POST /api/db/inventory` without an explicit status: HTTP 200, server derived status `OK`.
+  - `GET /api/db/inventory`: new item found.
+  - `DELETE /api/db/inventory/:id`: HTTP 200.
+  - `GET /api/db/inventory/:id` after delete: HTTP 404 with `Inventory item not found`.
+
 ## Next Sessions
 
 Passed sessions do not need full markdown reread next time. Use this checkpoint first, then inspect only the route/files under the next active session.

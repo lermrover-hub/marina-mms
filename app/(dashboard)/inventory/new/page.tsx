@@ -38,19 +38,22 @@ export default function NewInventoryItemPage() {
     setSaving(true)
     try {
       const now = new Date().toISOString()
+      const onHand = parseFloat(initialQty) || 0
+      const minimumStock = parseFloat(minStock) || 0
+      const stockStatus = onHand === 0 ? "OUT" : onHand <= minimumStock ? "LOW" : "OK"
       const body = {
         item_code:          itemCode || `INV-${Date.now().toString().slice(-6)}`,
         name:               name || null,
         category:           category || null,
         unit,
-        on_hand:            parseFloat(initialQty) || 0,
-        min_stock:          parseFloat(minStock) || 0,
+        on_hand:            onHand,
+        min_stock:          minimumStock,
         avg_cost:           avgCost ? parseFloat(avgCost) : 0,
         selling_price:      sellingPrice ? parseFloat(sellingPrice) : 0,
         supplier:           supplier || null,
         charge_to_customer: chargeToCustomer,
         notes:              notes || null,
-        status:             "ACTIVE",
+        status:             stockStatus,
         created_at:         now,
         updated_at:         now,
       }
@@ -66,9 +69,7 @@ export default function NewInventoryItemPage() {
       if (!data?.id) {
         throw new Error("Server returned no item ID")
       }
-      // Redirect and refresh inventory list
-      router.push(`/inventory?created=true`)
-      router.refresh()
+      router.push(`/inventory?created=${data.id}`)
     } catch (err) {
       const message = err instanceof Error ? err.message : "Save failed"
       setError(message)

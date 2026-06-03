@@ -1,5 +1,5 @@
 "use client"
-import React, { useState, useMemo, useEffect } from "react"
+import React, { Suspense, useState, useMemo, useEffect } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { Search, Plus, Download, AlertTriangle, Package, Loader2, Trash2 } from "lucide-react"
@@ -38,7 +38,7 @@ const STATUS_STYLE: Record<string, { badge: string; row: string }> = {
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
-export default function InventoryPage() {
+function InventoryPageContent() {
   const searchParams = useSearchParams()
   const [items,           setItems]           = useState<InventoryItem[]>([])
   const [loading,         setLoading]         = useState(true)
@@ -47,6 +47,7 @@ export default function InventoryPage() {
   const [catFilter,       setCat]             = useState("All")
   const [showLowOnly,     setLow]             = useState(false)
   const [deleteId,        setDeleteId]        = useState<string | null>(null)
+  const [pendingDelete,   setPendingDelete]   = useState<InventoryItem | null>(null)
   const [deleting,        setDeleting]        = useState(false)
 
   useEffect(() => {
@@ -61,7 +62,7 @@ export default function InventoryPage() {
         } else {
           setError("Failed to load inventory")
         }
-      } catch (err) {
+      } catch {
         setError("Network error")
       } finally {
         setLoading(false)
@@ -71,20 +72,19 @@ export default function InventoryPage() {
     fetchInventory()
   }, [searchParams]) // Refetch when URL params change (e.g., after create)
 
-  const handleDeleteItem = async (itemId: string, itemName: string) => {
-    if (!confirm(`Delete "${itemName}"? This cannot be undone.`)) return
-
+  const handleDeleteItem = async (item: InventoryItem) => {
     setDeleting(true)
-    setDeleteId(itemId)
+    setDeleteId(item.id)
     try {
-      const res = await fetch(`/api/db/inventory/${itemId}`, {
+      const res = await fetch(`/api/db/inventory/${item.id}`, {
         method: "DELETE",
       })
       if (!res.ok) {
         const data = await res.json()
         throw new Error(data?.error ?? "Delete failed")
       }
-      setItems(items.filter(i => i.id !== itemId))
+      setItems((current) => current.filter(i => i.id !== item.id))
+      setPendingDelete(null)
     } catch (err) {
       alert(`Failed to delete: ${err instanceof Error ? err.message : "Unknown error"}`)
     } finally {
@@ -116,6 +116,40 @@ export default function InventoryPage() {
 
   return (
     <div className="space-y-6">
+      {pendingDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white shadow-2xl">
+            <div className="border-b p-5">
+              <h3 className="font-bold text-red-700">Delete Item</h3>
+              <p className="mt-2 text-sm text-gray-600">
+                Are you sure you want to delete <strong>{pendingDelete.name}</strong>? This cannot be undone.
+              </p>
+            </div>
+            <div className="flex justify-end gap-2 p-5">
+              <Button variant="outline" onClick={() => setPendingDelete(null)} disabled={deleting}>
+                Cancel
+              </Button>
+              <Button
+                variant="teal"
+                className="gap-2 bg-red-600 text-white hover:bg-red-700"
+                disabled={deleting}
+                onClick={() => handleDeleteItem(pendingDelete)}
+              >
+                {deleting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4" /> Delete Item
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <PageHeader
         title="Inventory"
         description={loading ? "Loading…" : `${stats.total} items · Stock value ${formatTHB(stats.totalValue)}`}
@@ -289,7 +323,7 @@ export default function InventoryPage() {
                               View
                             </Link>
                             <button
-                              onClick={() => handleDeleteItem(item.id, item.name)}
+                              onClick={() => setPendingDelete(item)}
                               disabled={deleting && deleteId === item.id}
                               className="text-xs text-red-600 hover:text-red-700 font-medium disabled:opacity-50"
                             >
@@ -313,5 +347,19 @@ export default function InventoryPage() {
         Live database · {items.length} items loaded
       </p>
     </div>
+  )
+}
+
+export default function InventoryPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-20 text-gray-400">
+          <Loader2 className="h-6 w-6 animate-spin mr-2" /> Loading inventory...
+        </div>
+      }
+    >
+      <InventoryPageContent />
+    </Suspense>
   )
 }

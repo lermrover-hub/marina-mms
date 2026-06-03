@@ -185,8 +185,7 @@ export default function InventoryItemPage() {
         const data = await res.json()
         throw new Error(data?.error ?? "Delete failed")
       }
-      router.push("/inventory?deleted=true")
-      router.refresh()
+      router.push(`/inventory?deleted=${item.id}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Delete failed")
       setDeleting(false)

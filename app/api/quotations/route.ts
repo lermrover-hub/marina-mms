@@ -1,100 +1,126 @@
 import { NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
+import { createServerClient } from "@/lib/supabase-server"
 
-// GET /api/quotations - List all quotations
+export const dynamic = "force-dynamic"
+
+type QuotationLineItem = {
+  description?: string
+  qty?: number
+  quantity?: number
+  unit?: string
+  unitPrice?: number
+  unit_price?: number
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
     const customerId = searchParams.get("customerId")
     const status = searchParams.get("status")
+    const supabase = createServerClient()
 
-    const where: any = {}
-    if (customerId) where.customerId = customerId
-    if (status) where.status = status
+    let query = supabase
+      .from("mms_quotations")
+      .select("*, mms_quotation_items(*)")
+      .order("created_at", { ascending: false })
 
-    const quotations = await prisma.quotation.findMany({
-      where,
-      include: {
-        customer: true,
-        boat: true,
-        items: true
-      },
-      orderBy: { createdAt: "desc" }
-    })
+    if (customerId) query = query.eq("customer_id", customerId)
+    if (status) query = query.eq("status", status)
 
-    return NextResponse.json({ data: quotations })
+    const { data, error } = await query
+    if (error) throw error
+
+    return NextResponse.json({ data: data ?? [] })
   } catch (error) {
-    console.error("Error fetching quotations:", error)
+    console.error("[Quotation list error]", error)
     return NextResponse.json({ error: "Failed to fetch quotations" }, { status: 500 })
   }
 }
 
-// POST /api/quotations - Create new quotation
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const {
-      customerId,
-      boatId,
-      quoteNumber,
-      issueDate,
-      validUntilDate,
-      items,
-      subtotal,
-      discountAmount,
-      discountPercent,
-      taxAmount,
-      totalAmount,
-      depositRequired,
-      notes,
-      status = "DRAFT"
-    } = body
+    const supabase = createServerClient()
+    const customerId = body.customerId ?? body.customer_id ?? null
+    const boatId = body.boatId ?? body.boat_id ?? null
 
-    if (!customerId || !quoteNumber) {
-      return NextResponse.json(
-        { error: "Missing required fields: customerId, quoteNumber" },
-        { status: 400 }
-      )
+    if (!customerId) {
+      return NextResponse.json({ error: "Missing required field: customerId" }, { status: 400 })
     }
 
-    const quotation = await prisma.quotation.create({
-      data: {
-        customerId,
-        boatId: boatId || null,
-        quoteNumber,
-        issueDate: issueDate ? new Date(issueDate) : new Date(),
-        validUntilDate: validUntilDate ? new Date(validUntilDate) : null,
-        subtotal: parseFloat(String(subtotal || 0)),
-        discountAmount: parseFloat(String(discountAmount || 0)),
-        discountPercent: parseFloat(String(discountPercent || 0)),
-        taxAmount: parseFloat(String(taxAmount || 0)),
-        totalAmount: parseFloat(String(totalAmount || 0)),
-        depositRequired: parseFloat(String(depositRequired || 0)),
-        notes: notes || null,
-        status,
-        items: items
-          ? {
-              createMany: {
-                data: items.map((item: any) => ({
-                  description: item.description,
-                  quantity: parseFloat(String(item.quantity || 1)),
-                  unitPrice: parseFloat(String(item.unitPrice || 0)),
-                  amount: parseFloat(String(item.amount || 0))
-                }))
-              }
-            }
-          : undefined
-      },
-      include: {
-        customer: true,
-        boat: true,
-        items: true
-      }
-    })
+    const [{ data: customer }, { data: boat }] = await Promise.all([
+      supabase
+        .from("mms_customers")
+        .select("company_name, first_name, last_name")
+        .eq("id", customerId)
+        .maybeSingle(),
+      boatId
+        ? supabase.from("mms_boats").select("name").eq("id", boatId).maybeSingle()
+        : Promise.resolve({ data: null }),
+    ])
 
-    return NextResponse.json({ data: quotation }, { status: 201 })
+    const customerName =
+      customer?.company_name ??
+      ([customer?.first_name, customer?.last_name].filter(Boolean).join(" ") || null)
+
+    const subtotal = Number(body.subtotal ?? 0)
+    const discount = Number(body.discountAmount ?? body.discount_amount ?? body.discount ?? 0)
+    const vatAmount = Number(body.taxAmount ?? body.vat_amount ?? 0)
+    const totalAmount = Number(body.totalAmount ?? body.total_amount ?? subtotal)
+    const depositAmount = Number(body.depositRequired ?? body.deposit_amount ?? 0)
+
+    const { data, error } = await supabase
+      .from("mms_quotations")
+      .insert({
+        quote_number: body.quoteNumber ?? body.quote_number ?? `DRAFT-${Date.now()}`,
+        customer_id: customerId,
+        customer_name: customerName,
+        boat_id: boatId,
+        boat_name: boat?.name ?? null,
+        title: body.title ?? body.subject ?? null,
+        status: body.status ?? "DRAFT",
+        subtotal,
+        discount,
+        vat_amount: vatAmount,
+        total_amount: totalAmount,
+        deposit_amount: depositAmount,
+        valid_until: body.validUntilDate ?? body.valid_until ?? null,
+        notes: body.notes ?? null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .select()
+      .single()
+
+    if (error) throw error
+
+    if (Array.isArray(body.items) && body.items.length > 0) {
+      const items = body.items.map((item: QuotationLineItem, index: number) => {
+        const qty = Number(item.qty ?? item.quantity ?? 1)
+        const unitPrice = Number(item.unitPrice ?? item.unit_price ?? 0)
+
+        return {
+          quotation_id: data.id,
+          description: item.description ?? "",
+          qty,
+          unit: item.unit ?? "item",
+          unit_price: unitPrice,
+          discount_pct: 0,
+          taxable: vatAmount > 0,
+          sort_order: index + 1,
+        }
+      })
+
+      const { error: itemError } = await supabase.from("mms_quotation_items").insert(items)
+      if (itemError) {
+        await supabase.from("mms_quotations").delete().eq("id", data.id)
+        throw itemError
+      }
+    }
+
+    return NextResponse.json({ data }, { status: 201 })
   } catch (error) {
-    console.error("Error creating quotation:", error)
+    console.error("[Quotation create error]", error)
     return NextResponse.json({ error: "Failed to create quotation" }, { status: 500 })
   }
 }

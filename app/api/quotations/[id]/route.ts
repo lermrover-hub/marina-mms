@@ -1,98 +1,108 @@
 import { NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
+import { createServerClient } from "@/lib/supabase-server"
 
-// GET /api/quotations/:id - Get single quotation
+export const dynamic = "force-dynamic"
+
 export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  const { id } = await params
   try {
-    const quotation = await prisma.quotation.findUnique({
-      where: { id },
-      include: {
-        customer: true,
-        boat: true,
-        items: true
-      }
-    })
+    const { id } = await params
+    const supabase = createServerClient()
+    const { data, error } = await supabase
+      .from("mms_quotations")
+      .select("*, mms_quotation_items(*)")
+      .eq("id", id)
+      .maybeSingle()
 
-    if (!quotation) {
-      return NextResponse.json({ error: "Quotation not found" }, { status: 404 })
-    }
+    if (error) throw error
+    if (!data) return NextResponse.json({ error: "Quotation not found" }, { status: 404 })
 
-    return NextResponse.json({ data: quotation })
+    return NextResponse.json({ data })
   } catch (error) {
-    console.error("Error fetching quotation:", error)
+    console.error("[Quotation detail error]", error)
     return NextResponse.json({ error: "Failed to fetch quotation" }, { status: 500 })
   }
 }
 
-// PATCH /api/quotations/:id - Update quotation
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  const { id } = await params
   try {
+    const { id } = await params
     const body = await req.json()
-    const {
-      quoteNumber,
-      issueDate,
-      validUntilDate,
-      subtotal,
-      discountAmount,
-      discountPercent,
-      taxAmount,
-      totalAmount,
-      depositRequired,
-      notes,
-      status
-    } = body
+    const supabase = createServerClient()
 
-    const quotation = await prisma.quotation.update({
-      where: { id },
-      data: {
-        ...(quoteNumber && { quoteNumber }),
-        ...(issueDate && { issueDate: new Date(issueDate) }),
-        ...(validUntilDate && { validUntilDate: new Date(validUntilDate) }),
-        ...(subtotal !== undefined && { subtotal: parseFloat(String(subtotal)) }),
-        ...(discountAmount !== undefined && { discountAmount: parseFloat(String(discountAmount)) }),
-        ...(discountPercent !== undefined && { discountPercent: parseFloat(String(discountPercent)) }),
-        ...(taxAmount !== undefined && { taxAmount: parseFloat(String(taxAmount)) }),
-        ...(totalAmount !== undefined && { totalAmount: parseFloat(String(totalAmount)) }),
-        ...(depositRequired !== undefined && { depositRequired: parseFloat(String(depositRequired)) }),
-        ...(notes !== undefined && { notes }),
-        ...(status && { status })
-      },
-      include: {
-        customer: true,
-        boat: true,
-        items: true
-      }
-    })
+    const update: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    }
 
-    return NextResponse.json({ data: quotation })
+    if (body.quoteNumber !== undefined || body.quote_number !== undefined) {
+      update.quote_number = body.quoteNumber ?? body.quote_number
+    }
+    if (body.title !== undefined || body.subject !== undefined) update.title = body.title ?? body.subject
+    if (body.validUntilDate !== undefined || body.valid_until !== undefined) {
+      update.valid_until = body.validUntilDate ?? body.valid_until
+    }
+    if (body.subtotal !== undefined) update.subtotal = Number(body.subtotal)
+    if (
+      body.discountAmount !== undefined ||
+      body.discount_amount !== undefined ||
+      body.discount !== undefined
+    ) {
+      update.discount = Number(body.discountAmount ?? body.discount_amount ?? body.discount)
+    }
+    if (body.taxAmount !== undefined || body.vat_amount !== undefined) {
+      update.vat_amount = Number(body.taxAmount ?? body.vat_amount)
+    }
+    if (body.totalAmount !== undefined || body.total_amount !== undefined) {
+      update.total_amount = Number(body.totalAmount ?? body.total_amount)
+    }
+    if (body.depositRequired !== undefined || body.deposit_amount !== undefined) {
+      update.deposit_amount = Number(body.depositRequired ?? body.deposit_amount)
+    }
+    if (body.notes !== undefined) update.notes = body.notes
+    if (body.status) update.status = body.status
+
+    const { data, error } = await supabase
+      .from("mms_quotations")
+      .update(update)
+      .eq("id", id)
+      .select()
+      .single()
+
+    if (error) throw error
+
+    return NextResponse.json({ data })
   } catch (error) {
-    console.error("Error updating quotation:", error)
+    console.error("[Quotation update error]", error)
     return NextResponse.json({ error: "Failed to update quotation" }, { status: 500 })
   }
 }
 
-// DELETE /api/quotations/:id - Delete quotation
 export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  const { id } = await params
   try {
-    const quotation = await prisma.quotation.delete({
-      where: { id }
-    })
+    const { id } = await params
+    const supabase = createServerClient()
 
-    return NextResponse.json({ data: quotation })
+    await supabase.from("mms_quotation_items").delete().eq("quotation_id", id)
+    const { data, error } = await supabase
+      .from("mms_quotations")
+      .delete()
+      .eq("id", id)
+      .select()
+      .single()
+
+    if (error) throw error
+
+    return NextResponse.json({ data })
   } catch (error) {
-    console.error("Error deleting quotation:", error)
+    console.error("[Quotation delete error]", error)
     return NextResponse.json({ error: "Failed to delete quotation" }, { status: 500 })
   }
 }

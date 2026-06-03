@@ -1,6 +1,7 @@
 "use client"
 import React, { useState, useMemo, useEffect } from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { Search, Plus, Download, AlertTriangle, Package, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -38,6 +39,7 @@ const STATUS_STYLE: Record<string, { badge: string; row: string }> = {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function InventoryPage() {
+  const searchParams = useSearchParams()
   const [items,       setItems]   = useState<InventoryItem[]>([])
   const [loading,     setLoading] = useState(true)
   const [error,       setError]   = useState<string | null>(null)
@@ -46,15 +48,26 @@ export default function InventoryPage() {
   const [showLowOnly, setLow]     = useState(false)
 
   useEffect(() => {
-    fetch("/api/db/inventory")
-      .then(r => r.json())
-      .then(data => {
-        if (Array.isArray(data)) setItems(data)
-        else setError("Failed to load inventory")
-      })
-      .catch(() => setError("Network error"))
-      .finally(() => setLoading(false))
-  }, [])
+    const fetchInventory = async () => {
+      try {
+        setLoading(true)
+        const res = await fetch("/api/db/inventory")
+        const data = await res.json()
+        if (Array.isArray(data)) {
+          setItems(data)
+          setError(null)
+        } else {
+          setError("Failed to load inventory")
+        }
+      } catch (err) {
+        setError("Network error")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchInventory()
+  }, [searchParams]) // Refetch when URL params change (e.g., after create)
 
   const filtered = useMemo(() =>
     items.filter(i => {

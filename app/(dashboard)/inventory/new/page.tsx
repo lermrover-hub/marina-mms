@@ -15,6 +15,7 @@ const UNITS = ["pc","L","kg","m","m2","set","tube","roll","box","pair","hr"]
 export default function NewInventoryItemPage() {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const [itemCode, setItemCode]       = useState("")
   const [name, setName]               = useState("")
@@ -33,6 +34,7 @@ export default function NewInventoryItemPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    setError(null)
     setSaving(true)
     try {
       const now = new Date().toISOString()
@@ -58,10 +60,20 @@ export default function NewInventoryItemPage() {
         body: JSON.stringify(body),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data?.error ?? "Save failed")
-      router.push(data?.id ? `/inventory/${data.id}` : "/inventory")
-    } catch {
+      if (!res.ok) {
+        throw new Error(data?.error ?? "Save failed")
+      }
+      if (!data?.id) {
+        throw new Error("Server returned no item ID")
+      }
+      // Redirect and refresh inventory list
+      router.push(`/inventory?created=true`)
+      router.refresh()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Save failed"
+      setError(message)
       setSaving(false)
+      console.error("Inventory save error:", err)
     }
   }
 
@@ -79,6 +91,13 @@ export default function NewInventoryItemPage() {
           </div>
         }
       />
+
+      {error && (
+        <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700">
+          <p className="font-semibold mb-1">Error saving inventory item:</p>
+          <p>{error}</p>
+        </div>
+      )}
 
       <form id="inv-form" onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">

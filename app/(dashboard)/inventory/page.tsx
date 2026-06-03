@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
-import { Search, Plus, Download, AlertTriangle, Package, Loader2 } from "lucide-react"
+import { Search, Plus, Download, AlertTriangle, Package, Loader2, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { PageHeader } from "@/components/shared/PageHeader"
@@ -40,12 +40,14 @@ const STATUS_STYLE: Record<string, { badge: string; row: string }> = {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function InventoryPage() {
   const searchParams = useSearchParams()
-  const [items,       setItems]   = useState<InventoryItem[]>([])
-  const [loading,     setLoading] = useState(true)
-  const [error,       setError]   = useState<string | null>(null)
-  const [search,      setSearch]  = useState("")
-  const [catFilter,   setCat]     = useState("All")
-  const [showLowOnly, setLow]     = useState(false)
+  const [items,           setItems]           = useState<InventoryItem[]>([])
+  const [loading,         setLoading]         = useState(true)
+  const [error,           setError]           = useState<string | null>(null)
+  const [search,          setSearch]          = useState("")
+  const [catFilter,       setCat]             = useState("All")
+  const [showLowOnly,     setLow]             = useState(false)
+  const [deleteId,        setDeleteId]        = useState<string | null>(null)
+  const [deleting,        setDeleting]        = useState(false)
 
   useEffect(() => {
     const fetchInventory = async () => {
@@ -68,6 +70,28 @@ export default function InventoryPage() {
 
     fetchInventory()
   }, [searchParams]) // Refetch when URL params change (e.g., after create)
+
+  const handleDeleteItem = async (itemId: string, itemName: string) => {
+    if (!confirm(`Delete "${itemName}"? This cannot be undone.`)) return
+
+    setDeleting(true)
+    setDeleteId(itemId)
+    try {
+      const res = await fetch(`/api/db/inventory/${itemId}`, {
+        method: "DELETE",
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data?.error ?? "Delete failed")
+      }
+      setItems(items.filter(i => i.id !== itemId))
+    } catch (err) {
+      alert(`Failed to delete: ${err instanceof Error ? err.message : "Unknown error"}`)
+    } finally {
+      setDeleting(false)
+      setDeleteId(null)
+    }
+  }
 
   const filtered = useMemo(() =>
     items.filter(i => {
@@ -259,10 +283,19 @@ export default function InventoryPage() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <Link href={`/inventory/${item.id}`}
-                            className="text-xs text-teal-600 hover:underline font-medium">
-                            View
-                          </Link>
+                          <div className="flex gap-2 justify-end">
+                            <Link href={`/inventory/${item.id}`}
+                              className="text-xs text-teal-600 hover:underline font-medium">
+                              View
+                            </Link>
+                            <button
+                              onClick={() => handleDeleteItem(item.id, item.name)}
+                              disabled={deleting && deleteId === item.id}
+                              className="text-xs text-red-600 hover:text-red-700 font-medium disabled:opacity-50"
+                            >
+                              {deleting && deleteId === item.id ? "Deleting…" : "Delete"}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     )

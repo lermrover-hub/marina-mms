@@ -1,9 +1,9 @@
 "use client"
 import React, { useState, useEffect } from "react"
 import Link from "next/link"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import {
-  ArrowLeft, Package, TrendingDown, TrendingUp, Minus,
+  ArrowLeft, Package, TrendingDown, TrendingUp, Minus, Trash2,
   AlertTriangle, Loader2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -151,12 +151,15 @@ function StockAdjustModal({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function InventoryItemPage() {
   const params = useParams<{ id: string }>()
+  const router = useRouter()
   const id = params?.id ?? ""
 
-  const [item,    setItem]    = useState<InventoryItem | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error,   setError]   = useState<string | null>(null)
-  const [showAdj, setShowAdj] = useState(false)
+  const [item,       setItem]       = useState<InventoryItem | null>(null)
+  const [loading,    setLoading]    = useState(true)
+  const [error,      setError]      = useState<string | null>(null)
+  const [showAdj,    setShowAdj]    = useState(false)
+  const [showDelete, setShowDelete] = useState(false)
+  const [deleting,   setDeleting]   = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -170,6 +173,26 @@ export default function InventoryItemPage() {
       .catch(() => setError("Network error"))
       .finally(() => setLoading(false))
   }, [id])
+
+  const handleDelete = async () => {
+    if (!item) return
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/db/inventory/${item.id}`, {
+        method: "DELETE",
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data?.error ?? "Delete failed")
+      }
+      router.push("/inventory?deleted=true")
+      router.refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Delete failed")
+      setDeleting(false)
+      setShowDelete(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -204,6 +227,40 @@ export default function InventoryItemPage() {
         />
       )}
 
+      {showDelete && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
+            <div className="p-5 border-b">
+              <h3 className="font-bold text-red-700">Delete Item</h3>
+              <p className="text-sm text-gray-600 mt-2">
+                Are you sure you want to delete <strong>{item.name}</strong>? This cannot be undone.
+              </p>
+            </div>
+            <div className="p-5 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowDelete(false)} disabled={deleting}>
+                Cancel
+              </Button>
+              <Button
+                variant="teal"
+                className="bg-red-600 hover:bg-red-700 text-white gap-2"
+                disabled={deleting}
+                onClick={handleDelete}
+              >
+                {deleting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Deleting…
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4" /> Delete Item
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <PageHeader
         title={item.name}
         description={`${item.item_code} · ${item.category}`}
@@ -215,6 +272,14 @@ export default function InventoryItemPage() {
             </Button>
             <Button size="sm" variant="teal" className="gap-2" onClick={() => setShowAdj(true)}>
               <Package className="h-4 w-4" /> Stock Movement
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-2 text-red-600 hover:text-red-700 hover:border-red-300"
+              onClick={() => setShowDelete(true)}
+            >
+              <Trash2 className="h-4 w-4" /> Delete
             </Button>
           </div>
         }

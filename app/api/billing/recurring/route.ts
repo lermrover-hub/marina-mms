@@ -24,6 +24,8 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { createServerClient } from "@/lib/supabase-server"
+import { sendEmail } from "@/lib/email"
+import { invoiceIssued } from "@/lib/email-templates"
 
 const supabase = createServerClient()
 
@@ -284,6 +286,33 @@ export async function POST(req: Request) {
       })
 
       generated.push(newInvoice)
+
+      // ── Send invoice email ──────────────────────────────────────────────
+      if (contract.customer_id) {
+        try {
+          const { data: customer } = await supabase
+            .from("mms_customers")
+            .select("full_name, company_name, email")
+            .eq("id", contract.customer_id)
+            .single()
+          if (customer?.email) {
+            const siteUrl = process.env.NEXTAUTH_URL ?? "https://marina-mms.vercel.app"
+            await sendEmail({
+              to: customer.email,
+              subject: `Invoice ${invoiceNumber} — Ocean Rover Marina`,
+              html: invoiceIssued({
+                customerName:  customer.full_name ?? customer.company_name ?? "Valued Customer",
+                invoiceNumber,
+                amount:        totalAmount,
+                dueDate:       new Date(dueDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+                invoiceUrl:    `${siteUrl}/portal/invoices`,
+              }),
+            })
+          }
+        } catch (emailErr) {
+          console.error("[Recurring billing email error]", emailErr)
+        }
+      }
     }
 
     // ── 4. Handle auto-expiry: mark contracts whose end_date has passed ──
@@ -313,13 +342,17 @@ export async function POST(req: Request) {
   }
 }
 
-/** GET: preview what would be generated (same as dry_run=true) */
+/**
+ * GET: Vercel Cron calls this on schedule (0 8 1 * *).
+ * When triggered by cron (x-vercel-cron: 1) it runs for real.
+ * All other GET calls are treated as dry-run previews.
+ */
 export async function GET(req: Request) {
   if (!(await isAuthorised(req))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
+  const isCron = req.headers.get("x-vercel-cron") === "1"
   const url = new URL(req.url)
-  url.searchParams.set("dry_run", "true")
-  // Pass auth headers to internal call
+  if (!isCron) url.searchParams.set("dry_run", "true")
   return POST(new Request(url.toString(), { method: "POST", headers: req.headers }))
 }

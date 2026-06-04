@@ -2,7 +2,7 @@
 import React, { useState, useCallback, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Plus, Save, Send } from "lucide-react"
+import { Plus, Save, Send, Sparkles, BookOpen, X, Loader2, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -20,6 +20,16 @@ interface LineItem {
   unit: string
   qty: number
   unitPrice: number
+}
+
+interface PricingOption {
+  id: string
+  code: string
+  serviceNameEn: string
+  serviceNameTh: string | null
+  category: string
+  unit: string
+  rateThb: number
 }
 
 const CATEGORIES = [
@@ -49,6 +59,249 @@ const DISCOUNT_TYPES = [
 
 function uid() { return Math.random().toString(36).slice(2, 9) }
 
+// ─── Rate Card Panel ──────────────────────────────────────────────────────────
+function RateCardPanel({
+  onAdd,
+  onClose,
+}: {
+  onAdd: (item: PricingOption) => void
+  onClose: () => void
+}) {
+  const [items, setItems] = useState<PricingOption[]>([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState("")
+  const [activeCategory, setActiveCategory] = useState<string>("All")
+
+  useEffect(() => {
+    fetch("/api/pricing-master?isActive=true")
+      .then((r) => r.json())
+      .then((d) => setItems(d.data ?? []))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  const categories = ["All", ...Array.from(new Set(items.map((i) => i.category))).sort()]
+
+  const filtered = items.filter((i) => {
+    const matchCat = activeCategory === "All" || i.category === activeCategory
+    const matchSearch =
+      !search ||
+      i.serviceNameEn.toLowerCase().includes(search.toLowerCase()) ||
+      i.code.toLowerCase().includes(search.toLowerCase())
+    return matchCat && matchSearch
+  })
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-end bg-black/30 pt-16 pr-4">
+      <div className="w-[480px] max-h-[80vh] flex flex-col rounded-xl bg-white shadow-2xl border border-gray-200">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b">
+          <div className="flex items-center gap-2">
+            <BookOpen className="h-4 w-4 text-teal-600" />
+            <span className="font-semibold text-gray-900 text-sm">Rate Card</span>
+            <span className="text-xs text-gray-400">({items.length} items)</span>
+          </div>
+          <button onClick={onClose} className="rounded-md p-1 hover:bg-gray-100 text-gray-400 hover:text-gray-600">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Search */}
+        <div className="px-4 pt-3 pb-2">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+            <Input
+              placeholder="Search service or code…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-8 text-sm h-8"
+            />
+          </div>
+        </div>
+
+        {/* Category tabs */}
+        <div className="px-4 pb-2 flex gap-1.5 overflow-x-auto scrollbar-hide">
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setActiveCategory(cat)}
+              className={cn(
+                "shrink-0 rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
+                activeCategory === cat
+                  ? "bg-teal-600 text-white"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              )}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+
+        {/* Items list */}
+        <div className="flex-1 overflow-y-auto px-4 pb-4">
+          {loading ? (
+            <div className="flex items-center justify-center py-10 text-gray-400">
+              <Loader2 className="h-5 w-5 animate-spin mr-2" />
+              <span className="text-sm">Loading rate card…</span>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="py-10 text-center text-gray-400 text-sm">No items found</div>
+          ) : (
+            <div className="space-y-1">
+              {filtered.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2.5 hover:border-teal-200 hover:bg-teal-50 group transition-colors"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono text-gray-400">{item.code}</span>
+                      <span className="text-sm font-medium text-gray-900 truncate">{item.serviceNameEn}</span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-xs text-gray-400">{item.category}</span>
+                      <span className="text-xs font-semibold text-teal-700">
+                        {formatTHB(item.rateThb)}/{item.unit}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => onAdd(item)}
+                    className="ml-3 shrink-0 rounded-md bg-teal-600 px-2.5 py-1 text-xs font-medium text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-teal-700"
+                  >
+                    + Add
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── AI Generate Modal ────────────────────────────────────────────────────────
+function AiGenerateModal({
+  selectedBoat,
+  onApply,
+  onClose,
+}: {
+  selectedBoat: Boat | undefined
+  onApply: (items: LineItem[]) => void
+  onClose: () => void
+}) {
+  const [serviceDescription, setServiceDescription] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function generate() {
+    if (!serviceDescription.trim()) return
+    setError(null)
+    setLoading(true)
+    try {
+      const res = await fetch("/api/quotations/ai-generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          boatName:           selectedBoat?.name ?? null,
+          boatType:           selectedBoat?.boat_type ?? null,
+          loa:                selectedBoat?.loa_ft ?? null,
+          beam:               selectedBoat?.beam_ft ?? null,
+          draft:              selectedBoat?.draft_ft ?? null,
+          serviceDescription,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data?.error ?? "AI generation failed.")
+        return
+      }
+      const mapped: LineItem[] = (data.items as Array<{
+        description: string
+        category: string
+        unit: string
+        qty: number
+        unitPrice: number
+      }>).map((i) => ({
+        id:          uid(),
+        description: i.description ?? "",
+        category:    i.category ?? "Other",
+        unit:        i.unit ?? "job",
+        qty:         Number(i.qty) || 1,
+        unitPrice:   Number(i.unitPrice) || 0,
+      }))
+      onApply(mapped)
+    } catch {
+      setError("Network error — please try again.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="w-full max-w-md rounded-xl bg-white shadow-2xl border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-violet-600" />
+            <h2 className="font-semibold text-gray-900">AI Quotation Generator</h2>
+          </div>
+          <button onClick={onClose} className="rounded-md p-1 hover:bg-gray-100 text-gray-400">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {selectedBoat && (
+          <div className="mb-4 rounded-lg bg-teal-50 border border-teal-200 px-3 py-2 text-xs text-teal-700">
+            <span className="font-semibold">{selectedBoat.name}</span>
+            {selectedBoat.boat_type && <span> · {selectedBoat.boat_type.replace(/_/g, " ")}</span>}
+            {selectedBoat.loa_ft && <span> · LOA {selectedBoat.loa_ft} ft</span>}
+            {selectedBoat.draft_ft && <span> · Draft {selectedBoat.draft_ft} ft</span>}
+          </div>
+        )}
+
+        <div className="space-y-3">
+          <Label>Describe the work needed</Label>
+          <textarea
+            rows={5}
+            value={serviceDescription}
+            onChange={(e) => setServiceDescription(e.target.value)}
+            placeholder="e.g. Full haul-out service for a 45ft sailing catamaran — antifouling paint, hull wash, engine service, zinc replacement, and 5 days in the repair yard."
+            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20 resize-y"
+          />
+          <p className="text-xs text-gray-400">
+            AI will suggest line items using your pricing master rate card.
+          </p>
+        </div>
+
+        {error && (
+          <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+
+        <div className="flex gap-2 mt-5">
+          <Button variant="outline" className="flex-1" onClick={onClose} disabled={loading}>
+            Cancel
+          </Button>
+          <Button
+            className="flex-1 gap-2 bg-violet-600 hover:bg-violet-700 text-white"
+            onClick={generate}
+            disabled={loading || !serviceDescription.trim()}
+          >
+            {loading ? (
+              <><Loader2 className="h-4 w-4 animate-spin" /> Generating…</>
+            ) : (
+              <><Sparkles className="h-4 w-4" /> Generate</>
+            )}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function NewQuotationPage() {
   const router = useRouter()
@@ -66,33 +319,32 @@ export default function NewQuotationPage() {
           setCustomers(d)
         } else if (d?.error) {
           setCustomersError(d.error)
-          console.error("Customers load error:", d.error)
         }
       })
-      .catch((e) => {
-        setCustomersError(String(e))
-        console.error("Customers fetch failed:", e)
-      })
+      .catch((e) => setCustomersError(String(e)))
     fetch("/api/db/boats").then(r => r.json()).then(d => { if (Array.isArray(d)) setBoats(d) }).catch(() => {})
   }, [])
 
+  // Panels
+  const [showRateCard,  setShowRateCard]  = useState(false)
+  const [showAiModal,   setShowAiModal]   = useState(false)
+
   // Form state
-  const [customerId, setCustomerId]     = useState("")
-  const [boatId, setBoatId]             = useState("")
-  const [title, setTitle]               = useState("")
-  const [validDays, setValidDays]       = useState(30)
-  const [discountType, setDiscountType] = useState("NONE")
-  const [discountValue, setDiscountValue] = useState(0)
-  const [taxRate, setTaxRate]           = useState(7)
-  const [depositPct, setDepositPct]     = useState(30)
-  const [notes, setNotes]               = useState("")
-  const [saving, setSaving]             = useState(false)
+  const [customerId,     setCustomerId]     = useState("")
+  const [boatId,         setBoatId]         = useState("")
+  const [title,          setTitle]          = useState("")
+  const [validDays,      setValidDays]      = useState(7)
+  const [discountType,   setDiscountType]   = useState("NONE")
+  const [discountValue,  setDiscountValue]  = useState(0)
+  const [taxRate,        setTaxRate]        = useState(7)
+  const [depositPct,     setDepositPct]     = useState(50)
+  const [notes,          setNotes]          = useState("")
+  const [saving,         setSaving]         = useState(false)
 
   const [items, setItems] = useState<LineItem[]>([
     { id: uid(), description: "", category: "Other", unit: "job", qty: 1, unitPrice: 0 },
   ])
 
-  // Derived customer boats
   const selectedCustomer = customers.find((c) => c.id === customerId)
   const customerBoats    = boats.filter((b) => b.owner_id === customerId)
   const selectedBoat     = boats.find((b) => b.id === boatId)
@@ -120,6 +372,31 @@ export default function NewQuotationPage() {
     setItems((prev) => prev.filter((item) => item.id !== id))
   }, [])
 
+  // Add from rate card panel
+  const handleAddFromRateCard = useCallback((pricing: PricingOption) => {
+    setItems((prev) => [
+      ...prev,
+      {
+        id:          uid(),
+        description: `${pricing.code} - ${pricing.serviceNameEn}`,
+        category:    pricing.category,
+        unit:        pricing.unit,
+        qty:         1,
+        unitPrice:   Number(pricing.rateThb),
+      },
+    ])
+  }, [])
+
+  // Apply AI-generated items (appends to existing)
+  const handleApplyAiItems = useCallback((aiItems: LineItem[]) => {
+    setItems((prev) => {
+      const onlyEmpty =
+        prev.length === 1 && prev[0].description === "" && prev[0].unitPrice === 0
+      return onlyEmpty ? aiItems : [...prev, ...aiItems]
+    })
+    setShowAiModal(false)
+  }, [])
+
   async function handleSave(andSend = false) {
     setSaving(true)
     try {
@@ -136,14 +413,14 @@ export default function NewQuotationPage() {
         tax_rate:         taxRate,
         deposit_pct:      depositPct,
         notes:            notes || null,
-        subtotal:         subtotal,
+        subtotal,
         discount_amount:  discountAmount,
         after_discount:   afterDiscount,
         tax_amount:       taxAmount,
         grand_total:      grandTotal,
         deposit_req:      depositReq,
         status:           andSend ? "SENT" : "DRAFT",
-        items:            items,
+        items,
         created_at:       new Date().toISOString(),
         updated_at:       new Date().toISOString(),
       }
@@ -166,6 +443,20 @@ export default function NewQuotationPage() {
 
   return (
     <div className="space-y-6">
+      {showRateCard && (
+        <RateCardPanel
+          onAdd={handleAddFromRateCard}
+          onClose={() => setShowRateCard(false)}
+        />
+      )}
+      {showAiModal && (
+        <AiGenerateModal
+          selectedBoat={selectedBoat}
+          onApply={handleApplyAiItems}
+          onClose={() => setShowAiModal(false)}
+        />
+      )}
+
       <PageHeader
         title="New Quotation"
         breadcrumb={[
@@ -249,7 +540,7 @@ export default function NewQuotationPage() {
 
               <div className="space-y-1.5">
                 <Label htmlFor="valid-days">Valid for (days)</Label>
-                <Input id="valid-days" type="number" min={1} max={365} value={validDays} onChange={(e) => setValidDays(parseInt(e.target.value) || 30)} />
+                <Input id="valid-days" type="number" min={1} max={365} value={validDays} onChange={(e) => setValidDays(parseInt(e.target.value) || 7)} />
                 <p className="text-xs text-gray-400">Expires: {validUntilStr}</p>
               </div>
 
@@ -305,9 +596,29 @@ export default function NewQuotationPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle>Line Items</CardTitle>
-              <Button size="sm" variant="outline" onClick={addItem} className="gap-1.5">
-                <Plus className="h-3.5 w-3.5" /> Add Item
-              </Button>
+              <div className="flex items-center gap-2">
+                {/* AI Generate */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowAiModal(true)}
+                  className="gap-1.5 border-violet-300 text-violet-700 hover:bg-violet-50 hover:border-violet-400"
+                >
+                  <Sparkles className="h-3.5 w-3.5" /> AI Generate
+                </Button>
+                {/* Rate Card */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowRateCard(true)}
+                  className="gap-1.5 border-teal-300 text-teal-700 hover:bg-teal-50 hover:border-teal-400"
+                >
+                  <BookOpen className="h-3.5 w-3.5" /> Rate Card
+                </Button>
+                <Button size="sm" variant="outline" onClick={addItem} className="gap-1.5">
+                  <Plus className="h-3.5 w-3.5" /> Add Item
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
@@ -355,9 +666,9 @@ export default function NewQuotationPage() {
                 <div className="space-y-2">
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Totals</p>
                   {[
-                    { label: "Subtotal",         value: subtotal,       color: "text-gray-900" },
-                    { label: `Discount`,         value: -discountAmount, color: "text-green-600", hide: discountAmount === 0 },
-                    { label: `VAT ${taxRate}%`,  value: taxAmount,      color: "text-gray-600" },
+                    { label: "Subtotal",         value: subtotal,        color: "text-gray-900" },
+                    { label: `Discount`,          value: -discountAmount, color: "text-green-600", hide: discountAmount === 0 },
+                    { label: `VAT ${taxRate}%`,   value: taxAmount,       color: "text-gray-600" },
                   ].filter((r) => !r.hide).map(({ label, value, color }) => (
                     <div key={label} className="flex justify-between text-sm">
                       <span className="text-gray-500">{label}</span>

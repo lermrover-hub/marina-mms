@@ -1,11 +1,11 @@
 "use client"
 import React, { useState, useEffect } from "react"
 import Link from "next/link"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import {
   Download, Send, CheckCircle, XCircle,
   AlertCircle, User, Ship, ChevronRight, FileText,
-  ArrowRight, Edit, Copy, Loader2, PenLine,
+  ArrowRight, Edit, Copy, Loader2, PenLine, Wrench, Receipt,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/shared/PageHeader"
@@ -52,9 +52,10 @@ export default function QuotationDetailPage() {
   const [lineItems,  setLineItems]  = useState<QuotationItem[]>([])
   const [loading,    setLoading]    = useState(true)
   const [error,      setError]      = useState<string | null>(null)
-  const [dialog,     setDialog]     = useState<"send" | "accept" | "reject" | "convert" | null>(null)
+  const [dialog,     setDialog]     = useState<"send" | "accept" | "reject" | "convert" | "convert-wo" | null>(null)
   const [saving,     setSaving]     = useState(false)
   const [showSigModal, setShowSigModal] = useState(false)
+  const router = useRouter()
 
   useEffect(() => {
     if (!id) return
@@ -86,6 +87,93 @@ export default function QuotationDetailPage() {
     } catch (e) {
       alert("Failed to update: " + String(e))
     } finally {
+      setSaving(false)
+      setDialog(null)
+    }
+  }
+
+  async function handleConvertToInvoice() {
+    if (!quotation) return
+    setSaving(true)
+    try {
+      const dueDate = new Date()
+      dueDate.setDate(dueDate.getDate() + 30)
+
+      const invoiceBody = {
+        customer_id:    quotation.customer_id ?? null,
+        boat_id:        quotation.boat_id ?? null,
+        quotation_id:   quotation.id,
+        status:         "DRAFT",
+        subtotal:       quotation.subtotal,
+        discount:       quotation.discount ?? 0,
+        vat_amount:     quotation.vat_amount,
+        total_amount:   quotation.total_amount,
+        deposit_amount: quotation.deposit_amount ?? 0,
+        due_date:       dueDate.toISOString().split("T")[0],
+        notes:          quotation.notes ?? null,
+        items:          lineItems.map((i) => ({
+          description: i.description,
+          qty:         i.qty,
+          unit_price:  i.unit_price,
+          line_total:  i.line_total,
+        })),
+      }
+
+      const invRes = await fetch("/api/db/invoices", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(invoiceBody),
+      })
+      const invData = await invRes.json()
+      if (!invRes.ok) throw new Error(invData?.error ?? "Invoice creation failed")
+
+      // Mark quotation as converted
+      await fetch(`/api/db/quotations/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "CONVERTED" }),
+      })
+
+      router.push(`/invoices/${invData.id}`)
+    } catch (e) {
+      alert("Conversion failed: " + String(e))
+      setSaving(false)
+      setDialog(null)
+    }
+  }
+
+  async function handleConvertToWorkOrder() {
+    if (!quotation) return
+    setSaving(true)
+    try {
+      const woBody = {
+        customer_id:    quotation.customer_id ?? null,
+        boat_id:        quotation.boat_id ?? null,
+        quotation_id:   quotation.id,
+        title:          quotation.title ?? quotation.quote_number,
+        description:    quotation.notes ?? null,
+        status:         "APPROVED",
+        total_amount:   quotation.total_amount,
+        deposit_amount: quotation.deposit_amount ?? 0,
+      }
+
+      const woRes = await fetch("/api/db/work-orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(woBody),
+      })
+      const woData = await woRes.json()
+      if (!woRes.ok) throw new Error(woData?.error ?? "Work order creation failed")
+
+      await fetch(`/api/db/quotations/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "CONVERTED" }),
+      })
+
+      router.push(`/work-orders/${woData.id}`)
+    } catch (e) {
+      alert("Conversion failed: " + String(e))
       setSaving(false)
       setDialog(null)
     }
@@ -179,11 +267,22 @@ export default function QuotationDetailPage() {
       {dialog === "convert" && (
         <ConfirmDialog
           title="Convert to Invoice"
-          message={`Convert ${quotation.quote_number} into a new invoice for ${quotation.customer_name}?`}
-          confirmLabel="Convert to Invoice"
+          message={`Create a new invoice from ${quotation.quote_number} (${quotation.customer_name})?`}
+          confirmLabel="Create Invoice"
           confirmVariant="teal"
           saving={saving}
-          onConfirm={() => handleAction("CONVERTED")}
+          onConfirm={handleConvertToInvoice}
+          onCancel={() => setDialog(null)}
+        />
+      )}
+      {dialog === "convert-wo" && (
+        <ConfirmDialog
+          title="Convert to Work Order"
+          message={`Create a new work order from ${quotation.quote_number} (${quotation.customer_name})?`}
+          confirmLabel="Create Work Order"
+          confirmVariant="teal"
+          saving={saving}
+          onConfirm={handleConvertToWorkOrder}
           onCancel={() => setDialog(null)}
         />
       )}
@@ -225,9 +324,14 @@ export default function QuotationDetailPage() {
                 </Button>
               )}
               {canConvert && (
-                <Button size="sm" className="gap-2 bg-blue-700 hover:bg-blue-800 text-white" onClick={() => setDialog("convert")}>
-                  <ArrowRight className="h-4 w-4" /> Convert to Invoice
-                </Button>
+                <>
+                  <Button size="sm" className="gap-2 bg-orange-600 hover:bg-orange-700 text-white" onClick={() => setDialog("convert-wo")}>
+                    <Wrench className="h-4 w-4" /> Work Order
+                  </Button>
+                  <Button size="sm" className="gap-2 bg-blue-700 hover:bg-blue-800 text-white" onClick={() => setDialog("convert")}>
+                    <Receipt className="h-4 w-4" /> Invoice
+                  </Button>
+                </>
               )}
               {canReject && (
                 <Button size="sm" variant="outline" className="gap-2 text-red-600 border-red-200 hover:bg-red-50" onClick={() => setDialog("reject")}>

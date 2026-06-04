@@ -13,6 +13,16 @@ export function middleware(req: NextRequest) {
     return NextResponse.next()
   }
 
+  // Standalone AI agents authenticate with a narrowly scoped shared key.
+  const agentKey = process.env.MARINA_AGENT_API_KEY
+  const suppliedAgentKey = req.headers.get("x-agent-api-key")
+  const isAgentApiRoute =
+    pathname.startsWith("/api/db/") || pathname.startsWith("/api/pricing-master")
+
+  if (isAgentApiRoute && agentKey && suppliedAgentKey === agentKey) {
+    return NextResponse.next()
+  }
+
   const isAuthRoute = pathname.startsWith("/login")
 
   // NextAuth v5 (auth.js) session cookie names

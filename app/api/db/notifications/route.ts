@@ -97,3 +97,48 @@ export async function GET(req: Request) {
 
   return NextResponse.json(data ?? [])
 }
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json()
+    const title = typeof body.title === "string" ? body.title.trim() : ""
+    const message = typeof body.message === "string" ? body.message.trim() : ""
+
+    if (!title || !message) {
+      return NextResponse.json({ error: "title and message are required" }, { status: 400 })
+    }
+
+    const priority = ["HIGH", "MEDIUM", "LOW"].includes(body.priority)
+      ? body.priority
+      : "MEDIUM"
+
+    const { data, error } = await supabase
+      .from("mms_notifications")
+      .insert({
+        type: typeof body.type === "string" && body.type.trim() ? body.type.trim() : "info",
+        title,
+        message,
+        customer_id: body.customer_id ?? null,
+        reference_id: body.reference_id == null ? null : String(body.reference_id),
+        priority,
+        read: false,
+        link: body.link ?? null,
+        created_at: body.created_at ?? new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .select()
+      .single()
+
+    if (isTableMissing(error)) {
+      return NextResponse.json(
+        { error: "mms_notifications table is not installed; run scripts/create-mms-notifications.sql" },
+        { status: 503 }
+      )
+    }
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    return NextResponse.json(data, { status: 201 })
+  } catch (error) {
+    return NextResponse.json({ error: String(error) }, { status: 500 })
+  }
+}

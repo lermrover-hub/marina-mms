@@ -1,19 +1,19 @@
 "use client"
 import React, { useState } from "react"
 import Link from "next/link"
-import { Waves, ChevronLeft, RotateCcw, Calculator, AlertTriangle, CheckCircle2, XCircle } from "lucide-react"
+import {
+  Waves, ChevronLeft, RotateCcw, Calculator,
+  AlertTriangle, CheckCircle2, XCircle, Calendar,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PageHeader } from "@/components/shared/PageHeader"
-
-// Ko Samui sample tide heights (24 hours)
-const KO_SAMUI_SAMPLE = [
-  1.2, 0.9, 0.7, 0.6, 0.8, 1.1,
-  1.5, 1.9, 2.2, 2.4, 2.3, 2.0,
-  1.7, 1.4, 1.2, 1.0, 0.9, 1.0,
-  1.3, 1.6, 1.8, 1.9, 1.7, 1.4,
-]
+import {
+  getTideHeights2026,
+  MONTH_NAMES,
+  DAYS_IN_MONTH_2026,
+} from "@/lib/tide-data-2026"
 
 interface TideSlot {
   hour: number
@@ -41,18 +41,27 @@ function defaultTideHeights(): number[] {
   return Array.from({ length: 24 }, () => 0)
 }
 
+const CURRENT_MONTH = new Date().getMonth() + 1
+const CURRENT_DAY   = new Date().getDate()
+
 export default function TideCalculatorPage() {
-  const [boatDraft, setBoatDraft] = useState("0.8")
-  const [trailerHeight, setTrailerHeight] = useState("0.3")
+  const [boatDraft,       setBoatDraft]       = useState("0.8")
+  const [trailerHeight,   setTrailerHeight]   = useState("0.3")
   const [safetyClearance, setSafetyClearance] = useState("0.5")
   const [rampDepthOffset, setRampDepthOffset] = useState("-1.0")
-  const [tideHeights, setTideHeights] = useState<number[]>(defaultTideHeights)
-  const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<CalcResult | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [tideHeights,     setTideHeights]     = useState<number[]>(defaultTideHeights)
+  const [loading,         setLoading]         = useState(false)
+  const [result,          setResult]          = useState<CalcResult | null>(null)
+  const [error,           setError]           = useState<string | null>(null)
 
-  function loadSampleData() {
-    setTideHeights([...KO_SAMUI_SAMPLE])
+  // Date picker state
+  const [selectedMonth, setSelectedMonth] = useState(CURRENT_MONTH)
+  const [selectedDay,   setSelectedDay]   = useState(CURRENT_DAY)
+  const daysInMonth = DAYS_IN_MONTH_2026[selectedMonth] ?? 30
+
+  function loadDateData() {
+    const heights = getTideHeights2026(selectedMonth, selectedDay)
+    setTideHeights(heights)
     setResult(null)
     setError(null)
   }
@@ -86,8 +95,8 @@ export default function TideCalculatorPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          boatDraft: parseFloat(boatDraft) || 0,
-          trailerHeight: parseFloat(trailerHeight) || 0,
+          boatDraft:       parseFloat(boatDraft) || 0,
+          trailerHeight:   parseFloat(trailerHeight) || 0,
           safetyClearance: parseFloat(safetyClearance) || 0,
           rampDepthOffset: parseFloat(rampDepthOffset) ?? -1.0,
           tideData,
@@ -107,12 +116,13 @@ export default function TideCalculatorPage() {
   }
 
   const safeCount = result ? result.slots.filter((s) => s.safe).length : 0
+  const selectedDateLabel = `${MONTH_NAMES[selectedMonth]} ${selectedDay}, 2026`
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Tide Safety Calculator"
-        description="Calculate safe launch and retrieval windows based on tide prediction data"
+        description="Calculate safe launch and retrieval windows based on Ko Samui 2026 tide data"
         actions={
           <Button variant="ghost" size="sm" className="gap-2" asChild>
             <Link href="/ramp-bookings">
@@ -125,6 +135,59 @@ export default function TideCalculatorPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left: Inputs */}
         <div className="lg:col-span-1 space-y-4">
+          {/* Date picker for 2026 tide data */}
+          <Card className="border-teal-200 bg-teal-50/40">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold text-teal-700 flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-teal-600" /> Ko Samui 2026 Tide Data
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">Month</label>
+                  <select
+                    value={selectedMonth}
+                    onChange={(e) => {
+                      const m = parseInt(e.target.value)
+                      setSelectedMonth(m)
+                      const maxDay = DAYS_IN_MONTH_2026[m] ?? 30
+                      if (selectedDay > maxDay) setSelectedDay(maxDay)
+                    }}
+                    className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 focus:border-teal-500 focus:outline-none"
+                  >
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                      <option key={m} value={m}>{MONTH_NAMES[m]}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">Day</label>
+                  <select
+                    value={selectedDay}
+                    onChange={(e) => setSelectedDay(parseInt(e.target.value))}
+                    className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 focus:border-teal-500 focus:outline-none"
+                  >
+                    {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((d) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <Button
+                onClick={loadDateData}
+                variant="teal"
+                size="sm"
+                className="w-full gap-2"
+              >
+                <Waves className="h-3.5 w-3.5" /> Load {selectedDateLabel}
+              </Button>
+              <p className="text-xs text-teal-600">
+                Based on Ko Samui tidal characteristics (Gulf of Thailand). Adjust individual hours as needed.
+              </p>
+            </CardContent>
+          </Card>
+
           {/* Boat & Ramp Parameters */}
           <Card>
             <CardHeader className="pb-3">
@@ -136,9 +199,7 @@ export default function TideCalculatorPage() {
               <div>
                 <label className="text-xs font-medium text-gray-600 mb-1 block">Boat Draft (m)</label>
                 <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
+                  type="number" step="0.01" min="0"
                   value={boatDraft}
                   onChange={(e) => setBoatDraft(e.target.value)}
                   className="text-sm"
@@ -147,9 +208,7 @@ export default function TideCalculatorPage() {
               <div>
                 <label className="text-xs font-medium text-gray-600 mb-1 block">Trailer / Support Height (m)</label>
                 <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
+                  type="number" step="0.01" min="0"
                   value={trailerHeight}
                   onChange={(e) => setTrailerHeight(e.target.value)}
                   className="text-sm"
@@ -158,9 +217,7 @@ export default function TideCalculatorPage() {
               <div>
                 <label className="text-xs font-medium text-gray-600 mb-1 block">Safety Clearance (m)</label>
                 <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
+                  type="number" step="0.01" min="0"
                   value={safetyClearance}
                   onChange={(e) => setSafetyClearance(e.target.value)}
                   className="text-sm"
@@ -169,8 +226,7 @@ export default function TideCalculatorPage() {
               <div>
                 <label className="text-xs font-medium text-gray-600 mb-1 block">Ramp Depth Offset (m)</label>
                 <Input
-                  type="number"
-                  step="0.01"
+                  type="number" step="0.01"
                   value={rampDepthOffset}
                   onChange={(e) => setRampDepthOffset(e.target.value)}
                   className="text-sm"
@@ -200,23 +256,13 @@ export default function TideCalculatorPage() {
 
           {/* Action buttons */}
           <div className="flex flex-col gap-2">
-            <Button
-              onClick={calculate}
-              disabled={loading}
-              variant="teal"
-              className="w-full gap-2"
-            >
+            <Button onClick={calculate} disabled={loading} variant="teal" className="w-full gap-2">
               <Calculator className="h-4 w-4" />
               {loading ? "Calculating…" : "Calculate Safe Windows"}
             </Button>
-            <div className="grid grid-cols-2 gap-2">
-              <Button variant="outline" size="sm" onClick={loadSampleData} className="gap-1.5">
-                <Waves className="h-3.5 w-3.5" /> Load Sample
-              </Button>
-              <Button variant="ghost" size="sm" onClick={resetAll} className="gap-1.5">
-                <RotateCcw className="h-3.5 w-3.5" /> Reset
-              </Button>
-            </div>
+            <Button variant="ghost" size="sm" onClick={resetAll} className="gap-1.5">
+              <RotateCcw className="h-3.5 w-3.5" /> Reset All
+            </Button>
           </div>
         </div>
 
@@ -229,12 +275,19 @@ export default function TideCalculatorPage() {
                 <CardTitle className="text-sm font-semibold text-gray-700">
                   24-Hour Tide Data (meters)
                 </CardTitle>
-                <button
-                  onClick={loadSampleData}
-                  className="text-xs text-teal-600 hover:text-teal-800 underline"
-                >
-                  Load Ko Samui Sample
-                </button>
+                <div className="flex items-center gap-2 text-xs text-gray-500">
+                  {tideHeights.some((h) => h > 0) && (
+                    <span className="text-teal-600 font-medium">
+                      Range: {Math.min(...tideHeights).toFixed(2)}–{Math.max(...tideHeights).toFixed(2)} m
+                    </span>
+                  )}
+                  <button
+                    onClick={loadDateData}
+                    className="text-teal-600 hover:text-teal-800 underline"
+                  >
+                    Reload {MONTH_NAMES[selectedMonth]} {selectedDay}
+                  </button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -273,7 +326,6 @@ export default function TideCalculatorPage() {
           {/* Results */}
           {result && (
             <div className="space-y-4">
-              {/* Summary cards */}
               <div className="grid grid-cols-2 gap-4">
                 <Card className="border-teal-200 bg-teal-50">
                   <CardContent className="pt-4 pb-3">
@@ -295,7 +347,6 @@ export default function TideCalculatorPage() {
                 </Card>
               </div>
 
-              {/* Earliest safe + windows */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {result.earliestSafeHour !== null ? (
                   <div className="rounded-lg border border-green-300 bg-green-50 px-4 py-3 flex items-center gap-3">
@@ -337,7 +388,9 @@ export default function TideCalculatorPage() {
               {/* Hour-by-hour table */}
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-semibold text-gray-700">Hourly Tide Safety Analysis</CardTitle>
+                  <CardTitle className="text-sm font-semibold text-gray-700">
+                    Hourly Tide Safety Analysis — {selectedDateLabel}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
                   <div className="overflow-x-auto">
@@ -359,9 +412,7 @@ export default function TideCalculatorPage() {
                           >
                             <td className="px-4 py-2 font-mono text-xs text-gray-500">{slot.hour}</td>
                             <td className="px-4 py-2 font-medium text-gray-800">{slot.time}</td>
-                            <td className="px-4 py-2 text-right font-mono font-semibold">
-                              {slot.height.toFixed(2)}
-                            </td>
+                            <td className="px-4 py-2 text-right font-mono font-semibold">{slot.height.toFixed(2)}</td>
                             <td className="px-4 py-2 text-right font-mono text-gray-500 text-xs">
                               ≥ {result.requiredTideHeight.toFixed(2)}
                             </td>
@@ -398,13 +449,12 @@ export default function TideCalculatorPage() {
             </div>
           )}
 
-          {/* Initial prompt when no results yet */}
           {!result && !error && (
             <Card className="border-dashed">
               <CardContent className="flex flex-col items-center justify-center py-14 text-gray-400">
                 <Waves className="h-10 w-10 mb-3 text-gray-300" />
-                <p className="text-sm font-medium">Enter parameters and tide data</p>
-                <p className="text-xs mt-1">Click &quot;Load Ko Samui Sample&quot; to get started quickly</p>
+                <p className="text-sm font-medium">Select a date and load tide data, then calculate</p>
+                <p className="text-xs mt-1">Ko Samui 2026 data loaded — click &quot;Load [date]&quot; to begin</p>
               </CardContent>
             </Card>
           )}

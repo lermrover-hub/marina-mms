@@ -228,6 +228,56 @@ Production follow-up:
 
 ## Next Sessions
 
+## Codex Verification - AI Agent Team Workflow - 2026-06-04
+
+Scope: reviewed and debugged Claude Code's uncommitted AI agent team in `C:\marina-mms\ai-agents`.
+
+Blocking issues found and fixed:
+
+- Agents called protected `/api/db/*` routes without a session and received the login page instead of JSON. Added scoped `x-agent-api-key` authentication using `MARINA_AGENT_API_KEY` in `middleware.ts` and the agent API client.
+- Agents attempted `POST /api/db/notifications`, but that route only supported GET and `mms_notifications` did not exist. Added the POST handler, created `scripts/create-mms-notifications.sql`, and successfully applied it to the database.
+- Quotation Agent checked a nonexistent `mms_service_requests.quotation_id`, so it could generate duplicate quotations. It now checks existing `mms_quotations.sr_id`.
+- Quotation API ignored the agent's service request link. It now maps `service_request_id` to `sr_id`.
+- Quotation Agent and the new quotation page used obsolete boat fields (`loa`, `beam`, `draft`). Updated them to `loa_ft`, `beam_ft`, and `draft_ft`.
+- Finance Agent used nonexistent invoice field `grand_total`. Updated outstanding calculations to use `outstanding_balance`, with a `total_amount - paid_amount` fallback.
+- Nested `ai-agents/node_modules` was untracked. Added `ai-agents/.gitignore`.
+- Added safe workflow-test controls: `AI_AGENT_SKIP_CLAUDE=true` skips paid Claude calls and `AI_AGENT_DRY_RUN=true` skips quotation/notification writes.
+- Agent runner previously logged failures but still exited successfully. It now sets a failing exit code when an agent fails.
+
+Validation:
+
+- `npx.cmd tsc --noEmit`: PASS.
+- `npm.cmd run lint`: PASS with 7 existing warnings and 0 errors.
+- `npm.cmd run build`: PASS.
+- Agent API authentication on `http://localhost:3003`:
+  - no key: HTTP 307 to `/login`
+  - wrong key: HTTP 307 to `/login`
+  - correct key: HTTP 200 JSON
+- All four agents completed against real local API/data with Claude calls and writes disabled:
+  - Quotation Agent found and processed one unquoted service request.
+  - Operations Agent found one expiring contract and reached the notification write step.
+  - Finance Agent completed the invoice scan and briefing step.
+  - Customer Service Agent completed report mode.
+- Real notification POST/GET: PASS. Temporary verification notification was found and then deleted.
+- Browser verification on `/quotations/new`: PASS. Page and AI Quotation Generator modal loaded with no console errors.
+
+## Codex Safety Review - Automation and Messaging - 2026-06-05
+
+- Production writes remain locked unless `ENABLE_AUTOMATION_WRITES=true` or `ENABLE_AI_AGENT_WRITES=true`.
+- Recurring billing now requires `Authorization: Bearer <CRON_SECRET>` instead of trusting `x-vercel-cron`.
+- LINE and WhatsApp webhooks now fail closed when signatures or secrets are missing.
+- Quotation messaging TypeScript failure and message PATCH mass assignment were fixed.
+- The real `MARINA_AGENT_API_KEY` accidentally committed in `DEV_SCRIPTS.md` was removed and rotated.
+
+Safety validation:
+
+- Agent-key GET: HTTP 200; agent-key POST: HTTP 403.
+- Valid cron secret: HTTP 200 dry-run; spoofed `x-vercel-cron`: HTTP 401.
+- LINE and WhatsApp requests without signatures: HTTP 401.
+- Public fallback WhatsApp verify token: HTTP 403.
+- All five agents passed in dry-run/skip-Claude mode.
+- TypeScript and lint passed with no errors.
+
 Passed sessions do not need full markdown reread next time. Use this checkpoint first, then inspect only the route/files under the next active session.
 
 ## Test / Debug Workflow Rule

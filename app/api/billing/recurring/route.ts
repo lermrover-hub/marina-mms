@@ -172,7 +172,14 @@ export async function POST(req: Request) {
     if (contractsErr) throw contractsErr
 
     if (!contracts || contracts.length === 0) {
-      return NextResponse.json({ generated: [], skipped: [], period: targetPeriod, message: "No active contracts found" })
+      return NextResponse.json({
+        generated: [],
+        skipped: [],
+        period: targetPeriod,
+        dry_run: dryRun,
+        writes_enabled: writesEnabled,
+        message: "No active contracts found",
+      })
     }
 
     // ── 2. Fetch existing invoices for this period to detect duplicates ──

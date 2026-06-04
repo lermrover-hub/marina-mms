@@ -39,22 +39,8 @@ const ENDPOINTS = [
 ]
 
 for (const path of ENDPOINTS) {
-  test(`GET ${path}`, async (t) => {
-    let r
-    try {
-      r = await get(path)
-    } catch (err) {
-      // Network / cold-start timeout — skip rather than fail
-      t.skip(`Network error (${err.message.slice(0, 60)}) — run again when Vercel is warm`)
-      return
-    }
-
-    // Routes not yet deployed return 404 — skip with a clear message
-    if (r.status === 404) {
-      t.skip(`${path} → 404 (route not yet deployed to Vercel)`)
-      return
-    }
-
+  test(`GET ${path}`, async () => {
+    const r = await get(path)
     assertJson(r, path)
     const parsed = JSON.parse(r.body)
     assert.ok(
@@ -68,6 +54,6 @@ test("agent key is set", () => {
   assert.ok(AGENT_KEY.length > 0, "MARINA_AGENT_API_KEY must be set in .env")
 })
 
-test("API base is production URL", () => {
-  assert.ok(BASE.startsWith("https://"), `MARINA_API_BASE should be https:// — got: ${BASE}`)
+test("API base is an HTTP URL", () => {
+  assert.ok(/^https?:\/\//.test(BASE), `MARINA_API_BASE should be an HTTP URL — got: ${BASE}`)
 })

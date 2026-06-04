@@ -64,16 +64,10 @@ async function liveGet(t, path) {
   const BASE      = process.env.MARINA_API_BASE
   const AGENT_KEY = process.env.MARINA_AGENT_API_KEY
   if (!BASE || !AGENT_KEY) { t.skip("env not set"); return null }
-  try {
-    const res = await fetch(`${BASE}${path}`, {
-      headers: { "x-agent-api-key": AGENT_KEY }, redirect: "manual",
-    })
-    if (res.status === 404) { t.skip(`${path} not yet deployed to Vercel`); return null }
-    return { status: res.status, data: await res.json() }
-  } catch (err) {
-    t.skip(`Network error: ${err.message.slice(0, 60)}`)
-    return null
-  }
+  const res = await fetch(`${BASE}${path}`, {
+    headers: { "x-agent-api-key": AGENT_KEY }, redirect: "manual",
+  })
+  return { status: res.status, data: await res.json() }
 }
 
 test("live: messages endpoint returns array", async (t) => {

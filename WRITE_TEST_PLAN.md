@@ -1,23 +1,27 @@
 # AI Agent Write Test Plan — Revised
-_Status: AWAITING APPROVAL — no seeds inserted, no runs executed._
+_Status: AWAITING APPROVAL — staging ready, no seeds inserted, no runs executed._
 _Last revised: 2026-06-05_
 
 ---
 
-## ⚠️ Staging Database Report
+## Staging Database — Ready
 
-Only **one Supabase project** exists: `orm-marina` (`csltloqbjupxqwbkunsd`, ap-south-1).
-There is no staging or development Supabase project.
+| Item | Value |
+|---|---|
+| Project name | `marina-mms-staging` |
+| Project ID | `zanlunbgupdtqznruzok` |
+| Region | `ap-south-1` (same as production) |
+| URL | `https://zanlunbgupdtqznruzok.supabase.co` |
+| Plan | Free ($0/month) |
+| Schema | 27 tables applied — schema-only, zero data |
+| Production | **completely isolated** — no data copied |
 
-**Consequence:** seed records will be inserted into the production database.
-Test records are isolated by UUID prefix and fully reversible via the cleanup script below,
-but there is no automated point-in-time recovery on the current plan tier.
+Local dev config template: `C:\marina-mms\.env.staging.example`
+Copy to `.env.local` and add `SUPABASE_SERVICE_ROLE_KEY` from:
+https://supabase.com/dashboard/project/zanlunbgupdtqznruzok/settings/api
 
-**Action required before proceeding:**
-- Confirm that inserting isolated TEST-AI records into the production Supabase is acceptable, OR
-- Create a new Supabase staging project and provide credentials before proceeding.
-
-Do not insert any records until this is explicitly approved.
+All seed records, agent writes, and test runs will use staging only.
+Production Supabase (`csltloqbjupxqwbkunsd`) is untouched.
 
 ---
 
@@ -60,17 +64,18 @@ no schema alteration required.
 
 ## Database Backup / Recovery Confirmation
 
+Seed records go into **staging** (`zanlunbgupdtqznruzok`), not production.
+Production is read-only throughout.
+
 Before any seed insertion, confirm the following:
 
-1. **Supabase dashboard backup status** — verify the most recent automatic backup timestamp
-   at https://supabase.com/dashboard/project/csltloqbjupxqwbkunsd/database/backups
-2. **Manual backup** — run the cleanup SQL below in the Supabase SQL editor now (dry run to confirm 0 rows)
-   to verify test tables are clean before inserting
-3. **Recovery path** — the cleanup script (Section: Cleanup) reverses all seed inserts.
-   No schema changes are made, so a full restore is not required; the cleanup script is sufficient.
+1. **Staging is empty** — run the pre-insert dry-run query below; all counts must be 0
+2. **Recovery path** — the cleanup script reverses all inserts; staging can also be
+   dropped and recreated from `scripts/staging-schema.sql` at any time
+3. **Production unchanged** — no action needed on production backup
 
 ```sql
--- Pre-insert dry run: confirm 0 rows exist for test UUIDs
+-- Run against STAGING (zanlunbgupdtqznruzok) — all must return 0:
 SELECT 'customers'        AS t, COUNT(*) FROM mms_customers        WHERE id = '2fe7332a-4e66-42a5-b882-91293f276515'
 UNION ALL
 SELECT 'service_requests' AS t, COUNT(*) FROM mms_service_requests WHERE id = 'b13c8371-20e7-417a-b494-87a290e4d8d1'
@@ -80,7 +85,6 @@ UNION ALL
 SELECT 'contracts'        AS t, COUNT(*) FROM mms_contracts        WHERE id = '1bcc7739-c325-42b8-b5da-309c8d742a0c'
 UNION ALL
 SELECT 'messages'         AS t, COUNT(*) FROM mms_messages         WHERE sender_id = 'Utest-ai-line-001';
--- All rows must show count = 0 before proceeding.
 ```
 
 ---

@@ -118,6 +118,26 @@ Do not enable writes until every item is approved:
 6. Monitor the first live run and verify created records.
 7. Disable the flag immediately if results differ from expected behavior.
 
+## Staging Supabase
+
+| Item | Value |
+|---|---|
+| Project | `marina-mms-staging` |
+| Project ID | `zanlunbgupdtqznruzok` |
+| URL | `https://zanlunbgupdtqznruzok.supabase.co` |
+| Schema | 27 tables, schema-only, zero data |
+| Config template | `C:\marina-mms\.env.staging.example` |
+| Service role key | Get from dashboard → Settings → API |
+
+Local dev against staging:
+```powershell
+# Copy template and add service role key, then:
+cd C:\marina-mms
+copy .env.staging.example .env.local   # fill in SUPABASE_SERVICE_ROLE_KEY
+$env:MARINA_AGENT_API_KEY = "local-test-key"
+npm.cmd run dev -- --port 3004
+```
+
 ## Git and Deployment
 
 ```powershell

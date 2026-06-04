@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase-server"
 import { sendEmail } from "@/lib/email"
 import { quotationSent } from "@/lib/email-templates"
+import { pushMessage, quotationFlexMessage } from "@/lib/line"
+import { sendQuotationNotification } from "@/lib/whatsapp"
 
 const supabase = createServerClient()
 
@@ -108,26 +110,50 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         const recipientEmail = customer?.email
         const customerName   = customer?.full_name ?? customer?.company_name ?? "Valued Customer"
 
+        const siteUrl   = process.env.NEXTAUTH_URL ?? "https://marina-mms.vercel.app"
+        const quotNum   = data.quote_number ?? data.id
+        const quotTitle = data.title ?? "Marine services"
+        const amount    = Number(data.total_amount ?? 0)
+        const validUntil = data.valid_until
+          ? new Date(data.valid_until).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+          : "—"
+
+        // Email
         if (recipientEmail) {
-          const siteUrl = process.env.NEXTAUTH_URL ?? "https://marina-mms.vercel.app"
           await sendEmail({
             to:      recipientEmail,
-            subject: `Quotation ${data.quote_number ?? data.id} — Ocean Rover Marina`,
+            subject: `Quotation ${quotNum} — Ocean Rover Marina`,
             html:    quotationSent({
               customerName,
-              quotationNumber:    data.quote_number ?? data.id,
-              serviceDescription: data.title ?? "Marine services",
-              totalAmount:        Number(data.total_amount ?? 0),
-              validUntil:         data.valid_until
-                ? new Date(data.valid_until).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
-                : "—",
+              quotationNumber:    quotNum,
+              serviceDescription: quotTitle,
+              totalAmount:        amount,
+              validUntil,
               quotationUrl: `${siteUrl}/portal/quotations`,
             }),
-          })
+          }).catch((e) => console.error("[Quotation email error]", e))
         }
-      } catch (emailErr) {
-        // Email failure must never break the status update response
-        console.error("[Quotation email error]", emailErr)
+
+        // LINE
+        if (customer?.line_user_id) {
+          await pushMessage(customer.line_user_id, [
+            quotationFlexMessage({
+              customerName, quotationNumber: quotNum,
+              serviceDescription: quotTitle, totalAmount: amount, validUntil,
+              quotationUrl: `${siteUrl}/portal/quotations`,
+            }),
+          ]).catch((e) => console.error("[Quotation LINE error]", e))
+        }
+
+        // WhatsApp
+        if (customer?.whatsapp_number) {
+          await sendQuotationNotification(customer.whatsapp_number, {
+            customerName, quotationNumber: quotNum,
+            serviceDescription: quotTitle, totalAmount: amount, validUntil,
+          }).catch((e) => console.error("[Quotation WhatsApp error]", e))
+        }
+      } catch (notifyErr) {
+        console.error("[Quotation notify error]", notifyErr)
       }
     }
 

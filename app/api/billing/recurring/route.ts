@@ -26,6 +26,8 @@ import { auth } from "@/auth"
 import { createServerClient } from "@/lib/supabase-server"
 import { sendEmail } from "@/lib/email"
 import { invoiceIssued } from "@/lib/email-templates"
+import { pushMessage, invoiceFlexMessage } from "@/lib/line"
+import { sendInvoiceNotification } from "@/lib/whatsapp"
 
 const supabase = createServerClient()
 
@@ -287,30 +289,46 @@ export async function POST(req: Request) {
 
       generated.push(newInvoice)
 
-      // ── Send invoice email ──────────────────────────────────────────────
+      // ── Notify customer via email + LINE + WhatsApp ─────────────────────
       if (contract.customer_id) {
         try {
           const { data: customer } = await supabase
             .from("mms_customers")
-            .select("full_name, company_name, email")
+            .select("full_name, company_name, email, line_user_id, whatsapp_number")
             .eq("id", contract.customer_id)
             .single()
+
+          const customerName = customer?.full_name ?? customer?.company_name ?? "Valued Customer"
+          const siteUrl      = process.env.NEXTAUTH_URL ?? "https://marina-mms.vercel.app"
+          const dueDateLabel = new Date(dueDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+
           if (customer?.email) {
-            const siteUrl = process.env.NEXTAUTH_URL ?? "https://marina-mms.vercel.app"
             await sendEmail({
               to: customer.email,
               subject: `Invoice ${invoiceNumber} — Ocean Rover Marina`,
               html: invoiceIssued({
-                customerName:  customer.full_name ?? customer.company_name ?? "Valued Customer",
-                invoiceNumber,
-                amount:        totalAmount,
-                dueDate:       new Date(dueDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
-                invoiceUrl:    `${siteUrl}/portal/invoices`,
+                customerName, invoiceNumber, amount: totalAmount,
+                dueDate: dueDateLabel, invoiceUrl: `${siteUrl}/portal/invoices`,
               }),
-            })
+            }).catch((e) => console.error("[Billing email error]", e))
           }
-        } catch (emailErr) {
-          console.error("[Recurring billing email error]", emailErr)
+
+          if (customer?.line_user_id) {
+            await pushMessage(customer.line_user_id, [
+              invoiceFlexMessage({
+                customerName, invoiceNumber, totalAmount,
+                dueDate: dueDateLabel, invoiceUrl: `${siteUrl}/portal/invoices`,
+              }),
+            ]).catch((e) => console.error("[Billing LINE error]", e))
+          }
+
+          if (customer?.whatsapp_number) {
+            await sendInvoiceNotification(customer.whatsapp_number, {
+              customerName, invoiceNumber, totalAmount, dueDate: dueDateLabel,
+            }).catch((e) => console.error("[Billing WhatsApp error]", e))
+          }
+        } catch (notifyErr) {
+          console.error("[Recurring billing notify error]", notifyErr)
         }
       }
     }

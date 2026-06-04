@@ -4,9 +4,10 @@ import type { NextRequest } from "next/server"
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
-  // Always allow auth API and static assets
+  // Always allow auth API, webhooks, and static assets
   if (
     pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/webhooks/") ||
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico"
   ) {

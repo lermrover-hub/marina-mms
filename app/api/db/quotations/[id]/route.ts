@@ -103,7 +103,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       try {
         const { data: customer } = await supabase
           .from("mms_customers")
-          .select("full_name, company_name, email")
+          .select("full_name, company_name, email, line_user_id, whatsapp_number")
           .eq("id", data.customer_id)
           .single()
 

@@ -1,0 +1,21 @@
+{
+  "name": "marina-mms-ai-agents",
+  "version": "0.1.0",
+  "description": "Autonomous AI agent team for Marina MMS — calls REST APIs, never modifies web app",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "run": "node run.js",
+    "quotation": "node run.js --agent=quotation",
+    "operations": "node run.js --agent=operations",
+    "finance": "node run.js --agent=finance",
+    "customer-service": "node run.js --agent=customer-service",
+    "messaging": "node run.js --agent=messaging",
+    "test": "node --test tests/*.test.js",
+    "test:watch": "node --test --watch tests/*.test.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.56.0",
+    "dotenv": "^16.4.7"
+  }
+}

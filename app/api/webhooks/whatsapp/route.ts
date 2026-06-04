@@ -10,11 +10,11 @@
 
 import { NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase-server"
-import { sendAck, markRead } from "@/lib/whatsapp"
+import { sendAck, markRead, verifyWhatsAppSignature } from "@/lib/whatsapp"
 
 export const dynamic = "force-dynamic"
 
-const VERIFY_TOKEN = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN ?? "marina-mms-webhook"
+const VERIFY_TOKEN = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN ?? ""
 
 // ─── GET — webhook verification ───────────────────────────────────────────────
 export async function GET(req: NextRequest) {
@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   const token     = searchParams.get("hub.verify_token")
   const challenge = searchParams.get("hub.challenge")
 
-  if (mode === "subscribe" && token === VERIFY_TOKEN) {
+  if (VERIFY_TOKEN && mode === "subscribe" && token === VERIFY_TOKEN) {
     return new Response(challenge ?? "", { status: 200 })
   }
   return NextResponse.json({ error: "Forbidden" }, { status: 403 })
@@ -32,7 +32,15 @@ export async function GET(req: NextRequest) {
 // ─── POST — incoming events ───────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json()
+    const rawBody = await req.text()
+    const signature = req.headers.get("x-hub-signature-256") ?? ""
+    if (!verifyWhatsAppSignature(rawBody, signature)) {
+      return NextResponse.json({ error: "Invalid signature" }, { status: 401 })
+    }
+    if (process.env.ENABLE_AUTOMATION_WRITES !== "true") {
+      return NextResponse.json({ error: "Automation writes are disabled" }, { status: 503 })
+    }
+    const body = JSON.parse(rawBody)
 
     // WhatsApp Cloud API wraps everything in entry[].changes[]
     const changes = body?.entry?.[0]?.changes ?? []

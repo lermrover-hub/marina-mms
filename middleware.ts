@@ -8,6 +8,7 @@ export function middleware(req: NextRequest) {
   if (
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/webhooks/") ||
+    pathname === "/api/billing/recurring" ||
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico"
   ) {
@@ -21,6 +22,13 @@ export function middleware(req: NextRequest) {
     pathname.startsWith("/api/db/") || pathname.startsWith("/api/pricing-master")
 
   if (isAgentApiRoute && agentKey && suppliedAgentKey === agentKey) {
+    const isReadOnlyRequest = req.method === "GET" || req.method === "HEAD"
+    if (!isReadOnlyRequest && process.env.ENABLE_AI_AGENT_WRITES !== "true") {
+      return NextResponse.json(
+        { error: "AI agent writes are disabled" },
+        { status: 403 }
+      )
+    }
     return NextResponse.next()
   }
 

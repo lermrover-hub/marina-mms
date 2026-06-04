@@ -9,10 +9,23 @@
  *   WHATSAPP_API_VERSION        — optional, defaults to v20.0
  */
 
+import { createHmac, timingSafeEqual } from "crypto"
+
 const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID ?? ""
 const ACCESS_TOKEN    = process.env.WHATSAPP_ACCESS_TOKEN ?? ""
+const APP_SECRET      = process.env.WHATSAPP_APP_SECRET ?? ""
 const API_VERSION     = process.env.WHATSAPP_API_VERSION ?? "v20.0"
 const SITE_URL        = process.env.NEXTAUTH_URL ?? "https://marina-mms.vercel.app"
+
+export function verifyWhatsAppSignature(body: string, signature: string): boolean {
+  if (!APP_SECRET || !signature.startsWith("sha256=")) return false
+  const expected = createHmac("sha256", APP_SECRET).update(body).digest("hex")
+  const supplied = signature.slice("sha256=".length)
+  const expectedBuffer = Buffer.from(expected)
+  const suppliedBuffer = Buffer.from(supplied)
+  return expectedBuffer.length === suppliedBuffer.length
+    && timingSafeEqual(expectedBuffer, suppliedBuffer)
+}
 
 // ─── Core send ────────────────────────────────────────────────────────────────
 

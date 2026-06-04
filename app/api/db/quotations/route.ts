@@ -80,6 +80,7 @@ export async function POST(req: Request) {
         customer_name: customerName,
         boat_id: boatId,
         boat_name: boat?.name ?? null,
+        sr_id: body.service_request_id ?? body.sr_id ?? null,
         title: body.title ?? null,
         status,
         subtotal,

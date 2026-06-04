@@ -39,13 +39,16 @@ export const dynamic = "force-dynamic"
  * Returns true when the request is authorised to call this endpoint.
  *
  * Two valid callers:
- *  1. Vercel Cron — sends `x-vercel-cron: 1` header automatically.
+ *  1. Vercel Cron with Authorization: Bearer <CRON_SECRET>.
  *  2. Internal admin users — authenticated session with role SUPER_ADMIN or
  *     ADMIN (for manual triggers from the UI).
  */
 async function isAuthorised(req: Request): Promise<boolean> {
-  // 1. Vercel Cron header
-  if (req.headers.get("x-vercel-cron") === "1") return true
+  // 1. Vercel Cron secret
+  const cronSecret = process.env.CRON_SECRET
+  if (cronSecret && req.headers.get("authorization") === `Bearer ${cronSecret}`) {
+    return true
+  }
 
   // 2. Admin session (NextAuth v5)
   const session = await auth()
@@ -148,7 +151,8 @@ export async function POST(req: Request) {
     const { searchParams } = new URL(req.url)
     const periodParam  = searchParams.get("period")      // YYYY-MM override
     const contractIdP  = searchParams.get("contract_id") // single contract
-    const dryRun       = searchParams.get("dry_run") === "true"
+    const writesEnabled = process.env.ENABLE_AUTOMATION_WRITES === "true"
+    const dryRun       = searchParams.get("dry_run") === "true" || !writesEnabled
 
     const targetPeriod = periodParam ?? billingPeriodKey(new Date())
     const [tYear, tMonth] = targetPeriod.split("-").map(Number)
@@ -347,6 +351,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       period:    targetPeriod,
       dry_run:   dryRun,
+      writes_enabled: writesEnabled,
       generated: generated.length,
       skipped:   skipped.length,
       invoices:  generated,
@@ -362,15 +367,16 @@ export async function POST(req: Request) {
 
 /**
  * GET: Vercel Cron calls this on schedule (0 8 1 * *).
- * When triggered by cron (x-vercel-cron: 1) it runs for real.
- * All other GET calls are treated as dry-run previews.
+ * Automation writes remain disabled unless ENABLE_AUTOMATION_WRITES=true.
+ * All other calls are treated as dry-run previews.
  */
 export async function GET(req: Request) {
   if (!(await isAuthorised(req))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
-  const isCron = req.headers.get("x-vercel-cron") === "1"
   const url = new URL(req.url)
-  if (!isCron) url.searchParams.set("dry_run", "true")
+  if (process.env.ENABLE_AUTOMATION_WRITES !== "true") {
+    url.searchParams.set("dry_run", "true")
+  }
   return POST(new Request(url.toString(), { method: "POST", headers: req.headers }))
 }

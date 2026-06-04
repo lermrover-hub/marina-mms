@@ -26,6 +26,9 @@ export async function POST(req: NextRequest) {
     if (!verifyLineSignature(rawBody, signature)) {
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 })
     }
+    if (process.env.ENABLE_AUTOMATION_WRITES !== "true") {
+      return NextResponse.json({ error: "Automation writes are disabled" }, { status: 503 })
+    }
 
     const payload = JSON.parse(rawBody)
     const events: LineEvent[] = payload.events ?? []

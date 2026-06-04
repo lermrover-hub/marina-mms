@@ -7,7 +7,7 @@
  *   LINE_CHANNEL_SECRET        — for webhook signature verification
  */
 
-import { createHmac } from "crypto"
+import { createHmac, timingSafeEqual } from "crypto"
 
 const ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? ""
 const CHANNEL_SECRET = process.env.LINE_CHANNEL_SECRET ?? ""
@@ -49,9 +49,11 @@ export async function replyMessage(replyToken: string, messages: unknown[]) {
 // ─── Signature verification ───────────────────────────────────────────────────
 
 export function verifyLineSignature(body: string, signature: string): boolean {
-  if (!CHANNEL_SECRET) return true // skip in dev
+  if (!CHANNEL_SECRET || !signature) return false
   const hash = createHmac("sha256", CHANNEL_SECRET).update(body).digest("base64")
-  return hash === signature
+  const expected = Buffer.from(hash)
+  const supplied = Buffer.from(signature)
+  return expected.length === supplied.length && timingSafeEqual(expected, supplied)
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

@@ -26,7 +26,7 @@ Business rules you must follow:
 - Valid days: 7
 - Return ONLY a valid JSON object — no explanation, no markdown fences.`
 
-export async function run() {
+export async function run({ srId, customerId } = {}) {
   console.log("[QuotationAgent] Starting…")
 
   // 1. Fetch service requests and existing quotations (sequential to avoid cold-start timeouts)
@@ -49,11 +49,21 @@ export async function run() {
       .map((quotation) => quotation.sr_id)
       .filter(Boolean)
   )
-  const pending = requests.filter(
+  let pending = requests.filter(
     (r) =>
       ["NEW", "new", "NEW_REQUEST", "new_request", "INSPECTION_REQUIRED", "inspection_required"].includes(r.status)
       && !quotedRequestIds.has(r.id)
   )
+
+  // Pilot mode: scope to explicit sr or customer only
+  if (srId) {
+    pending = pending.filter(r => r.id === srId)
+    console.log(`[QuotationAgent] Pilot scope: sr=${srId} → ${pending.length} request(s)`)
+  } else if (customerId) {
+    pending = pending.filter(r => r.customer_id === customerId)
+    console.log(`[QuotationAgent] Pilot scope: customer=${customerId} → ${pending.length} request(s)`)
+  }
+
   console.log(`[QuotationAgent] ${pending.length} requests need quotations (of ${requests.length} total)`)
 
   const results = []

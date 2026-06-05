@@ -290,7 +290,7 @@ npm.cmd run build
 ```powershell
 cd C:\marina-mms\ai-agents
 npm.cmd test
-node run.js                                          # all scheduled agents
+node run.js                                          # all scheduled agents (staging/dry-run only)
 node run.js --agent=quotation
 node run.js --agent=marina                           # (was: operations)
 node run.js --agent=finance
@@ -301,6 +301,69 @@ node server.js                                       # HTTP server port 4000 (LI
 ```
 
 Architecture: L1 CEO Orchestrator → L2 (Marina/Finance/HR/Comms) → L3 (Quotation/Tide/Calculator/DocWriter) → L4 (QA/Escalation/AuditTrail)
+
+## Production Agent Commands
+
+### Read-only smoke test (safe, no writes, no Claude)
+
+```powershell
+cd C:\marina-mms\ai-agents
+$env:MARINA_API_BASE      = "https://marina-mms.vercel.app"
+$env:AI_AGENT_DRY_RUN     = "true"
+$env:AI_AGENT_SKIP_CLAUDE = "true"
+node --test tests/*.test.js
+```
+
+### Production pilot (requires explicit user approval first)
+
+Three env vars must ALL be set; any missing one will block the run:
+
+```powershell
+$env:MARINA_API_BASE      = "https://marina-mms.vercel.app"
+$env:AI_AGENT_DRY_RUN     = "false"
+$env:AI_AGENT_PILOT_MODE  = "true"
+$env:AI_AGENT_SKIP_CLAUDE = "false"
+# --agent and --sr are required; "all" is blocked
+node run.js --agent=quotation --sr=<service-request-id>
+```
+
+Guard rules enforced in run.js (process.exit(1) on violation):
+1. Production URL + DRY_RUN=false → requires AI_AGENT_PILOT_MODE=true
+2. Pilot mode → requires --agent (cannot be "all")
+3. Quotation pilot → requires --sr=<id> or --customer=<id>
+4. pricing-master is read-only in all modes (no write endpoint exists)
+
+### Pre-run snapshot checklist
+
+Before any production pilot run, record these counts:
+
+```powershell
+$h = @{"x-agent-api-key"=$env:MARINA_AGENT_API_KEY}
+$b = "https://marina-mms.vercel.app"
+((Invoke-WebRequest "$b/api/db/quotations"    -Headers $h -UseBasicParsing).Content | ConvertFrom-Json).Count
+((Invoke-WebRequest "$b/api/db/notifications" -Headers $h -UseBasicParsing).Content | ConvertFrom-Json).Count
+((Invoke-WebRequest "$b/api/pricing-master?isActive=true" -Headers $h -UseBasicParsing).Content | ConvertFrom-Json).Count
+```
+
+Expected before pilot: pricing_master = 99, no unexpected quotations.
+
+### Post-run verification checklist
+
+After pilot run, verify:
+- [ ] Quotation count increased by exactly 1
+- [ ] Quotation status = DRAFT (not SENT or ACCEPTED)
+- [ ] Quotation generated_by = "ai-agent"
+- [ ] Line item prices match Rate Card codes
+- [ ] pricing_master active rows still = 99
+- [ ] No notifications of type "agent_escalation"
+- [ ] Grand total > 0 (not dry-run stub)
+
+### Rollback / cleanup notes
+
+If a pilot quotation must be removed:
+- Set status to CANCELLED via the web app quotation detail page.
+- Do not delete directly from Supabase unless instructed.
+- Record the quotation ID and reason in DEV_SCRIPTS.md before cancellation.
 
 ## Required Secrets
 

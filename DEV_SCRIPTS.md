@@ -4,22 +4,30 @@ Last verified: 2026-06-05 (Full staging regression passed)
 
 ## Latest Codex Review for Claude
 
-Review time: 2026-06-06 01:50 Asia/Bangkok
+Review time: 2026-06-06 02:45 Asia/Bangkok
 
-Codex reviewed the latest Claude follow-up.
+Production write pilot completed and write flag disabled.
 
-- Working tree had one uncommitted change in `ai-agents/lib/api-client.js`.
-- Change replaces native `fetch` with Node `http`/`https` request handling so
-  Windows certificate/proxy behavior is more reliable for agent smoke tests.
-- Full AI agent test suite passed with the change: 88 passed, 0 failed.
-- `npm.cmd run lint` passed with 0 errors; the same 8 existing web app warnings
-  remain.
-- `git diff --check` passed.
-- Secret scan of the diff found no keys.
+Pilot results:
 
-Next approval gate remains unchanged: production writes require explicit user
-approval, a selected production service request ID, and temporary Vercel
-`ENABLE_AI_AGENT_WRITES=true`.
+- SR: `57e96f05` "1 year in the water, need antifouling paint" — Complete Marine Services Co., Ltd.
+- Quotation created: `76668c49` DRAFT ฿93,584 / 10 line items / generated_by=ai-agent
+- Line item prices matched Rate Card: BOTTOM_FT=120 ✓ PAINT_ANTIFOUL_M=250 ✓ PAINT_PRIMER_EP=200 ✓
+- pricing_master stayed at 99 active rows ✓
+- ENABLE_AI_AGENT_WRITES disabled on Vercel immediately after run ✓
+- Write lock restored: POST /api/db/notifications → 403 ✓
+
+Bug fixed during pilot:
+
+- line_total is a generated column in production schema; inserting it caused 500.
+  Removed from quotation item insert in app/api/db/quotations/route.ts (commit 184df69).
+- api-client.js replaced native fetch with Node https module for Windows compatibility (commit b42f865).
+
+Next approval gates (each requires explicit approval):
+
+1. Enable scheduled production runs (cron) — requires CRON_SECRET and ENABLE_AUTOMATION_WRITES.
+2. Enable LINE/WhatsApp auto-reply — requires messaging credentials and ENABLE_AUTOMATION_WRITES.
+3. Enable production writes permanently — only after monitoring and sign-off.
 
 ## Previous Codex Review for Claude
 

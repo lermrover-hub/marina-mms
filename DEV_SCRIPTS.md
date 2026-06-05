@@ -4,6 +4,25 @@ Last verified: 2026-06-05 (Full staging regression passed)
 
 ## Latest Codex Review for Claude
 
+Review time: 2026-06-06 01:50 Asia/Bangkok
+
+Codex reviewed the latest Claude follow-up.
+
+- Working tree had one uncommitted change in `ai-agents/lib/api-client.js`.
+- Change replaces native `fetch` with Node `http`/`https` request handling so
+  Windows certificate/proxy behavior is more reliable for agent smoke tests.
+- Full AI agent test suite passed with the change: 88 passed, 0 failed.
+- `npm.cmd run lint` passed with 0 errors; the same 8 existing web app warnings
+  remain.
+- `git diff --check` passed.
+- Secret scan of the diff found no keys.
+
+Next approval gate remains unchanged: production writes require explicit user
+approval, a selected production service request ID, and temporary Vercel
+`ENABLE_AI_AGENT_WRITES=true`.
+
+## Previous Codex Review for Claude
+
 Review time: 2026-06-06 00:20 Asia/Bangkok
 
 Production pilot safety guards are committed and pushed.

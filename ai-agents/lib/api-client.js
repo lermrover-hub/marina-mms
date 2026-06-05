@@ -1,33 +1,72 @@
 /**
  * Marina MMS API client. All agent communication with the web app goes here.
+ *
+ * Uses Node.js built-in https/http modules instead of native fetch so that
+ * Windows system certificate store and proxy settings are respected.
  */
 
-const BASE = process.env.MARINA_API_BASE ?? "http://localhost:3000"
+import https from "https"
+import http  from "http"
+
+const BASE    = process.env.MARINA_API_BASE ?? "http://localhost:3000"
 const DRY_RUN = process.env.AI_AGENT_DRY_RUN === "true"
+
+function nodeRequest(url, options = {}, redirects = 0) {
+  return new Promise((resolve, reject) => {
+    if (redirects > 5) return reject(new Error("Too many redirects"))
+    const parsed  = new URL(url)
+    const lib     = parsed.protocol === "https:" ? https : http
+    const reqOpts = {
+      hostname: parsed.hostname,
+      port:     parsed.port || (parsed.protocol === "https:" ? 443 : 80),
+      path:     parsed.pathname + parsed.search,
+      method:   options.method ?? "GET",
+      headers:  options.headers ?? {},
+    }
+
+    const req = lib.request(reqOpts, (res) => {
+      // Follow 3xx redirects (GET only)
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        const next = new URL(res.headers.location, url).toString()
+        res.resume()
+        resolve(nodeRequest(next, { ...options, method: "GET", body: undefined }, redirects + 1))
+        return
+      }
+      let data = ""
+      res.on("data", chunk => { data += chunk })
+      res.on("end", () => resolve({ status: res.statusCode, headers: res.headers, body: data }))
+    })
+
+    req.on("error", reject)
+    if (options.body) req.write(options.body)
+    req.end()
+  })
+}
 
 async function apiFetch(path, options = {}) {
   const agentKey = process.env.MARINA_AGENT_API_KEY
-  const res = await fetch(`${BASE}${path}`, {
-    ...options,
-    redirect: "manual",
+  const url      = `${BASE}${path}`
+
+  const res = await nodeRequest(url, {
+    method: options.method ?? "GET",
     headers: {
       "Content-Type": "application/json",
       ...(agentKey ? { "x-agent-api-key": agentKey } : {}),
       ...options.headers,
     },
+    body: options.body,
   })
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => "")
-    throw new Error(`API ${options.method ?? "GET"} ${path} -> ${res.status}: ${text}`)
+  if (res.status >= 300) {
+    throw new Error(`API ${options.method ?? "GET"} ${path} -> ${res.status}: ${res.body.slice(0, 200)}`)
   }
 
-  const contentType = res.headers.get("content-type") ?? ""
+  const contentType = res.headers["content-type"] ?? ""
   if (!contentType.includes("application/json")) {
     throw new Error(`API ${options.method ?? "GET"} ${path} returned non-JSON content`)
   }
 
-  return res.json()
+  return JSON.parse(res.body)
 }
 
 function dryRunResult(kind, body) {

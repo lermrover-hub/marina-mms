@@ -1,5 +1,5 @@
 # AI Agent Write Test Plan — Revised
-_Status: AWAITING APPROVAL — staging ready, no seeds inserted, no runs executed._
+_Status: RUN 1 PASSED — staging seeded, dry-run completed, no writes created._
 _Last revised: 2026-06-05_
 
 ---
@@ -17,11 +17,35 @@ _Last revised: 2026-06-05_
 | Production | **completely isolated** — no data copied |
 
 Local dev config template: `C:\marina-mms\.env.staging.example`
-Copy to `.env.local` and add `SUPABASE_SERVICE_ROLE_KEY` from:
+Copy to `.env.staging.local` and add `SUPABASE_SERVICE_ROLE_KEY` from:
 https://supabase.com/dashboard/project/zanlunbgupdtqznruzok/settings/api
+
+Start the staging web app with `npm.cmd run dev:staging`.
+The launcher blocks the production project ID, disables agent and automation
+writes, and removes messaging credentials from the process. Do not overwrite
+the existing `.env.local`.
 
 All seed records, agent writes, and test runs will use staging only.
 Production Supabase (`csltloqbjupxqwbkunsd`) is untouched.
+
+Before Run 1, verify that staging has the required primary keys and unique
+constraints. The current schema-only export contains columns and defaults but
+does not reproduce those constraints.
+
+Apply staging constraints in the staging Supabase SQL Editor:
+
+```sql
+-- paste and run scripts/staging-constraints.sql
+```
+
+Import the read-only staging Rate Card copy with:
+
+```powershell
+node scripts/import-rate-card-to-staging.mjs
+```
+
+Current status: imported and verified on 2026-06-05 with 99 active rows across
+14 categories.
 
 ---
 
@@ -90,6 +114,12 @@ SELECT 'messages'         AS t, COUNT(*) FROM mms_messages         WHERE sender_
 ---
 
 ## Test Seed Records
+
+The executable staging seed helper is:
+
+```powershell
+node scripts/seed-ai-agent-staging.mjs seed
+```
 
 ### 1. mms_customers
 
@@ -280,13 +310,7 @@ Confirm agents correctly identify all 5 test records without creating any DB rec
 
 ```powershell
 cd C:\marina-mms
-# Messaging credentials must NOT be set:
-Remove-Item Env:RESEND_API_KEY            -ErrorAction SilentlyContinue
-Remove-Item Env:LINE_CHANNEL_ACCESS_TOKEN -ErrorAction SilentlyContinue
-Remove-Item Env:WHATSAPP_PHONE_NUMBER_ID  -ErrorAction SilentlyContinue
-Remove-Item Env:WHATSAPP_ACCESS_TOKEN     -ErrorAction SilentlyContinue
-$env:MARINA_AGENT_API_KEY = "local-test-key"
-npm.cmd run dev -- --port 3004
+npm.cmd run dev:staging
 ```
 
 ### Agent run (second terminal)
@@ -336,7 +360,7 @@ SELECT COUNT(*) AS pricing_master_rows FROM pricing_master;
 ---
 
 ## Run 2 — Local Write, Mock Claude
-_Awaiting Run 1 approval. Details available on request._
+_Awaiting user approval. Run 1 passed on staging with dry-run writes._
 
 ## Run 3 — Local Write, Real Claude
 _Awaiting Run 2 approval. Details available on request._

@@ -36,6 +36,23 @@ Always:
 - Keep replies concise (under 150 words unless detail is essential)
 - Never commit to prices or timelines without confirming with operations`
 
+export function daysOverdue(dueDateStr) {
+  if (!dueDateStr) return null
+  const d = new Date(dueDateStr)
+  return Math.ceil((new Date() - d) / (1000 * 60 * 60 * 24))
+}
+
+export function isOverdueInvoice(invoice) {
+  if (["paid", "PAID", "cancelled", "CANCELLED"].includes(invoice.status)) {
+    return false
+  }
+  if (invoice.status === "overdue" || invoice.status === "OVERDUE") {
+    return true
+  }
+  const days = daysOverdue(invoice.due_date)
+  return days !== null && days > 0
+}
+
 export async function run({ inquiry, customerId } = {}) {
   if (!inquiry || !customerId) {
     console.log("[CustomerServiceAgent] Requires { inquiry, customerId } to run interactively.")
@@ -95,7 +112,7 @@ async function reportMode() {
   const invList    = Array.isArray(invoices)   ? invoices   : []
   const quotList   = Array.isArray(quotations) ? quotations : []
 
-  const overdueInvoices = invList.filter((i) => i.status === "overdue" || i.status === "OVERDUE")
+  const overdueInvoices = invList.filter(isOverdueInvoice)
   const pendingQuots    = quotList.filter((q) => ["SENT","sent"].includes(q.status))
 
   console.log(`[CustomerServiceAgent] ${overdueInvoices.length} customers with overdue invoices`)

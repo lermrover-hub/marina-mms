@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:staging": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-staging.ps1",
+    "dev:staging:writes": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-staging.ps1 -EnableAgentWrites",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

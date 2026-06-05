@@ -111,6 +111,7 @@ export async function POST(req: Request) {
           unit_price: unitPrice,
           discount_pct: 0,
           taxable: vatAmount > 0,
+          line_total: qty * unitPrice,
           sort_order: index + 1,
         }
       })

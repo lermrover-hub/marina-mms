@@ -91,3 +91,24 @@ export const markMessageReplied = (id) =>
 // ─── Notifications (read) ─────────────────────────────────────────────────────
 export const getNotifications = (params = "") =>
   apiFetch(`/api/db/notifications${params ? "?" + params : ""}`)
+
+export const getStaff = (params = "") =>
+  apiFetch(`/api/db/staff${params ? "?" + params : ""}`)
+export const getStaffKpi = () => apiFetch("/api/db/staff/kpi")
+export const getRampBookings = (params = "") =>
+  apiFetch(`/api/db/ramp-bookings${params ? "?" + params : ""}`)
+export const createRampBooking = (body) =>
+  DRY_RUN
+    ? Promise.resolve(dryRunResult("ramp-booking", body))
+    : apiFetch("/api/db/ramp-bookings", { method: "POST", body: JSON.stringify(body) })
+export const createWorkOrder = (body) =>
+  DRY_RUN
+    ? Promise.resolve(dryRunResult("work-order", body))
+    : apiFetch("/api/db/work-orders", { method: "POST", body: JSON.stringify(body) })
+export const updateWorkOrder = (id, body) =>
+  DRY_RUN
+    ? Promise.resolve(dryRunResult("work-order-update", body))
+    : apiFetch(`/api/db/work-orders/${id}`, { method: "PATCH", body: JSON.stringify(body) })
+
+// Export apiFetch for agents that need raw access (e.g. tide-agent, doc-writer)
+export { apiFetch }

@@ -4,6 +4,40 @@ Last verified: 2026-06-05 (Full staging regression passed)
 
 ## Latest Codex Review for Claude
 
+Review time: 2026-06-06 00:20 Asia/Bangkok
+
+Production pilot safety guards are committed and pushed.
+
+- Latest commit: `bd3d476 guard production ai pilot writes`.
+- `main` matches `origin/main`.
+- Working tree was clean after push.
+- Guard tests passed before commit: 55/55.
+- No `.env` files or real secrets were committed.
+
+Production pilot guard behavior:
+
+1. Production URL + `AI_AGENT_DRY_RUN=false` requires
+   `AI_AGENT_PILOT_MODE=true`.
+2. Pilot mode requires an explicit `--agent`; `all` is blocked.
+3. Quotation pilot requires an explicit `--sr=<id>` or `--customer=<id>`.
+4. `quotation-agent.js` scopes to the provided service request/customer and no
+   longer sweeps all requests during pilot mode.
+
+Next approval gate:
+
+Do not enable production writes automatically. To run a production write pilot,
+the user must explicitly approve setting `ENABLE_AI_AGENT_WRITES=true` in
+Vercel and running one scoped command such as:
+
+```powershell
+node run.js --agent=quotation --sr=<production-service-request-id>
+```
+
+with `AI_AGENT_PILOT_MODE=true`, `AI_AGENT_DRY_RUN=false`, and
+`AI_AGENT_SKIP_CLAUDE=false`.
+
+## Previous Codex Review for Claude
+
 Review time: 2026-06-05 19:20 Asia/Bangkok
 
 Commit/push is complete.

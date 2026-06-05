@@ -19,11 +19,18 @@ Commit/push is complete.
   - `/inventory` redirects to `/login`, then login responds 200.
 - No production writes, Vercel env changes, or Rate Card changes were made.
 
+Production read-only smoke test results (2026-06-05):
+
+- All 7 read endpoints returned HTTP 200 against marina-mms.vercel.app.
+- Write lock confirmed: POST /api/db/notifications returned HTTP 403.
+- Full test suite (78 tests) passed against production URL with
+  AI_AGENT_DRY_RUN=true and AI_AGENT_SKIP_CLAUDE=true.
+- No writes, no Claude API calls, no Vercel env changes made.
+
 Next approval gate:
 
-Do not enable production AI writes yet. Next safe step is production read-only
-agent smoke testing, then a separate explicit approval for any production write
-flag.
+Do not enable production AI writes yet. Explicit approval required before
+setting ENABLE_AI_AGENT_WRITES=true on Vercel.
 
 ## Previous Codex Review for Claude
 

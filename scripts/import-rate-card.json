@@ -521,7 +521,7 @@
   },
   {
     "code": "BERTH_JETSKI_M",
-    "service_en": "Jet ski / PWC berth monthly (W-slots)",
+    "service_en": "Jet ski / PWC wet berth monthly",
     "service_th": "ท่าจอดเจ็ทสกีรายเดือน",
     "category": "Wet Berth",
     "unit": "month",
@@ -531,7 +531,7 @@
   },
   {
     "code": "BERTH_SB1_M",
-    "service_en": "Speedboat <24 ft W-berth monthly",
+    "service_en": "Speedboat <24 ft wet berth monthly",
     "service_th": "ท่าจอดสปีดโบ๊ท<24ฟุต",
     "category": "Wet Berth",
     "unit": "ft/month",
@@ -541,7 +541,7 @@
   },
   {
     "code": "BERTH_SB2_M",
-    "service_en": "Speedboat 24–30 ft W-berth monthly",
+    "service_en": "Speedboat 24–30 ft wet berth monthly",
     "service_th": "ท่าจอดสปีดโบ๊ท24-30ฟุต",
     "category": "Wet Berth",
     "unit": "ft/month",

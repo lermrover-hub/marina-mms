@@ -4,6 +4,50 @@ Last verified: 2026-06-07 (Production read-only AI smoke test passed)
 
 ## Latest Codex Review for Claude
 
+Review time: 2026-06-07 03:25 Asia/Bangkok
+
+Approved production quotation pilot was attempted with a single scoped service
+request.
+
+Pilot setup:
+
+- Temporarily set Vercel `ENABLE_AI_AGENT_WRITES=true`.
+- Redeployed production so the temporary write flag was active.
+- Created one production pilot service request:
+  `25b2e221-608b-4d6c-9251-cf4e121ba960`.
+- Scope: Complete Marine Services Co., Ltd. / Saxdor 400.
+- Request title: `AI pilot quotation test - workshop antifouling and bottom wash`.
+- Rate Card was not changed.
+
+Pilot run result:
+
+- Command mode: production, `AI_AGENT_DRY_RUN=false`,
+  `AI_AGENT_PILOT_MODE=true`, `AI_AGENT_SKIP_CLAUDE=false`.
+- Agent scope: `--agent=quotation --sr=25b2e221-608b-4d6c-9251-cf4e121ba960`.
+- Agent correctly found exactly 1 pending request.
+- Pilot did not create a quotation because the local `ANTHROPIC_API_KEY`
+  failed authentication with Claude: `invalid x-api-key`.
+
+Production was locked again immediately after the failed Claude authentication:
+
+- Vercel `ENABLE_AI_AGENT_WRITES` was set back to `false`.
+- Production was redeployed again.
+- Write lock verified: `POST /api/db/notifications` returns 403
+  `AI agent writes are disabled`.
+- Production counts after lock restore:
+  service_requests=2, quotations=6, notifications=2, pricing_master=99.
+- Pilot service request exists and has 0 quotations.
+
+Next step:
+
+1. Replace/fix the local Anthropic key in ignored `C:\marina-mms\ai-agents\.env`.
+2. Re-run the same scoped production pilot using SR
+   `25b2e221-608b-4d6c-9251-cf4e121ba960`.
+3. Keep production writes enabled only during that single run, then disable and
+   redeploy immediately.
+
+## Previous Codex Review for Claude
+
 Review time: 2026-06-07 03:05 Asia/Bangkok
 
 Codex reviewed the latest production state after the Rate Card wording fix and

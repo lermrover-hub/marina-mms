@@ -10,6 +10,7 @@
 
 import { getServiceRequests, getQuotations, getBoat, getCustomer, getPricingMaster, createQuotation } from "../lib/api-client.js"
 import { askJson } from "../lib/claude-client.js"
+import { classifySpeedboat } from "../lib/speedboat-classification.js"
 
 const SYSTEM_PROMPT = `You are a senior quotation specialist at a marina and boat yard in Ko Samui, Thailand.
 Your job is to create accurate, professional quotations based on:
@@ -92,8 +93,34 @@ export async function run({ srId, customerId } = {}) {
         })
         .join("\n")
 
+      // Speedboat classification (LOA-primary rule)
+      let speedboatClass = null
+      if (boat.id && ["speedboat","speed_boat","SPEEDBOAT"].includes(boat.boat_type ?? "")) {
+        speedboatClass = classifySpeedboat({
+          loaFt:    Number(boat.loa_ft  ?? 0),
+          engines:  Number(boat.engine_count ?? boat.num_engines ?? 0) || null,
+          beamFt:   Number(boat.beam_ft  ?? 0) || null,
+          draftFt:  Number(boat.draft_ft ?? 0) || null,
+          weightKg: Number(boat.weight_kg ?? boat.weight ?? 0) || null,
+        })
+      }
+
       const boatSummary = boat.id
-        ? `Boat: ${boat.name}, Type: ${boat.boat_type ?? "unknown"}, LOA: ${boat.loa_ft ?? "?"}ft, Beam: ${boat.beam_ft ?? "?"}ft, Draft: ${boat.draft_ft ?? "?"}ft, Engine: ${boat.engine_type ?? "?"}`
+        ? [
+            `Boat: ${boat.name}`,
+            `Type: ${boat.boat_type ?? "unknown"}`,
+            `LOA: ${boat.loa_ft ?? "?"}ft`,
+            `Beam: ${boat.beam_ft ?? "?"}ft`,
+            `Draft: ${boat.draft_ft ?? "?"}ft`,
+            `Engines: ${boat.engine_count ?? boat.num_engines ?? "?"}`,
+            `Engine type: ${boat.engine_type ?? "?"}`,
+            speedboatClass
+              ? `Speedboat class: ${speedboatClass.label}` +
+                (speedboatClass.mismatchWarning ? ` | WARNING: ${speedboatClass.mismatchWarning}` : "") +
+                (speedboatClass.escalationReasons.length ? ` | Escalation: ${speedboatClass.escalationReasons.join(", ")}` : "") +
+                ` | Use ramp code: ${speedboatClass.rampCode}`
+              : null,
+          ].filter(Boolean).join(", ")
         : "No boat specified"
 
       const customerSummary = customer.id

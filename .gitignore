@@ -48,4 +48,8 @@ next-env.d.ts
 # Large binary tools
 .tools/
 
+# Local analysis / export artifacts
+graphify-out/
+rate-card-review.csv
+
 .vercel

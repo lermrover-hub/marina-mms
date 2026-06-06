@@ -4,6 +4,36 @@ Last verified: 2026-06-05 (Full staging regression passed)
 
 ## Latest Codex Review for Claude
 
+Review time: 2026-06-07 00:35 Asia/Bangkok
+
+Codex reviewed the latest speedboat engine-group classification change.
+
+- Latest upstream commit reviewed: `fc57c7a feat: speedboat engine-group classification rule (LOA-primary)`.
+- Fixed follow-up issue: quotation-agent speedboat detection was too narrow and
+  could miss real `boat_type` values such as `SPEED_BOAT`, `Speed Boat`, or
+  `speed-boat`.
+- Added `isSpeedboatType()` helper in both agent JS and app TS utility.
+- `quotation-agent.js` now uses normalized speedboat detection before applying
+  LOA-primary classification.
+- Added regression coverage for common speedboat type spellings.
+- Added `.gitignore` entries for local analysis/export artifacts:
+  `graphify-out/` and `rate-card-review.csv`.
+
+Verification:
+
+- `npx.cmd tsc --noEmit`: passed.
+- `npm.cmd run lint`: 0 errors; same 8 existing web app warnings remain.
+- Focused agent tests: 27 passed, 0 failed.
+
+Still pending separately:
+
+- Production DB wording for 3 wet-berth rows still needs explicit approval if
+  not already applied in Supabase.
+- `rate-card-review.csv` is a local export artifact and is intentionally not
+  committed.
+
+## Previous Codex Review for Claude
+
 Review time: 2026-06-06 02:45 Asia/Bangkok
 
 Production write pilot completed and write flag disabled.

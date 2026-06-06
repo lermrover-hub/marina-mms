@@ -10,7 +10,7 @@
 
 import { getServiceRequests, getQuotations, getBoat, getCustomer, getPricingMaster, createQuotation } from "../lib/api-client.js"
 import { askJson } from "../lib/claude-client.js"
-import { classifySpeedboat } from "../lib/speedboat-classification.js"
+import { classifySpeedboat, isSpeedboatType } from "../lib/speedboat-classification.js"
 
 const SYSTEM_PROMPT = `You are a senior quotation specialist at a marina and boat yard in Ko Samui, Thailand.
 Your job is to create accurate, professional quotations based on:
@@ -95,7 +95,7 @@ export async function run({ srId, customerId } = {}) {
 
       // Speedboat classification (LOA-primary rule)
       let speedboatClass = null
-      if (boat.id && ["speedboat","speed_boat","SPEEDBOAT"].includes(boat.boat_type ?? "")) {
+      if (boat.id && isSpeedboatType(boat.boat_type)) {
         speedboatClass = classifySpeedboat({
           loaFt:    Number(boat.loa_ft  ?? 0),
           engines:  Number(boat.engine_count ?? boat.num_engines ?? 0) || null,

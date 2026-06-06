@@ -3,7 +3,7 @@
  */
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { classifySpeedboat, speedboatRampCode } from "../lib/speedboat-classification.js"
+import { classifySpeedboat, isSpeedboatType, speedboatRampCode } from "../lib/speedboat-classification.js"
 
 // ── LOA → engine group ────────────────────────────────────────────────────────
 
@@ -108,6 +108,14 @@ test("speedboatRampCode returns correct code", () => {
   assert.equal(speedboatRampCode({ loaFt: 20 }), "RAMP_1OB")
   assert.equal(speedboatRampCode({ loaFt: 35 }), "RAMP_2OB")
   assert.equal(speedboatRampCode({ loaFt: 45 }), "RAMP_3OB")
+})
+
+test("isSpeedboatType normalizes common boat type values", () => {
+  assert.equal(isSpeedboatType("SPEED_BOAT"), true)
+  assert.equal(isSpeedboatType("speedboat"), true)
+  assert.equal(isSpeedboatType("Speed Boat"), true)
+  assert.equal(isSpeedboatType("speed-boat"), true)
+  assert.equal(isSpeedboatType("MOTOR_YACHT"), false)
 })
 
 test("no input → defaults to group 1 (LOA 0)", () => {

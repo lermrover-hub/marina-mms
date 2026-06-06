@@ -18,6 +18,11 @@
 
 const RISK_ORDER = ["Normal", "Medium", "High", "Special Handling"]
 
+export function isSpeedboatType(value) {
+  const normalized = String(value ?? "").toLowerCase().replace(/[^a-z0-9]/g, "")
+  return normalized === "speedboat"
+}
+
 function loaToEngineGroup(loaFt) {
   if (loaFt <= 27) return 1
   if (loaFt <= 40) return 2

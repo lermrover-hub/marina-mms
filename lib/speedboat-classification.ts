@@ -44,6 +44,11 @@ export interface SpeedboatClassification {
   label: string                  // human-readable summary
 }
 
+export function isSpeedboatType(value: unknown): boolean {
+  const normalized = String(value ?? "").toLowerCase().replace(/[^a-z0-9]/g, "")
+  return normalized === "speedboat"
+}
+
 /** LOA → engine group (primary axis) */
 function loaToEngineGroup(loaFt: number): EngineGroup {
   if (loaFt <= 27) return 1

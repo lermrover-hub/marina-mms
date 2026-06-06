@@ -1,8 +1,62 @@
 # Marina MMS - Development State and Safe Commands
 
-Last verified: 2026-06-05 (Full staging regression passed)
+Last verified: 2026-06-07 (Production read-only AI smoke test passed)
 
 ## Latest Codex Review for Claude
+
+Review time: 2026-06-07 03:05 Asia/Bangkok
+
+Codex reviewed the latest production state after the Rate Card wording fix and
+ran the AI team against production in read-only mode.
+
+Production DB wording fix verified:
+
+- `BERTH_JETSKI_M`: Jet ski / PWC wet berth monthly.
+- `BERTH_SB1_M`: Speedboat <24 ft wet berth monthly.
+- `BERTH_SB2_M`: Speedboat 24-30 ft wet berth monthly.
+- Prices unchanged: 6000 / 350 / 380.
+- `pilot_rate_thb` unchanged (all null).
+- Active `pricing_master` rows still 99.
+- Live Rate Card has zero `W-berth` / `W-slots` wording remaining.
+
+Production read-only AI smoke test:
+
+- Mode: `MARINA_API_BASE=https://marina-mms.vercel.app`,
+  `AI_AGENT_DRY_RUN=true`, `AI_AGENT_SKIP_CLAUDE=true`.
+- All scheduled agents completed without process failure.
+- Quotation agent: 0 requests needed quotation out of 1 service request.
+- Marina agent: found 1 contract-expiry alert; notification write was skipped
+  by dry-run.
+- Finance agent: 0 overdue and 0 upcoming due invoices.
+- Comms agent: 0 unreplied inbound messages.
+- HR agent: skipped cleanly because no task/content was provided.
+- Tide agent: returned `no_tide_data` cleanly.
+
+Production safety checks:
+
+- Production counts after smoke test:
+  quotations=6, notifications=2, pricing_master=99, inbound_messages=0,
+  service_requests=1.
+- Write lock remains enabled: `POST /api/db/notifications` returns 403
+  `AI agent writes are disabled`.
+- `npx.cmd tsc --noEmit`: passed.
+- `node --test ai-agents/tests/*.test.js`: 106 passed, 0 failed.
+- `npm.cmd run lint`: 0 errors; same 8 existing warnings remain.
+- `npm.cmd run build`: passed.
+
+No production write flags were enabled for this review. No `.env` files or
+secrets were changed.
+
+Next approval gates:
+
+1. Real Claude production pilot: requires explicit approval, a single
+   service-request/customer scope, and temporary `AI_AGENT_PILOT_MODE=true`.
+2. Scheduled production runs: requires `CRON_SECRET` and
+   `ENABLE_AUTOMATION_WRITES`.
+3. LINE/WhatsApp auto-reply: requires messaging credentials and
+   `ENABLE_AUTOMATION_WRITES`.
+
+## Previous Codex Review for Claude
 
 Review time: 2026-06-07 00:35 Asia/Bangkok
 

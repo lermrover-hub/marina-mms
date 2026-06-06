@@ -31,7 +31,7 @@ export async function PATCH(
   const { id } = await params
   try {
     const body = await req.json()
-    const { serviceNameEn, serviceNameTh, category, unit, rateThb, description, notes, isActive } = body
+    const { serviceNameEn, serviceNameTh, category, unit, rateThb, pilotRateThb, pilotNotes, description, notes, isActive } = body
 
     const pricing = await updatePricingMaster(id, {
       serviceNameEn,
@@ -39,6 +39,8 @@ export async function PATCH(
       category,
       unit,
       rateThb,
+      pilotRateThb,
+      pilotNotes,
       description,
       notes,
       isActive,

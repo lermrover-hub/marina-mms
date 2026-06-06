@@ -83,8 +83,13 @@ export async function run({ srId, customerId } = {}) {
       const customer = customerData ?? {}
       const pricing  = pricingData?.data ?? []
 
+      // Use pilot_rate_thb when set; fall back to standard rate_thb
       const rateCardSummary = pricing
-        .map((p) => `${p.code} | ${p.serviceNameEn} | ${p.category} | ฿${Number(p.rateThb).toLocaleString()}/${p.unit}`)
+        .map((p) => {
+          const effective = p.effectiveRate ?? p.pilotRateThb ?? p.rateThb
+          const tag = (p.pilotRateThb != null) ? " [pilot]" : ""
+          return `${p.code} | ${p.serviceNameEn} | ${p.category} | ฿${Number(effective).toLocaleString()}/${p.unit}${tag}`
+        })
         .join("\n")
 
       const boatSummary = boat.id

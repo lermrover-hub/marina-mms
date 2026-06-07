@@ -1,6 +1,41 @@
 # Marina MMS - Development State and Safe Commands
 
-Last verified: 2026-06-07 (Waiting for yard supervisor zinc anode sign-off)
+Last verified: 2026-06-07 (Zinc anode correction applied — quotation ready for approval)
+
+## Zinc Anode Correction — 2026-06-07 (Claude, user-approved)
+
+Yard supervisor confirmed **22 zinc anodes** (was 4 estimated). User approved
+production write. Update performed via Supabase REST API directly — Vercel env
+not touched, write lock (403) remained active throughout.
+
+### Changes applied
+
+| Line | Field | Before | After |
+|---|---|---|---|
+| Item 7 — zinc anode labour | qty | 3 hr | 8 hr |
+| Item 7 — zinc anode labour | line_total (generated) | ฿1,800 | ฿4,800 |
+| Item 8 — zinc anode materials | qty | 4 units | 22 units |
+| Item 8 — zinc anode materials | line_total (generated) | ฿3,800 | ฿20,900 |
+
+### Revised quotation totals
+
+| Field | Before | After |
+|---|---|---|
+| Subtotal | THB 33,634 | THB 53,734 |
+| VAT 7% | THB 2,354 | THB 3,761 |
+| **Grand Total** | **THB 35,988** | **THB 57,495** |
+| Deposit 50% | THB 17,994 | THB 28,748 |
+
+Status: `DRAFT` — not sent.
+Write lock: `403` confirmed after update.
+Vercel env: unchanged.
+
+### Next steps
+
+Quotation is now accurate. Requires explicit user approval to change status
+and send to customer.
+
+---
 
 ## Current Gate — Waiting for Yard Supervisor (2026-06-07)
 

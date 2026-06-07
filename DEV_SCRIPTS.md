@@ -1,6 +1,6 @@
 # Marina MMS - Development State and Safe Commands
 
-Last verified: 2026-06-07 (Production pilot quotation corrected and locked)
+Last verified: 2026-06-07 (Post-correction final verification passed — Claude)
 
 ## Codex Correction - 2026-06-07
 
@@ -49,6 +49,64 @@ Do not send to customer. Do not enable production writes.
 Next decision: yard supervisor confirms zinc anode quantity before sending.
 Remember: W means Workshop, not Wet Berth.
 ```
+
+## Final Verification — 2026-06-07 (Claude, post-Codex correction)
+
+All 9 production checks passed via Supabase REST API.
+Write lock confirmed: POST probe → 403.
+
+| Check | Expected | Result |
+|---|---|---|
+| Status | DRAFT | ✅ |
+| Grand total | THB 35,988 | ✅ |
+| Subtotal | THB 33,634 | ✅ |
+| VAT 7% | THB 2,354 | ✅ |
+| Deposit 50% | THB 17,994 | ✅ |
+| Item 2 qty (antifouling) | 24.6 sqm | ✅ |
+| Item 3 qty (primer) | 24.6 sqm | ✅ |
+| pricing_master active rows | 99 | ✅ |
+| Write lock | 403 | ✅ |
+
+Quotation remains DRAFT. Not sent. Pending: yard supervisor zinc anode sign-off.
+W = Workshop (not Wet Berth).
+
+---
+
+## Quotation Verification — 2026-06-07 Post-Correction (Claude)
+
+Verified production quote `07b75681-d52e-47d7-bb89-05f85c5e909b` after Codex
+correction. All checks passed via Supabase REST API (Chrome extension
+unavailable; data-verified only).
+
+| Check | Expected | Actual | Result |
+|---|---|---|---|
+| Status | `DRAFT` | `DRAFT` | ✅ |
+| Customer | Complete Marine Services Co., Ltd. | ✅ | ✅ |
+| Boat | Saxdor 400 | ✅ | ✅ |
+| SR linked | `25b2e221-608b-4d6c-9251-cf4e121ba960` | ✅ | ✅ |
+| Item 2 qty (antifouling labour) | 24.6 sqm | 24.6 sqm | ✅ |
+| Item 3 qty (primer labour) | 24.6 sqm | 24.6 sqm | ✅ |
+| Subtotal | THB 33,634 | THB 33,634 | ✅ |
+| VAT 7% | THB 2,354 | THB 2,354 | ✅ |
+| Grand Total | THB 35,988 | THB 35,988 | ✅ |
+| Deposit 50% | THB 17,994 | THB 17,994 | ✅ |
+| Math cross-check (sum items = subtotal) | ✅ | 33,634 | ✅ |
+| Not sent to customer | DRAFT only | DRAFT | ✅ |
+| Production writes | Disabled | 403 confirmed | ✅ |
+
+### Remaining open item before sending
+
+- **Zinc anode quantity** — currently 4 units estimated for Saxdor 400 (twin-engine
+  ~40ft). Yard supervisor must confirm correct anode count on physical inspection
+  before quotation is approved and sent to customer.
+- No other blocking issues. Quotation is accurate and ready for supervisor sign-off.
+
+### Domain rule reminder
+
+W = Workshop (not Wet Berth). Wet Berth = "wet berth" or WB. Verified correct
+in quotation notes: "workshop yard (W)".
+
+---
 
 ## Quotation Review — 2026-06-07 (Claude)
 

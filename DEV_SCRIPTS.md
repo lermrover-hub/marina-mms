@@ -2,6 +2,101 @@
 
 Last verified: 2026-06-07 (Production read-only AI smoke test passed)
 
+## Quotation Review — 2026-06-07 (Claude)
+
+Review requested by Codex. Chrome extension unavailable; review performed via
+direct Supabase REST API queries. Page-load verification is API-confirmed only
+(no browser screenshot). All other checks are data-verified.
+
+### Checklist
+
+| # | Check | Result |
+|---|-------|--------|
+| 1 | Quotation found in DB (page would load) | ✅ Found |
+| 2 | Status = DRAFT, not SENT | ✅ `DRAFT` |
+| 3 | Linked SR = `25b2e221-608b-4d6c-9251-cf4e121ba960` | ✅ Matches |
+| 4 | Customer = Complete Marine Services Co., Ltd. / Boat = Saxdor 400 | ✅ Matches |
+| 5 | Total = THB 38,348 | ✅ Verified |
+| 6 | 8 line items visible | ✅ 8 items |
+| 7 | Math verified (subtotal + VAT = total) | ✅ 35,839 + 2,509 = 38,348 |
+| 8 | Not sent to customer | ✅ DRAFT only |
+
+### Line Items Summary
+
+| # | Description | Qty | Unit | Rate | Total |
+|---|-------------|-----|------|------|-------|
+| 1 | Bottom pressure wash (BOTTOM_FT) | 39.7 | ft | ฿120 | ฿4,764 |
+| 2 | Antifouling labour (PAINT_ANTIFOUL_M) | 29.5 | sqm | ฿250 | ฿7,375 |
+| 3 | Epoxy primer labour (PAINT_PRIMER_EP) | 29.5 | sqm | ฿200 | ฿5,900 |
+| 4 | Materials – Epoxy primer | 6 | litre | ฿650 | ฿3,900 |
+| 5 | Materials – Antifouling paint | 8 | litre | ฿850 | ฿6,800 |
+| 6 | Materials – Consumables (lot) | 1 | lot | ฿1,500 | ฿1,500 |
+| 7 | Zinc anode labour | 3 | hr | ฿600 | ฿1,800 |
+| 8 | Materials – Zinc anodes | 4 | unit | ฿950 | ฿3,800 |
+| | **Subtotal** | | | | **฿35,839** |
+| | VAT 7% | | | | ฿2,509 |
+| | **Grand Total** | | | | **฿38,348** |
+| | Deposit 50% | | | | ฿19,174 |
+
+### Business Sense Assessment — Overall: REASONABLE with 2 flags
+
+**✅ PASS items:**
+
+- Rates match Rate Card: BOTTOM_FT ฿120/ft, PAINT_ANTIFOUL_M ฿250/sqm,
+  PAINT_PRIMER_EP ฿200/sqm.
+- Labour scope is correct for bottom wash + antifouling + primer + zinc anodes.
+- Separate labour and material line items — good practice for transparency.
+- Consumables lot ฿1,500 — reasonable.
+- Zinc anode labour 3hr × ฿600 = ฿1,800 — acceptable at standard workshop rate.
+- VAT 7%, deposit 50%, valid 7 days — all correct per business rules.
+- Notes clearly state pilot status and measurement assumptions — good.
+
+**⚠️ FLAG 1 — MEDIUM: Bottom area overestimated by ~20%**
+
+The quotation uses 29.5 sqm for antifouling and primer area. The formula in the
+notes states: "39.7 × 13.5 × 0.55 ≈ 29.5 sqm" — but this formula is
+dimensionally incorrect (ft × ft × factor does not produce sqm without unit
+conversion).
+
+Verified calculation using Saxdor 400 manufacturer specs (beam 3.7m / 12.1ft):
+
+  LOA 12.10m × beam 3.70m × 0.55 = **24.6 sqm** (actual spec)
+  LOA 12.10m × beam 4.11m × 0.55 = **27.4 sqm** (if 13.5ft assumed)
+  Quote uses:                        **29.5 sqm**
+
+Delta vs actual beam: **+19.8% over**
+Labour overbilled impact: ~฿2,194 (sqm delta × ฿450/sqm for labour only)
+
+Action for Codex: Confirm Saxdor 400 beam from `mms_boats` record
+`de8b12f1-1cbb-47f2-8ead-be32ad875c46` and recalculate if beam differs
+materially from 3.7m. If the customer is a repeat customer this should be
+corrected before sending.
+
+**⚠️ FLAG 2 — MINOR: Zinc anode quantity likely underestimated**
+
+4 units assumed for a Saxdor 400 (39.7ft, likely twin outboard/sterndrive).
+Twin-engine boats of this size typically require 8–14 anodes total (shaft,
+prop, trim tab, hull). The note correctly says "confirmed on inspection" which
+mitigates this. Acceptable for a draft but operator should verify before
+approving.
+
+**ℹ️ NOTE: "W" in notes refers to Workshop (correct)**
+
+"all works to be carried out in the workshop yard (W)" — correct domain usage.
+W = Workshop per project domain code rule.
+
+### Recommendation
+
+Do NOT send to customer yet. Request Codex to:
+
+1. Pull boat record beam value from DB and recalculate bottom area.
+2. If beam < 4.0m, revise sqm from 29.5 → correct value and update labour
+   line items 2 and 3 accordingly.
+3. Confirm zinc anode count with yard supervisor before approving.
+4. After corrections, the quotation can be approved and sent.
+
+---
+
 ## Latest Codex Review for Claude
 
 Review time: 2026-06-07 16:40 Asia/Bangkok

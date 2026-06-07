@@ -4,24 +4,7 @@ import { useParams } from "next/navigation"
 import { Loader2 } from "lucide-react"
 import type { RampBooking } from "@/lib/supabase"
 import { formatDate } from "@/lib/utils"
-
-function ORMLogo() {
-  return (
-    <div style={{ color:"#9a7d2e", fontFamily:"Georgia, serif", lineHeight:1.15 }}>
-      <div style={{ fontSize:11, letterSpacing:4 }}>★ ★ ★ ★ ★</div>
-      <div style={{ fontSize:22 }}>Ocean Rover Marina</div>
-      <div style={{ fontSize:10, letterSpacing:3 }}>SAMUI YACHT CLUB</div>
-    </div>
-  )
-}
-
-function Watermark({ text }: { text: string }) {
-  return (
-    <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", pointerEvents:"none", zIndex:0, overflow:"hidden" }}>
-      <span style={{ transform:"rotate(-35deg)", fontSize:"60px", fontFamily:"Georgia,serif", color:"rgba(154,125,46,0.07)", fontWeight:"bold", letterSpacing:"4px", whiteSpace:"nowrap" }}>{text}</span>
-    </div>
-  )
-}
+import { PBCompanyHeader, PBWatermark } from "@/components/print/OfficialDocumentShell"
 
 function InfoRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
@@ -138,18 +121,13 @@ export default function RampBookingPrintPage() {
       </div>
 
       <div style={{ width:"210mm", minHeight:"297mm", margin:"0 auto", background:"white", boxShadow:"0 4px 20px rgba(0,0,0,0.15)", position:"relative", overflow:"hidden", fontFamily:"'Segoe UI',Arial,sans-serif" }}>
-        {watermark && <Watermark text={watermark} />}
+        {watermark && <PBWatermark text={watermark} />}
         <div style={{ height:6, background:"linear-gradient(90deg,#9a7d2e,#c9a84c,#9a7d2e)" }} />
 
         {/* Header */}
         <div style={{ padding:"24px 32px 16px", display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
           <div>
-            <ORMLogo />
-            <div style={{ marginTop:8, fontSize:11, color:"#6b7280", lineHeight:1.6 }}>
-              <div>Ocean Rover Marina Co., Ltd.</div>
-              <div>Ko Samui, Surat Thani, Thailand</div>
-              <div>Tel: +66 77 XXX XXX  |  ops@oceanrovermarina.com</div>
-            </div>
+            <PBCompanyHeader />
           </div>
           <div style={{ textAlign:"right" }}>
             <div style={{ fontSize:24, fontWeight:700, color:"#1e293b" }}>RAMP BOOKING</div>
@@ -263,7 +241,7 @@ export default function RampBookingPrintPage() {
         {/* Footer */}
         <div style={{ margin:"0 32px 16px", borderTop:"1px solid #e2e8f0", paddingTop:10, display:"flex", justifyContent:"space-between" }}>
           <div style={{ fontSize:10, color:"#94a3b8" }}>Generated: {new Date().toLocaleString("en-GB")} · {booking.reference}</div>
-          <div style={{ fontSize:10, color:"#9a7d2e" }}>oceanrovermarina.com</div>
+          <div style={{ fontSize:10, color:"#9a7d2e" }}>Palm Beach Samui Asset Co., Ltd.</div>
         </div>
 
         <div style={{ height:4, background:"linear-gradient(90deg,#9a7d2e,#c9a84c,#9a7d2e)" }} />

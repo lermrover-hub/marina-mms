@@ -2,63 +2,7 @@
 import React from "react"
 import Link from "next/link"
 import { Printer, ArrowLeft } from "lucide-react"
-
-function starPoints(cx: number, cy: number, outer: number, inner: number, points = 5) {
-  const step = Math.PI / points
-  let d = ''
-  for (let i = 0; i < points * 2; i++) {
-    const r = i % 2 === 0 ? outer : inner
-    const a = i * step - Math.PI / 2
-    const x = cx + r * Math.cos(a)
-    const y = cy + r * Math.sin(a)
-    d += (i === 0 ? '' : ',') + `${x.toFixed(1)},${y.toFixed(1)}`
-  }
-  return d
-}
-
-function ORMLogo({ size = 120 }: { size?: number }) {
-  return (
-    <svg width={size} height={size * 0.75} viewBox="0 0 240 180" fill="none" xmlns="http://www.w3.org/2000/svg">
-      {[
-        [30, 28, 10], [65, 14, 8], [95, 22, 6], [120, 10, 7],
-        [148, 18, 9], [175, 8, 6], [200, 20, 8], [218, 34, 7],
-      ].map(([cx, cy, r], i) => (
-        <polygon key={i} points={starPoints(cx, cy, r, r * 0.42)} fill="#9a7d2e" />
-      ))}
-      <text x="120" y="105" textAnchor="middle" fontFamily="Georgia, serif"
-        fontSize="28" fontWeight="400" fill="#9a7d2e" letterSpacing="1">
-        Ocean Rover Marina
-      </text>
-      <text x="120" y="130" textAnchor="middle" fontFamily="Georgia, serif"
-        fontSize="11" fontWeight="400" fill="#9a7d2e" letterSpacing="4">
-        SAMUI YACHT CLUB
-      </text>
-    </svg>
-  )
-}
-
-function Watermark() {
-  return (
-    <div style={{
-      position: 'absolute', inset: 0, display: 'flex',
-      alignItems: 'center', justifyContent: 'center',
-      pointerEvents: 'none', zIndex: 0, overflow: 'hidden',
-    }}>
-      <span style={{
-        transform: 'rotate(-35deg)',
-        fontSize: '52px',
-        fontFamily: 'Georgia, serif',
-        color: 'rgba(154,125,46,0.08)',
-        fontWeight: 'bold',
-        letterSpacing: '4px',
-        whiteSpace: 'nowrap',
-        userSelect: 'none',
-      }}>
-        OCEAN ROVER MARINA
-      </span>
-    </div>
-  )
-}
+import { PBLogo, PBWatermark, COMPANY } from "@/components/print/OfficialDocumentShell"
 
 const svcItems = [
   { label: 'Trailer hire', unit: '/ day', price: '' },
@@ -124,12 +68,12 @@ export default function HardstandFormPage() {
 
       <div className="relative mx-auto bg-white"
         style={{ width: '210mm', minHeight: '297mm', padding: '14mm 16mm', fontFamily: 'Times New Roman, serif', fontSize: '11px', color: '#111', position: 'relative' }}>
-        <Watermark />
+        <PBWatermark />
 
         <div style={{ position: 'relative', zIndex: 1 }}>
           {/* Header */}
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
-            <ORMLogo size={130} />
+            <PBLogo height={72} />
             <div style={{ textAlign: 'center', flex: 1, paddingTop: 16 }}>
               <div style={{ fontSize: 18, fontWeight: 'bold', letterSpacing: 1, marginBottom: 4 }}>
                 Hardstand Service Form
@@ -137,8 +81,10 @@ export default function HardstandFormPage() {
               <div style={{ fontSize: 10.5, color: '#555' }}>
                 ใบขอใช้บริการพื้นที่ Hardstand / ยกเรือขึ้นบก
               </div>
-              <div style={{ fontSize: 10.5, color: '#555' }}>
-                Ocean Rover Marina Co., Ltd. | Ko Samui, Surat Thani 84320
+              <div style={{ fontSize: 10, color: '#555', lineHeight: 1.5 }}>
+                {COMPANY.nameTh}<br />
+                {COMPANY.address}<br />
+                เลขประจำตัวผู้เสียภาษี {COMPANY.taxId} | Tel: {COMPANY.phone}
               </div>
             </div>
             {/* Form No box */}
@@ -381,8 +327,8 @@ export default function HardstandFormPage() {
 
           {/* Footer */}
           <div style={{ marginTop: 12, borderTop: '1px solid #ccc', paddingTop: 6, display: 'flex', justifyContent: 'space-between', fontSize: 9, color: '#888' }}>
-            <span>Ocean Rover Marina Co., Ltd. | Ko Samui, Surat Thani 84320, Thailand</span>
-            <span>Tel: +66 (0)77 XXX XXX | marina@oceanrovermarina.com</span>
+            <span>{COMPANY.nameTh} | {COMPANY.address}</span>
+            <span>Tel: {COMPANY.phone} | เลขประจำตัวผู้เสียภาษี {COMPANY.taxId}</span>
           </div>
         </div>
       </div>

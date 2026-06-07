@@ -5,16 +5,7 @@ import { useParams } from "next/navigation"
 import { Loader2 } from "lucide-react"
 import type { Quotation, QuotationItem } from "@/lib/supabase"
 import { formatDate, formatTHB } from "@/lib/utils"
-
-function ORMLogo() {
-  return (
-    <div style={{ color: "#9a7d2e", fontFamily: "Georgia, serif", lineHeight: 1.15 }}>
-      <div style={{ fontSize: 11, letterSpacing: 4 }}>*****</div>
-      <div style={{ fontSize: 24 }}>Ocean Rover Marina</div>
-      <div style={{ fontSize: 10, letterSpacing: 3 }}>SAMUI YACHT CLUB</div>
-    </div>
-  )
-}
+import { PBCompanyHeader, COMPANY } from "@/components/print/OfficialDocumentShell"
 
 function PrintShell({ children }: { children: React.ReactNode }) {
   return (
@@ -98,12 +89,7 @@ export default function QuotationPrintPage() {
         <div style={{ height: 6, background: "linear-gradient(90deg,#9a7d2e,#c9a84c,#9a7d2e)" }} />
         <header style={{ display: "flex", justifyContent: "space-between", padding: "28px 36px 20px" }}>
           <div>
-            <ORMLogo />
-            <p style={{ marginTop: 12, color: "#64748b", fontSize: 11, lineHeight: 1.6 }}>
-              Ocean Rover Marina Co., Ltd.<br />
-              Ko Samui, Surat Thani, Thailand<br />
-              sales@oceanrovermarina.com
-            </p>
+            <PBCompanyHeader logoHeight={56} />
           </div>
           <div style={{ textAlign: "right" }}>
             <h1 style={{ margin: 0, color: "#1e293b", fontSize: 30 }}>QUOTATION</h1>

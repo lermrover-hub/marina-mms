@@ -1,12 +1,35 @@
 import { NextResponse } from "next/server"
-import { getCustomers, createCustomer } from "@/lib/db"
+import { createServerClient } from "@/lib/supabase-server"
+import { createCustomer } from "@/lib/db"
 
 export const dynamic = "force-dynamic"
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const data = await getCustomers()
-    return NextResponse.json(data)
+    const { searchParams } = new URL(req.url)
+    const id = searchParams.get("id")
+    const search = searchParams.get("search")?.trim()
+    const limit = Number(searchParams.get("limit") ?? 0)
+    const supabase = createServerClient()
+
+    let query = supabase
+      .from("mms_customers")
+      .select("*")
+      .order("created_at", { ascending: false })
+
+    if (id) query = query.eq("id", id)
+    if (search) {
+      const escaped = search.replaceAll("%", "\\%").replaceAll("_", "\\_")
+      query = query.or(
+        `company_name.ilike.%${escaped}%,first_name.ilike.%${escaped}%,last_name.ilike.%${escaped}%,email.ilike.%${escaped}%,phone.ilike.%${escaped}%`
+      )
+    }
+    if (Number.isFinite(limit) && limit > 0) query = query.limit(Math.min(limit, 200))
+
+    const { data, error } = await query
+    if (error) throw error
+
+    return NextResponse.json(data ?? [])
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 })
   }

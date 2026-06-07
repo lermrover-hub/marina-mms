@@ -90,6 +90,51 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
 
     // ── Default PATCH (status changes, field updates) ──────────────────────
+    if (body.status === "SENT") {
+      const { data: existing, error: existingError } = await supabase
+        .from("mms_quotations")
+        .select("id, customer_id, customer_name")
+        .eq("id", id)
+        .single()
+      if (existingError) throw existingError
+
+      if (!existing?.customer_id) {
+        return NextResponse.json(
+          { error: "Cannot mark quotation SENT: quotation has no customer_id." },
+          { status: 409 }
+        )
+      }
+
+      const { data: customer, error: customerError } = await supabase
+        .from("mms_customers")
+        .select("id, first_name, last_name, company_name, email, line_user_id, whatsapp_number")
+        .eq("id", existing.customer_id)
+        .single()
+      if (customerError) throw customerError
+
+      const hasDeliveryChannel = !!(
+        customer?.email ||
+        customer?.line_user_id ||
+        customer?.whatsapp_number
+      )
+
+      if (!hasDeliveryChannel) {
+        const displayName =
+          customer?.company_name ??
+          ([customer?.first_name, customer?.last_name].filter(Boolean).join(" ") || null) ??
+          existing.customer_name ??
+          null
+        return NextResponse.json(
+          {
+            error: "Cannot mark quotation SENT: customer has no email, LINE user ID, or WhatsApp number.",
+            customer_id: existing.customer_id,
+            customer_name: displayName,
+          },
+          { status: 409 }
+        )
+      }
+    }
+
     const { data, error } = await supabase
       .from("mms_quotations")
       .update({ ...body, updated_at: new Date().toISOString() })
@@ -103,12 +148,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       try {
         const { data: customer } = await supabase
           .from("mms_customers")
-          .select("full_name, company_name, email, line_user_id, whatsapp_number")
+          .select("first_name, last_name, company_name, email, line_user_id, whatsapp_number")
           .eq("id", data.customer_id)
           .single()
 
         const recipientEmail = customer?.email
-        const customerName   = customer?.full_name ?? customer?.company_name ?? "Valued Customer"
+        const customerName   =
+          customer?.company_name ??
+          ([customer?.first_name, customer?.last_name].filter(Boolean).join(" ") || null) ??
+          "Valued Customer"
 
         const siteUrl   = process.env.NEXTAUTH_URL ?? "https://marina-mms.vercel.app"
         const quotNum   = data.quote_number ?? data.id

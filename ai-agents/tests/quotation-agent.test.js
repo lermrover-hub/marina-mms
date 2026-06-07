@@ -8,6 +8,8 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 import "dotenv/config"
 
+const LIVE_API = process.env.ENABLE_LIVE_AGENT_API_TESTS === "true"
+
 // ── Business logic helpers (inline, no import needed) ─────────────────────────
 
 function calcTotals(items) {
@@ -99,6 +101,11 @@ test("already-quoted requests are excluded", () => {
 // ── Live API smoke test ────────────────────────────────────────────────────────
 
 async function liveGet(t, path) {
+  if (!LIVE_API) {
+    t.skip("set ENABLE_LIVE_AGENT_API_TESTS=true to run live API smoke tests")
+    return null
+  }
+
   const BASE      = process.env.MARINA_API_BASE
   const AGENT_KEY = process.env.MARINA_AGENT_API_KEY
   if (!BASE || !AGENT_KEY) { t.skip("MARINA_API_BASE / MARINA_AGENT_API_KEY not set"); return null }

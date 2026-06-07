@@ -6,6 +6,10 @@
     "dev": "next dev",
     "dev:staging": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-staging.ps1",
     "dev:staging:writes": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-staging.ps1 -EnableAgentWrites",
+    "agents:test": "npm.cmd --prefix ai-agents test",
+    "agents:test:live": "npm.cmd --prefix ai-agents run test:live",
+    "agents:dry-run": "npm.cmd --prefix ai-agents run dry-run",
+    "agents:run": "npm.cmd --prefix ai-agents run run",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

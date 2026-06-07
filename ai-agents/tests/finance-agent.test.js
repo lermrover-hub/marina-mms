@@ -7,6 +7,8 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 import "dotenv/config"
 
+const LIVE_API = process.env.ENABLE_LIVE_AGENT_API_TESTS === "true"
+
 // ── Mirrors agent logic ───────────────────────────────────────────────────────
 
 function daysOverdue(dueDateStr) {
@@ -91,6 +93,11 @@ test("priority tiers", () => {
 // ── Live API smoke test ────────────────────────────────────────────────────────
 
 test("live: invoices endpoint accessible", async (t) => {
+  if (!LIVE_API) {
+    t.skip("set ENABLE_LIVE_AGENT_API_TESTS=true to run live API smoke tests")
+    return
+  }
+
   const BASE      = process.env.MARINA_API_BASE
   const AGENT_KEY = process.env.MARINA_AGENT_API_KEY
   if (!BASE || !AGENT_KEY) { t.skip("env not set"); return }

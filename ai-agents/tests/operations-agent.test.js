@@ -7,6 +7,8 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 import "dotenv/config"
 
+const LIVE_API = process.env.ENABLE_LIVE_AGENT_API_TESTS === "true"
+
 // ── daysUntil helper (mirrors agent logic) ────────────────────────────────────
 
 function daysUntil(dateStr) {
@@ -75,6 +77,11 @@ test("priority: ≤7 days = HIGH, else MEDIUM", () => {
 // ── Live API smoke test ────────────────────────────────────────────────────────
 
 async function liveGet(t, path) {
+  if (!LIVE_API) {
+    t.skip("set ENABLE_LIVE_AGENT_API_TESTS=true to run live API smoke tests")
+    return null
+  }
+
   const BASE      = process.env.MARINA_API_BASE
   const AGENT_KEY = process.env.MARINA_AGENT_API_KEY
   if (!BASE || !AGENT_KEY) { t.skip("env not set"); return null }

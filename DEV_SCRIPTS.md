@@ -1,6 +1,54 @@
 # Marina MMS - Development State and Safe Commands
 
-Last verified: 2026-06-07 (Production read-only AI smoke test passed)
+Last verified: 2026-06-07 (Production pilot quotation corrected and locked)
+
+## Codex Correction - 2026-06-07
+
+Claude's quotation review found a real business bug in production pilot quote
+`07b75681-d52e-47d7-bb89-05f85c5e909b`: antifouling and primer labour used
+`29.5 sqm`, but Saxdor 400 bottom area should use manufacturer beam 3.70m:
+`12.10m x 3.70m x 0.55 = 24.6 sqm`.
+
+### What Codex fixed
+
+- Added and deployed `PATCH /api/db/quotation-items/[id]`.
+- Fixed the new PATCH route to match the actual `mms_quotation_items` schema
+  by not writing a missing `updated_at` field.
+- Temporarily enabled `ENABLE_AI_AGENT_WRITES=true` only for the scoped
+  correction, then disabled it again and redeployed production.
+- Corrected production quote `07b75681-d52e-47d7-bb89-05f85c5e909b`.
+
+### Production result verified
+
+| Check | Result |
+|---|---|
+| Quote status | `DRAFT` |
+| Item 2 antifouling labour | `24.6 sqm x THB 250 = THB 6,150` |
+| Item 3 primer labour | `24.6 sqm x THB 200 = THB 4,920` |
+| Subtotal | `THB 33,634` |
+| VAT 7% | `THB 2,354` |
+| Grand total | `THB 35,988` |
+| Deposit 50% | `THB 17,994` |
+| Pricing master active rows | `99` unchanged |
+| Write lock after correction | POST write probe returns `403` |
+
+### Tests run
+
+- `npx.cmd tsc --noEmit` passed.
+- `npm.cmd run lint` passed with the existing 8 warnings only.
+- `npm.cmd run build` passed.
+- Production API verification passed after deploy.
+
+### Next command for Claude session
+
+```text
+Read DEV_SCRIPTS.md. Continue from the top "Codex Correction - 2026-06-07" section.
+Verify quotation 07b75681-d52e-47d7-bb89-05f85c5e909b in production UI.
+Confirm total THB 35,988, status DRAFT, item 2/3 qty 24.6 sqm.
+Do not send to customer. Do not enable production writes.
+Next decision: yard supervisor confirms zinc anode quantity before sending.
+Remember: W means Workshop, not Wet Berth.
+```
 
 ## Quotation Review — 2026-06-07 (Claude)
 

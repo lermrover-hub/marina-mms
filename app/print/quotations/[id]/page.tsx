@@ -5,7 +5,7 @@ import { useParams } from "next/navigation"
 import { Loader2 } from "lucide-react"
 import type { Quotation, QuotationItem } from "@/lib/supabase"
 import { formatDate, formatTHB } from "@/lib/utils"
-import { PBCompanyHeader, COMPANY } from "@/components/print/OfficialDocumentShell"
+import { ESignBlock, PBCompanyHeader, PBWatermark } from "@/components/print/OfficialDocumentShell"
 
 function PrintShell({ children }: { children: React.ReactNode }) {
   return (
@@ -85,9 +85,10 @@ export default function QuotationPrintPage() {
         </button>
       </div>
 
-      <article style={{ width: "210mm", minHeight: "297mm", margin: "0 auto", overflow: "hidden", background: "white", boxShadow: "0 4px 20px rgba(0,0,0,0.15)" }}>
+      <article style={{ width: "210mm", minHeight: "297mm", margin: "0 auto", overflow: "hidden", background: "white", boxShadow: "0 4px 20px rgba(0,0,0,0.15)", position: "relative" }}>
+        <PBWatermark text={quotation.status === "DRAFT" ? "DRAFT" : undefined} />
         <div style={{ height: 6, background: "linear-gradient(90deg,#9a7d2e,#c9a84c,#9a7d2e)" }} />
-        <header style={{ display: "flex", justifyContent: "space-between", padding: "28px 36px 20px" }}>
+        <header style={{ display: "flex", justifyContent: "space-between", padding: "28px 36px 20px", position: "relative", zIndex: 1 }}>
           <div>
             <PBCompanyHeader logoHeight={56} />
           </div>
@@ -100,7 +101,7 @@ export default function QuotationPrintPage() {
           </div>
         </header>
 
-        <section style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, padding: "0 36px 20px" }}>
+        <section style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, padding: "0 36px 20px", position: "relative", zIndex: 1 }}>
           <div style={{ borderRadius: 8, background: "#f8fafc", padding: 16 }}>
             <p style={{ margin: "0 0 8px", color: "#64748b", fontSize: 10, fontWeight: 700, letterSpacing: 1 }}>QUOTED TO</p>
             <p style={{ margin: 0, color: "#1e293b", fontSize: 15, fontWeight: 700 }}>{quotation.customer_name ?? "-"}</p>
@@ -113,7 +114,7 @@ export default function QuotationPrintPage() {
           </div>
         </section>
 
-        <section style={{ padding: "0 36px" }}>
+        <section style={{ padding: "0 36px", position: "relative", zIndex: 1 }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead>
               <tr style={{ background: "#1e293b", color: "white" }}>
@@ -139,7 +140,7 @@ export default function QuotationPrintPage() {
           </table>
         </section>
 
-        <section style={{ display: "flex", justifyContent: "flex-end", padding: "20px 36px" }}>
+        <section style={{ display: "flex", justifyContent: "flex-end", padding: "20px 36px", position: "relative", zIndex: 1 }}>
           <div style={{ minWidth: 280, fontSize: 13 }}>
             <Row label="Subtotal" value={formatTHB(quotation.subtotal)} />
             <Row label="Discount" value={formatTHB(quotation.discount)} />
@@ -151,7 +152,7 @@ export default function QuotationPrintPage() {
         </section>
 
         {quotation.notes && (
-          <section style={{ padding: "0 36px 24px" }}>
+          <section style={{ padding: "0 36px 24px", position: "relative", zIndex: 1 }}>
             <p style={{ margin: "0 0 6px", color: "#64748b", fontSize: 10, fontWeight: 700, letterSpacing: 1 }}>NOTES</p>
             <div style={{ borderLeft: "3px solid #9a7d2e", borderRadius: 6, background: "#f8fafc", color: "#374151", fontSize: 12, padding: 12 }}>
               {quotation.notes}
@@ -160,7 +161,7 @@ export default function QuotationPrintPage() {
         )}
 
         {/* Signature section */}
-        <section style={{ padding: "0 36px 36px", marginTop: 8 }}>
+        <section style={{ padding: "0 36px 36px", marginTop: 8, position: "relative", zIndex: 1 }}>
           <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 20 }}>
             <p style={{ margin: "0 0 16px", color: "#64748b", fontSize: 10, fontWeight: 700, letterSpacing: 1 }}>CUSTOMER ACCEPTANCE</p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32 }}>
@@ -203,6 +204,9 @@ export default function QuotationPrintPage() {
                   </p>
                 )}
               </div>
+            </div>
+            <div style={{ marginTop: 20 }}>
+              <ESignBlock label="Marina Authorized Signature" companyDetails />
             </div>
           </div>
         </section>

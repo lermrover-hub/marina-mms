@@ -5,7 +5,7 @@ import { useParams } from "next/navigation"
 import { Loader2 } from "lucide-react"
 import type { Invoice, InvoiceItem, Payment } from "@/lib/supabase"
 import { formatDate, formatTHB } from "@/lib/utils"
-import { PBCompanyHeader } from "@/components/print/OfficialDocumentShell"
+import { ESignBlock, PBCompanyHeader, PBWatermark } from "@/components/print/OfficialDocumentShell"
 
 function PrintShell({ children }: { children: React.ReactNode }) {
   return (
@@ -89,9 +89,10 @@ export default function InvoicePrintPage() {
         </button>
       </div>
 
-      <article style={{ width: "210mm", minHeight: "297mm", margin: "0 auto", overflow: "hidden", background: "white", boxShadow: "0 4px 20px rgba(0,0,0,0.15)" }}>
+      <article style={{ width: "210mm", minHeight: "297mm", margin: "0 auto", overflow: "hidden", background: "white", boxShadow: "0 4px 20px rgba(0,0,0,0.15)", position: "relative" }}>
+        <PBWatermark text={["PAID", "CANCELLED"].includes(invoice.status) ? invoice.status : undefined} />
         <div style={{ height: 6, background: "linear-gradient(90deg,#9a7d2e,#c9a84c,#9a7d2e)" }} />
-        <header style={{ display: "flex", justifyContent: "space-between", padding: "28px 36px 20px" }}>
+        <header style={{ display: "flex", justifyContent: "space-between", padding: "28px 36px 20px", position: "relative", zIndex: 1 }}>
           <div>
             <PBCompanyHeader logoHeight={56} />
           </div>
@@ -104,7 +105,7 @@ export default function InvoicePrintPage() {
           </div>
         </header>
 
-        <section style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, padding: "0 36px 20px" }}>
+        <section style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, padding: "0 36px 20px", position: "relative", zIndex: 1 }}>
           <div style={{ borderRadius: 8, background: "#f8fafc", padding: 16 }}>
             <p style={{ margin: "0 0 8px", color: "#64748b", fontSize: 10, fontWeight: 700, letterSpacing: 1 }}>BILL TO</p>
             <p style={{ margin: 0, color: "#1e293b", fontSize: 15, fontWeight: 700 }}>{invoice.customer_name ?? "-"}</p>
@@ -117,7 +118,7 @@ export default function InvoicePrintPage() {
           </div>
         </section>
 
-        <section style={{ padding: "0 36px" }}>
+        <section style={{ padding: "0 36px", position: "relative", zIndex: 1 }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead>
               <tr style={{ background: "#1e293b", color: "white" }}>
@@ -142,7 +143,7 @@ export default function InvoicePrintPage() {
           </table>
         </section>
 
-        <section style={{ display: "flex", justifyContent: "flex-end", padding: "20px 36px" }}>
+        <section style={{ display: "flex", justifyContent: "flex-end", padding: "20px 36px", position: "relative", zIndex: 1 }}>
           <div style={{ minWidth: 280, fontSize: 13 }}>
             <Row label="Subtotal" value={formatTHB(invoice.subtotal)} />
             <Row label="VAT" value={formatTHB(invoice.vat_amount)} />
@@ -155,7 +156,7 @@ export default function InvoicePrintPage() {
         </section>
 
         {payments.length > 0 && (
-          <section style={{ padding: "0 36px 20px", fontSize: 12 }}>
+          <section style={{ padding: "0 36px 20px", fontSize: 12, position: "relative", zIndex: 1 }}>
             <p style={{ margin: "0 0 8px", color: "#64748b", fontSize: 10, fontWeight: 700, letterSpacing: 1 }}>PAYMENTS</p>
             {payments.map((payment) => (
               <Row key={payment.id} label={`${formatDate(payment.payment_date)} ${payment.payment_method}`} value={formatTHB(payment.amount)} />
@@ -164,13 +165,19 @@ export default function InvoicePrintPage() {
         )}
 
         {invoice.notes && (
-          <section style={{ padding: "0 36px 24px" }}>
+          <section style={{ padding: "0 36px 24px", position: "relative", zIndex: 1 }}>
             <p style={{ margin: "0 0 6px", color: "#64748b", fontSize: 10, fontWeight: 700, letterSpacing: 1 }}>NOTES</p>
             <div style={{ borderLeft: "3px solid #9a7d2e", borderRadius: 6, background: "#f8fafc", color: "#374151", fontSize: 12, padding: 12 }}>
               {invoice.notes}
             </div>
           </section>
         )}
+        <section style={{ padding: "0 36px 36px", position: "relative", zIndex: 1 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+            <div />
+            <ESignBlock label="Marina Authorized Signature" companyDetails />
+          </div>
+        </section>
       </article>
     </PrintShell>
   )

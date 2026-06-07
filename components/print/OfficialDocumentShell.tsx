@@ -26,6 +26,7 @@ export const COMPANY = {
 // ─── Logo image — falls back gracefully if file not uploaded yet ──────────────
 export function PBLogoImg({ height = 64 }: { height?: number }) {
   return (
+    // eslint-disable-next-line @next/next/no-img-element
     <img
       src={COMPANY.logoSrc}
       alt="Palm Beach Samui Asset"
@@ -72,6 +73,7 @@ export function PBWatermark({ text }: { text?: string }) {
       pointerEvents: "none", zIndex: 0, overflow: "hidden",
     }}>
       {/* Logo watermark (background) */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={COMPANY.watermarkSrc}
         alt=""
@@ -129,11 +131,14 @@ export interface ESignBlockProps {
   signed?: boolean
   signedName?: string
   signedDate?: string
+  companyDetails?: boolean
   /** If true show a printed name line under the signature line */
   showNameLine?: boolean
 }
 
-export function ESignBlock({ label, signed, signedName, signedDate, showNameLine = true }: ESignBlockProps) {
+export function ESignBlock({ label, signed, signedName, signedDate, companyDetails, showNameLine = true }: ESignBlockProps) {
+  const displayName = signedName ?? (companyDetails ? COMPANY.nameEn : undefined)
+
   return (
     <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: "12px 14px" }}>
       <div style={{ fontSize: 9, fontWeight: 700, color: "#64748b", letterSpacing: 1, marginBottom: 4, textTransform: "uppercase" }}>
@@ -147,12 +152,19 @@ export function ESignBlock({ label, signed, signedName, signedDate, showNameLine
         <div style={{ fontSize: 10, color: "#374151" }}>Signature</div>
         {showNameLine && (
           <div style={{ fontSize: 10, color: "#374151", marginTop: 6 }}>
-            Name: {signedName ? signedName : "____________________________"}
+            Name: {displayName ? displayName : "____________________________"}
           </div>
         )}
         <div style={{ fontSize: 10, color: "#374151", marginTop: 6 }}>
           Date: {signedDate ? signedDate : "____________"}
         </div>
+        {companyDetails && (
+          <div style={{ marginTop: 8, paddingTop: 6, borderTop: "1px solid #e2e8f0", fontSize: 9, color: "#64748b", lineHeight: 1.45 }}>
+            <div style={{ fontWeight: 600, color: "#374151" }}>{COMPANY.nameTh}</div>
+            <div>{COMPANY.address}</div>
+            <div>Tax ID: {COMPANY.taxId} | Tel: {COMPANY.phone}</div>
+          </div>
+        )}
       </div>
     </div>
   )

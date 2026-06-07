@@ -12,9 +12,7 @@ export async function PATCH(req: Request, { params }: Params) {
     const { id } = await params
     const body = await req.json()
 
-    const update: Record<string, unknown> = {
-      updated_at: new Date().toISOString(),
-    }
+    const update: Record<string, unknown> = {}
 
     if (body.description !== undefined) update.description = body.description
     if (body.qty !== undefined || body.quantity !== undefined) {
@@ -32,6 +30,10 @@ export async function PATCH(req: Request, { params }: Params) {
       update.sort_order = Number(body.sort_order ?? body.sortOrder)
     }
 
+    if (Object.keys(update).length === 0) {
+      return NextResponse.json({ error: "No supported fields to update" }, { status: 400 })
+    }
+
     const { data, error } = await supabase
       .from("mms_quotation_items")
       .update(update)
@@ -42,6 +44,7 @@ export async function PATCH(req: Request, { params }: Params) {
     if (error) throw error
     return NextResponse.json(data)
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    const message = e instanceof Error ? e.message : JSON.stringify(e)
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

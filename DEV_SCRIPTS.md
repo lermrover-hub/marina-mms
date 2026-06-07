@@ -4,6 +4,57 @@ Last verified: 2026-06-07 (Production read-only AI smoke test passed)
 
 ## Latest Codex Review for Claude
 
+Review time: 2026-06-07 16:40 Asia/Bangkok
+
+Production quotation pilot completed successfully after replacing the local
+Anthropic key in ignored `C:\marina-mms\ai-agents\.env`.
+
+Pilot run:
+
+- Production writes were enabled only for the scoped pilot window:
+  `ENABLE_AI_AGENT_WRITES=true`, followed by a production redeploy.
+- Command mode: production, `AI_AGENT_DRY_RUN=false`,
+  `AI_AGENT_PILOT_MODE=true`, `AI_AGENT_SKIP_CLAUDE=false`.
+- Agent scope: `--agent=quotation --sr=25b2e221-608b-4d6c-9251-cf4e121ba960`.
+- The agent processed exactly 1 service request and created exactly 1 draft
+  quotation.
+
+Created quotation:
+
+- Quotation ID: `07b75681-d52e-47d7-bb89-05f85c5e909b`.
+- Quote number: `DRAFT-1780824727989`.
+- Status: `DRAFT`.
+- Linked SR: `25b2e221-608b-4d6c-9251-cf4e121ba960`.
+- Total: THB 38,348.
+- Subtotal: THB 35,839.
+- VAT: THB 2,509.
+- Deposit: THB 19,174.
+- Line items: 8.
+
+Rate checks:
+
+- `BOTTOM_FT`: THB 120/ft matched Rate Card.
+- `PAINT_ANTIFOUL_M`: THB 250/sqm matched Rate Card.
+- `PAINT_PRIMER_EP`: THB 200/sqm matched Rate Card.
+- Material estimates were added as separate line items.
+- `pricing_master` active rows stayed at 99.
+
+Production was locked again immediately after the successful pilot:
+
+- Vercel `ENABLE_AI_AGENT_WRITES` was set back to `false`.
+- Production was redeployed again.
+- Write lock verified: `POST /api/db/notifications` returns 403.
+- Production counts after lock restore:
+  service_requests=2, quotations=7, notifications=2, pricing_master=99.
+
+Next approval gates:
+
+1. Review the draft quotation in the web app before sending to customer.
+2. Keep production write flag disabled until the next explicitly scoped pilot.
+3. Do not enable scheduled/automatic production writes yet.
+
+## Previous Codex Review for Claude
+
 Review time: 2026-06-07 03:25 Asia/Bangkok
 
 Approved production quotation pilot was attempted with a single scoped service

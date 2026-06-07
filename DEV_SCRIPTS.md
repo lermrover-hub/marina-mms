@@ -1,6 +1,32 @@
 # Marina MMS - Development State and Safe Commands
 
-Last verified: 2026-06-07 (Post-correction final verification passed — Claude)
+Last verified: 2026-06-07 (Waiting for yard supervisor zinc anode sign-off)
+
+## Current Gate — Waiting for Yard Supervisor (2026-06-07)
+
+Quotation `07b75681-d52e-47d7-bb89-05f85c5e909b` is corrected, verified, and
+locked as DRAFT. No further automated action until gate clears.
+
+| Item | Status |
+|---|---|
+| Quote status | DRAFT — do not send |
+| Grand total | THB 35,988 — locked |
+| Item 2/3 qty | 24.6 sqm — verified |
+| pricing_master active rows | 99 — unchanged |
+| Production write lock | 403 — active |
+| W = Workshop | Rule in effect |
+
+**Blocking gate:** Yard supervisor must confirm zinc anode quantity (currently
+4 units estimated for Saxdor 400 twin-engine ~40ft).
+
+**Next steps when supervisor responds:**
+1. Claude re-verifies quotation in UI (read-only, no writes).
+2. If anode qty needs updating → stop and ask user for explicit production write approval.
+3. If anode qty is confirmed correct → present final summary and ask user approval before any send/status change.
+
+Do not proceed past this gate without explicit user approval.
+
+---
 
 ## Codex Correction - 2026-06-07
 

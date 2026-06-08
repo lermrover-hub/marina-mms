@@ -96,8 +96,15 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (error) {
-    if (error.code === "42P01") {
-      console.warn("[inquiries] Table 'inquiries' does not exist yet. Returning mock response.")
+    // Table not in PostgREST schema cache (42P01 = Postgres "relation not found",
+    // PGRST204/schema cache miss returns a different message string)
+    const isTableMissing =
+      error.code === "42P01" ||
+      error.message?.includes("schema cache") ||
+      error.message?.includes("Could not find the table")
+
+    if (isTableMissing) {
+      console.warn("[inquiries] Table not in schema cache or not yet created. Returning mock response.")
       return NextResponse.json({ id: "mock-id", ref_number: ref }, { status: 201 })
     }
 

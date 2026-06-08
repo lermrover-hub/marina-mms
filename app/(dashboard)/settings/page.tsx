@@ -1,5 +1,6 @@
 "use client"
 import React, { useState, useEffect } from "react"
+import Link from "next/link"
 import { Building2, Users, Tag, FileText, Bell, ShieldCheck, Sliders, ChevronRight, Loader2, Upload, Download, Trash2, File, Receipt, PlayCircle, CheckCircle2, AlertTriangle, Globe, Mail } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,6 +11,19 @@ import { supabase } from "@/lib/supabase"
 import type { Staff, DocumentTemplate } from "@/lib/supabase"
 import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher"
 import { useLocale } from "@/lib/i18n/LocaleContext"
+
+type PricingRule = {
+  id: string
+  code: string
+  serviceNameEn: string
+  serviceNameTh: string | null
+  category: string
+  unit: string
+  rateThb: number
+  effectiveRate: number
+  pilotRateThb: number | null
+  isActive: boolean
+}
 
 const SETTING_GROUPS = [
   { id: "company",    label: "Company",           icon: Building2,  description: "Company profile, branding, and contact info" },
@@ -33,22 +47,6 @@ const ROLE_LABELS: Record<string, { label: string; color: string; desc: string }
   SUPERVISOR: { label: "Supervisor",  color: "bg-indigo-100 text-indigo-700",desc: "Operations and team oversight" },
   SECURITY:   { label: "Security",    color: "bg-gray-100 text-gray-600",    desc: "Gate control and boat movements" },
 }
-
-const PRICING_MASTER = [
-  { category: "Wet Berth",        item: "Monthly — <30ft",          price: 8500,  unit: "month",  vatIncl: false },
-  { category: "Wet Berth",        item: "Monthly — 30–45ft",         price: 12000, unit: "month",  vatIncl: false },
-  { category: "Wet Berth",        item: "Monthly — >45ft",           price: 18000, unit: "month",  vatIncl: false },
-  { category: "Dry Storage",      item: "Monthly — <25ft",           price: 4500,  unit: "month",  vatIncl: false },
-  { category: "Dry Storage",      item: "Monthly — 25–40ft",         price: 7500,  unit: "month",  vatIncl: false },
-  { category: "Ramp Service",     item: "Launch (1-way)",            price: 1800,  unit: "trip",   vatIncl: false },
-  { category: "Ramp Service",     item: "Retrieval (1-way)",         price: 1800,  unit: "trip",   vatIncl: false },
-  { category: "Ramp Service",     item: "Launch + Retrieval (same day)", price: 3200, unit: "trip", vatIncl: false },
-  { category: "Labor",            item: "Standard technician",       price: 350,   unit: "hr",     vatIncl: false },
-  { category: "Labor",            item: "Skilled technician",        price: 450,   unit: "hr",     vatIncl: false },
-  { category: "Labor",            item: "Specialist / senior",       price: 600,   unit: "hr",     vatIncl: false },
-  { category: "Utilities",        item: "Electricity",               price: 9,     unit: "kWh",    vatIncl: false },
-  { category: "Utilities",        item: "Water",                     price: 30,    unit: "unit",   vatIncl: false },
-]
 
 // Template type labels
 const TEMPLATE_TYPES: { type: string; label: string; description: string }[] = [
@@ -74,6 +72,10 @@ export default function SettingsPage() {
   const [staff, setStaff]             = useState<Staff[]>([])
   const [staffLoading, setStaffLoading] = useState(false)
   const { locale } = useLocale()
+
+  const [pricingRules, setPricingRules] = useState<PricingRule[]>([])
+  const [pricingLoading, setPricingLoading] = useState(false)
+  const [pricingError, setPricingError] = useState<string | null>(null)
 
   // Document templates state
   const [templates,         setTemplates]         = useState<DocumentTemplate[]>([])
@@ -109,7 +111,23 @@ export default function SettingsPage() {
     if (activeGroup === "documents") {
       loadTemplates()
     }
+    if (activeGroup === "pricing") {
+      loadPricingRules()
+    }
   }, [activeGroup])
+
+  function loadPricingRules() {
+    setPricingLoading(true)
+    setPricingError(null)
+    fetch("/api/pricing-master?isActive=true")
+      .then(r => r.json())
+      .then(d => {
+        if (Array.isArray(d?.data)) setPricingRules(d.data)
+        else throw new Error(d?.error ?? "Failed to load pricing")
+      })
+      .catch(() => setPricingError("Failed to load pricing master"))
+      .finally(() => setPricingLoading(false))
+  }
 
   function loadTemplates() {
     setTemplatesLoading(true)
@@ -394,14 +412,34 @@ export default function SettingsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y">
-                    {PRICING_MASTER.map((p, i) => (
-                      <tr key={i} className="hover:bg-gray-50">
+                    {pricingLoading ? (
+                      <tr>
+                        <td colSpan={5} className="px-5 py-10 text-center text-sm text-gray-400">
+                          Loading pricing master...
+                        </td>
+                      </tr>
+                    ) : pricingError ? (
+                      <tr>
+                        <td colSpan={5} className="px-5 py-10 text-center text-sm text-red-600">
+                          {pricingError}
+                        </td>
+                      </tr>
+                    ) : pricingRules.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-5 py-10 text-center text-sm text-gray-400">
+                          No active pricing rules found.
+                        </td>
+                      </tr>
+                    ) : pricingRules.map((p) => (
+                      <tr key={p.id} className="hover:bg-gray-50">
                         <td className="px-5 py-2.5 text-gray-500 text-xs">{p.category}</td>
-                        <td className="px-5 py-2.5 font-medium text-gray-900">{p.item}</td>
-                        <td className="px-5 py-2.5 text-right font-medium">{p.price.toLocaleString()}</td>
+                        <td className="px-5 py-2.5 font-medium text-gray-900">{p.serviceNameEn}</td>
+                        <td className="px-5 py-2.5 text-right font-medium">{p.effectiveRate.toLocaleString()}</td>
                         <td className="px-5 py-2.5 text-center text-gray-500">/{p.unit}</td>
                         <td className="px-5 py-2.5 text-right">
-                          <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => showSettingsNotice("Pricing rule editing")}>Edit</Button>
+                          <Button variant="ghost" size="sm" className="text-xs h-7" asChild>
+                            <Link href="/pricing-master">Edit</Link>
+                          </Button>
                         </td>
                       </tr>
                     ))}
@@ -409,7 +447,9 @@ export default function SettingsPage() {
                 </table>
                 <div className="px-5 py-3 border-t flex items-center justify-between">
                   <p className="text-xs text-gray-400">All prices exclude VAT (7%) unless marked</p>
-                  <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white gap-1" onClick={() => showSettingsNotice("Pricing rate creation")}>+ Add Rate</Button>
+                  <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white gap-1" asChild>
+                    <Link href="/pricing-master">+ Add Rate</Link>
+                  </Button>
                 </div>
               </CardContent>
             </Card>

@@ -5,6 +5,21 @@ const supabase = createServerClient()
 
 export const dynamic = "force-dynamic"
 
+type StaffRow = Record<string, unknown> & {
+  name?: string | null
+  full_name?: string | null
+  active?: boolean | null
+  is_active?: boolean | null
+}
+
+function normalizeStaff(row: StaffRow) {
+  return {
+    ...row,
+    name: row.name ?? row.full_name ?? "",
+    active: row.active ?? row.is_active ?? true,
+  }
+}
+
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
@@ -14,7 +29,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       .eq("id", id)
       .single()
     if (error) throw error
-    return NextResponse.json(data)
+    return NextResponse.json(normalizeStaff(data as StaffRow))
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 })
   }

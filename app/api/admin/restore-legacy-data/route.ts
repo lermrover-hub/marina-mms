@@ -40,6 +40,10 @@ function sanitizeRows(table: string, rows: Record<string, unknown>[]) {
     if ("active" in next) {
       delete next.active
     }
+    if ("name" in next) {
+      next.full_name = next.name
+      delete next.name
+    }
     delete next.is_active
     delete next.phone2
     delete next.hire_date

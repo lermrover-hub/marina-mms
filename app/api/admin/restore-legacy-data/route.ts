@@ -42,6 +42,7 @@ function sanitizeRows(table: string, rows: Record<string, unknown>[]) {
       delete next.active
     }
     delete next.phone2
+    delete next.hire_date
     return next
   })
 }

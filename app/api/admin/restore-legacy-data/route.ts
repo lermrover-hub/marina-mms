@@ -32,6 +32,25 @@ function chunk<T>(items: T[], size: number) {
   return chunks
 }
 
+function sanitizeRows(table: string, rows: Record<string, unknown>[]) {
+  if (table !== "mms_staff") return rows
+
+  return rows.map((row) => {
+    const next = { ...row }
+    delete next.phone2
+    return next
+  })
+}
+
+function formatError(error: unknown) {
+  if (error instanceof Error) return error.message
+  try {
+    return JSON.stringify(error)
+  } catch {
+    return String(error)
+  }
+}
+
 export async function POST(req: Request) {
   const confirmation = req.headers.get("x-restore-confirmation")
   if (confirmation !== RESTORE_CONFIRMATION) {
@@ -43,7 +62,7 @@ export async function POST(req: Request) {
   const result: Record<string, { rows: number; status: "restored" | "skipped"; error?: string }> = {}
 
   for (const item of RESTORE_ORDER) {
-    const rows = data[item.table] ?? []
+    const rows = sanitizeRows(item.table, data[item.table] ?? [])
     if (rows.length === 0) {
       result[item.table] = { rows: 0, status: "skipped" }
       continue
@@ -63,7 +82,7 @@ export async function POST(req: Request) {
       result[item.table] = {
         rows: 0,
         status: "skipped",
-        error: error instanceof Error ? error.message : String(error),
+        error: formatError(error),
       }
     }
   }

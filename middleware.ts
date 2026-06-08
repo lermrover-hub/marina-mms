@@ -8,6 +8,8 @@ export function middleware(req: NextRequest) {
   if (
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/webhooks/") ||
+    pathname === "/api/inquiries" ||
+    pathname === "/inquiry" ||
     pathname === "/api/billing/recurring" ||
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico"

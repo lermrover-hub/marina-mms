@@ -73,6 +73,8 @@ export default function NewCustomerPage() {
   const [nationality, setNationality]       = useState("")
   const [phone, setPhone]                   = useState("")
   const [email, setEmail]                   = useState("")
+  const [lineUserId, setLineUserId]         = useState("")
+  const [whatsappNumber, setWhatsappNumber] = useState("")
   const [address, setAddress]               = useState("")
   const [taxId, setTaxId]                   = useState("")
   const [passportId, setPassportId]         = useState("")
@@ -98,6 +100,8 @@ export default function NewCustomerPage() {
         nationality:       nationality || null,
         phone:             phone || null,
         email:             email || null,
+        line_user_id:      lineUserId || null,
+        whatsapp_number:   whatsappNumber || null,
         address:           address || null,
         tax_id:            taxId || null,
         passport_id:       passportId || null,
@@ -191,6 +195,12 @@ export default function NewCustomerPage() {
                   </FormField>
                   <FormField label="Email">
                     <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@example.com" />
+                  </FormField>
+                  <FormField label="LINE ID">
+                    <Input value={lineUserId} onChange={(e) => setLineUserId(e.target.value)} placeholder="@lineid" />
+                  </FormField>
+                  <FormField label="WhatsApp">
+                    <Input type="tel" value={whatsappNumber} onChange={(e) => setWhatsappNumber(e.target.value)} placeholder="+66 82 878 9149" />
                   </FormField>
                 </div>
                 <FormField label="Address">

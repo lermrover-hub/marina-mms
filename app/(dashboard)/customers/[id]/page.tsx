@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import {
-  Phone, Mail, MapPin, Globe, Ship, Edit, ArrowLeft, Loader2, Users
+  Phone, Mail, MapPin, Globe, Ship, Edit, ArrowLeft, Loader2, Users, MessageCircle
 } from "lucide-react"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { StatusBadge } from "@/components/shared/StatusBadge"
@@ -179,6 +179,18 @@ export default function CustomerDetailPage() {
                 <div className="flex items-center gap-3">
                   <Mail className="h-4 w-4 text-gray-400 shrink-0" />
                   <span className="text-sm text-gray-700">{customer.email}</span>
+                </div>
+              )}
+              {customer.line_user_id && (
+                <div className="flex items-center gap-3">
+                  <MessageCircle className="h-4 w-4 text-gray-400 shrink-0" />
+                  <span className="text-sm text-gray-700">LINE: {customer.line_user_id}</span>
+                </div>
+              )}
+              {customer.whatsapp_number && (
+                <div className="flex items-center gap-3">
+                  <MessageCircle className="h-4 w-4 text-gray-400 shrink-0" />
+                  <span className="text-sm text-gray-700">WhatsApp: {customer.whatsapp_number}</span>
                 </div>
               )}
               {customer.address && (

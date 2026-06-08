@@ -46,6 +46,8 @@ export async function POST(req: Request) {
       nationality: body.nationality ?? null,
       phone: body.phone ?? null,
       email: body.email ?? null,
+      line_user_id: body.line_user_id ?? null,
+      whatsapp_number: body.whatsapp_number ?? null,
       address: body.address ?? null,
       tax_id: body.tax_id ?? null,
       passport_id: body.passport_id ?? null,

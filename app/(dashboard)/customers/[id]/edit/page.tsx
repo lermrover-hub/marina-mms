@@ -62,6 +62,8 @@ export default function EditCustomerPage() {
   const [nationality,   setNationality]   = useState("")
   const [phone,         setPhone]         = useState("")
   const [email,         setEmail]         = useState("")
+  const [lineUserId,    setLineUserId]    = useState("")
+  const [whatsappNumber,setWhatsappNumber]= useState("")
   const [address,       setAddress]       = useState("")
   const [preferredLang, setPreferredLang] = useState("en")
   const [paymentTerms,  setPaymentTerms]  = useState("30")
@@ -84,6 +86,8 @@ export default function EditCustomerPage() {
         setNationality(d.nationality ?? "")
         setPhone(d.phone ?? "")
         setEmail(d.email ?? "")
+        setLineUserId(d.line_user_id ?? "")
+        setWhatsappNumber(d.whatsapp_number ?? "")
         setAddress(d.address ?? "")
         setPreferredLang(d.preferred_language ?? "en")
         setPaymentTerms(String(d.payment_terms ?? 30))
@@ -128,6 +132,8 @@ export default function EditCustomerPage() {
         nationality:        nationality || null,
         phone:              phone || null,
         email:              email || null,
+        line_user_id:       lineUserId || null,
+        whatsapp_number:    whatsappNumber || null,
         address:            address || null,
         preferred_language: preferredLang || null,
         payment_terms:      paymentTerms ? parseInt(paymentTerms) : null,
@@ -230,6 +236,14 @@ export default function EditCustomerPage() {
                   <div className="space-y-1.5">
                     <Label>Email</Label>
                     <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>LINE ID</Label>
+                    <Input value={lineUserId} onChange={(e) => setLineUserId(e.target.value)} placeholder="@lineid" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>WhatsApp</Label>
+                    <Input type="tel" value={whatsappNumber} onChange={(e) => setWhatsappNumber(e.target.value)} placeholder="+66 82 878 9149" />
                   </div>
                 </div>
                 <div className="space-y-1.5">

@@ -1,5 +1,26 @@
 # Marina MMS - Development State and Safe Commands
 
+## Customer Delivery Contact - 2026-06-08 (Codex, user-approved)
+
+User approved using their own dummy contact instead of Complete Marine Services'
+real delivery channel for the current pilot flow.
+
+Production customer updated:
+
+| Field | Value |
+|---|---|
+| Customer | Complete Marine Services Co., Ltd. |
+| Customer ID | `ea35b2fb-3cd6-4029-b2ea-952036ed47d1` |
+| LINE ID | `@drschrick` |
+| WhatsApp | `66828789149` |
+
+Notes:
+- WhatsApp is stored in normalized API format so inbound WhatsApp sender IDs can match.
+- These fields are now editable from the customer create/edit screens.
+- LINE Messaging API push still requires a real LINE user ID from the Official Account webhook; `@drschrick` is a user-visible dummy contact value.
+
+---
+
 Last verified: 2026-06-07 (Zinc anode correction applied — quotation ready for approval)
 
 ## Zinc Anode Correction — 2026-06-07 (Claude, user-approved)

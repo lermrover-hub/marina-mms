@@ -4,7 +4,7 @@ import Image from "next/image"
 import Link from "next/link"
 import {
   Anchor, Ship, Waves, Wrench, MapPin, Calendar,
-  Phone, Mail, User, ChevronRight, CheckCircle2,
+  Phone, Mail, ChevronRight, CheckCircle2,
   AlertTriangle, Info,
 } from "lucide-react"
 

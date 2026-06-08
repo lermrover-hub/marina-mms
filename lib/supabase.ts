@@ -15,6 +15,8 @@ export type Customer = {
   nationality: string | null
   phone: string | null
   email: string | null
+  line_user_id: string | null
+  whatsapp_number: string | null
   address: string | null
   tax_id: string | null
   passport_id: string | null

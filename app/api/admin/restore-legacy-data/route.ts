@@ -37,6 +37,10 @@ function sanitizeRows(table: string, rows: Record<string, unknown>[]) {
 
   return rows.map((row) => {
     const next = { ...row }
+    if ("active" in next) {
+      next.is_active = next.active
+      delete next.active
+    }
     delete next.phone2
     return next
   })

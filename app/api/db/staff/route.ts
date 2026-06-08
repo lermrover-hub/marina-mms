@@ -5,6 +5,18 @@ const supabase = createServerClient()
 
 export const dynamic = "force-dynamic"
 
+type StaffRow = Record<string, unknown> & {
+  active?: boolean | null
+  is_active?: boolean | null
+}
+
+function normalizeStaff(row: StaffRow) {
+  return {
+    ...row,
+    active: row.active ?? row.is_active ?? true,
+  }
+}
+
 export async function GET() {
   try {
     const { data, error } = await supabase
@@ -12,7 +24,7 @@ export async function GET() {
       .select("*")
       .order("name")
     if (error) throw error
-    return NextResponse.json(data ?? [])
+    return NextResponse.json((data ?? []).map((row) => normalizeStaff(row as StaffRow)))
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 })
   }

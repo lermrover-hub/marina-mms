@@ -11,10 +11,6 @@ export function middleware(req: NextRequest) {
     pathname === "/api/inquiries" ||
     pathname === "/inquiry" ||
     pathname === "/api/billing/recurring" ||
-    (
-      pathname === "/api/admin/restore-legacy-data" &&
-      req.headers.get("x-restore-confirmation") === "restore-marina-mms-2026-06-09"
-    ) ||
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico"
   ) {

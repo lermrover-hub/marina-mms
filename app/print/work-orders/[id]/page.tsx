@@ -4,7 +4,7 @@ import { useParams } from "next/navigation"
 import { Loader2 } from "lucide-react"
 import type { WorkOrder, WorkOrderTask, MaterialUsage } from "@/lib/supabase"
 import { formatTHB, formatDate } from "@/lib/utils"
-import { PBCompanyHeader, PBWatermark } from "@/components/print/OfficialDocumentShell"
+import { ESignBlock, PBCompanyHeader, PBWatermark } from "@/components/print/OfficialDocumentShell"
 
 function Row({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
   return (
@@ -237,14 +237,9 @@ export default function WorkOrderPrintPage() {
 
         {/* Handover signature */}
         <div style={{ padding:"0 32px 20px", display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:16 }}>
-          {["Boat Yard Manager","Customer / Owner","Technician Lead"].map(label => (
-            <div key={label} style={{ border:"1px solid #e2e8f0", borderRadius:8, padding:"12px 14px" }}>
-              <div style={{ fontSize:9, fontWeight:700, color:"#64748b", letterSpacing:1, marginBottom:20, textTransform:"uppercase" }}>{label}</div>
-              <div style={{ borderTop:"1px solid #1e293b", paddingTop:4 }}>
-                <div style={{ fontSize:10, color:"#374151" }}>Signature / Date</div>
-              </div>
-            </div>
-          ))}
+          <ESignBlock label="Boat Yard Manager" companyDetails showNameLine={false} />
+          <ESignBlock label="Customer / Owner" showNameLine={false} />
+          <ESignBlock label="Technician Lead" showNameLine={false} />
         </div>
 
         {/* Footer */}

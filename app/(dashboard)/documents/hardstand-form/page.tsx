@@ -2,7 +2,8 @@
 import React from "react"
 import Link from "next/link"
 import { Printer, ArrowLeft } from "lucide-react"
-import { PBLogo, PBWatermark, COMPANY } from "@/components/print/OfficialDocumentShell"
+import { ESignBlock, PBLogo, PBWatermark, COMPANY } from "@/components/print/OfficialDocumentShell"
+import { HARDSTAND_FORM_FIELDS } from "@/lib/document-template-fields"
 
 const svcItems = [
   { label: 'Trailer hire', unit: '/ day', price: '' },
@@ -40,25 +41,13 @@ export default function HardstandFormPage() {
           <p className="text-xs text-gray-500">Use these fields before printing or saving the PDF.</p>
         </div>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-          {[
-            ["Vessel Name", "vesselName", "Nordic Star"],
-            ["Boat Owner", "boatOwner", "Erik Lindstrom"],
-            ["Form No.", "formNo", "HS-2026-001"],
-            ["LOA (ft)", "loaFt", "41"],
-            ["Draft (ft)", "draftFt", "5.2"],
-            ["Weight (T)", "weightT", "12"],
-            ["Registration No.", "registrationNo", "SE-2041"],
-            ["Country", "country", "Sweden"],
-            ["Arrival Date", "arrivalDate", "2026-05-20"],
-            ["Arrival Time", "arrivalTime", "09:00"],
-            ["Storage Duration", "duration", "14 days"],
-            ["Service Date", "serviceDate", "2026-05-21"],
-          ].map(([label, name, placeholder]) => (
-            <label key={name} className="space-y-1 text-xs font-medium text-gray-600">
-              <span>{label}</span>
+          {HARDSTAND_FORM_FIELDS.map((field) => (
+            <label key={field.name} className="space-y-1 text-xs font-medium text-gray-600">
+              <span>{field.label}</span>
               <input
-                name={name}
-                placeholder={placeholder}
+                name={field.name}
+                type={field.kind === "number" ? "number" : field.kind}
+                placeholder={field.placeholder}
                 className="h-9 w-full rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-900 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
               />
             </label>
@@ -316,12 +305,8 @@ export default function HardstandFormPage() {
 
           {/* Marina Manager sign */}
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <div style={{ textAlign: 'center', minWidth: 200 }}>
-              <div style={{ display: 'inline-block', borderBottom: '1px solid #555', minWidth: 180, marginBottom: 4 }} />
-              <div style={{ fontSize: 10 }}>Marina Manager</div>
-              <div style={{ marginTop: 4 }}>
-                Date : <span style={{ display: 'inline-block', borderBottom: '1px solid #555', minWidth: 120 }} />
-              </div>
+            <div style={{ minWidth: 220, fontFamily: "'Segoe UI', Arial, sans-serif" }}>
+              <ESignBlock label="Marina Manager" companyDetails showNameLine={false} />
             </div>
           </div>
 

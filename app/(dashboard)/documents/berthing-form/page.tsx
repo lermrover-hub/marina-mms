@@ -2,7 +2,8 @@
 import React from "react"
 import Link from "next/link"
 import { Printer, ArrowLeft } from "lucide-react"
-import { PBLogo, PBWatermark, COMPANY } from "@/components/print/OfficialDocumentShell"
+import { ESignBlock, PBLogo, PBWatermark, COMPANY } from "@/components/print/OfficialDocumentShell"
+import { BERTHING_FORM_FIELDS } from "@/lib/document-template-fields"
 
 export default function BerthingFormPage() {
   return (
@@ -30,25 +31,13 @@ export default function BerthingFormPage() {
           <p className="text-xs text-gray-500">Use these fields before printing or saving the PDF.</p>
         </div>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-          {[
-            ["Vessel Name", "vesselName", "Sea Hawk"],
-            ["Boat Owner", "boatOwner", "James Thornton"],
-            ["Berth No.", "berthNo", "B-04"],
-            ["LOA (ft)", "loaFt", "42"],
-            ["Beam (ft)", "beamFt", "13"],
-            ["Draft (ft)", "draftFt", "4.5"],
-            ["Registration No.", "registrationNo", "TH-1234"],
-            ["Country", "country", "Thailand"],
-            ["Owner Full Name", "ownerName", "James Thornton"],
-            ["Mobile Phone", "mobilePhone", "+66 81 234 5678"],
-            ["Email", "email", "owner@example.com"],
-            ["Commencement Date", "commencementDate", "2026-05-20"],
-          ].map(([label, name, placeholder]) => (
-            <label key={name} className="space-y-1 text-xs font-medium text-gray-600">
-              <span>{label}</span>
+          {BERTHING_FORM_FIELDS.map((field) => (
+            <label key={field.name} className="space-y-1 text-xs font-medium text-gray-600">
+              <span>{field.label}</span>
               <input
-                name={name}
-                placeholder={placeholder}
+                name={field.name}
+                type={field.kind === "number" ? "number" : field.kind}
+                placeholder={field.placeholder}
                 className="h-9 w-full rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-900 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
               />
             </label>
@@ -289,15 +278,8 @@ export default function BerthingFormPage() {
                 </td>
                 <td style={{ width: '4%' }} />
                 <td style={{ width: '48%', verticalAlign: 'bottom' }}>
-                  <div style={{ marginBottom: 4 }}>
-                    Signed : <span style={{ display: 'inline-block', borderBottom: '1px solid #555', minWidth: 160 }} />
-                  </div>
-                  <div style={{ marginLeft: 48, marginBottom: 2 }}>
-                    (<span style={{ display: 'inline-block', borderBottom: '1px solid #555', minWidth: 120 }} />)
-                  </div>
-                  <div style={{ fontSize: 10 }}>Marina Manager</div>
-                  <div style={{ marginTop: 6 }}>
-                    Date : <span style={{ display: 'inline-block', borderBottom: '1px solid #555', minWidth: 140 }} />
+                  <div style={{ fontFamily: "'Segoe UI', Arial, sans-serif" }}>
+                    <ESignBlock label="Marina Manager" companyDetails showNameLine={false} />
                   </div>
                 </td>
               </tr>

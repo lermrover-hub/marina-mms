@@ -4,7 +4,7 @@ import { useParams } from "next/navigation"
 import { Loader2 } from "lucide-react"
 import type { Contract } from "@/lib/supabase"
 import { formatDate } from "@/lib/utils"
-import { PBCompanyHeader, PBWatermark } from "@/components/print/OfficialDocumentShell"
+import { ESignBlock, PBCompanyHeader, PBWatermark } from "@/components/print/OfficialDocumentShell"
 
 const TYPE_LABELS: Record<string, string> = {
   WET_BERTH:"Wet Berth", DRY_STORAGE:"Dry Storage",
@@ -160,23 +160,17 @@ export default function ContractPrintPage() {
 
         {/* Signatures */}
         <div style={{ padding:"0 32px 20px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
-          {[
-            { label:"Customer / Boat Owner", signed: contract.signed_by_customer },
-            { label:"Marina Manager",        signed: contract.signed_by_marina },
-          ].map(({ label, signed }) => (
-            <div key={label} style={{ border:"1px solid #e2e8f0", borderRadius:8, padding:"12px 14px" }}>
-              <div style={{ fontSize:9, fontWeight:700, color:"#64748b", letterSpacing:1, marginBottom:4, textTransform:"uppercase" }}>{label}</div>
-              {signed && <div style={{ fontSize:10, color:"#16a34a", marginBottom:14 }}>✓ Signed</div>}
-              {!signed && <div style={{ height:24 }} />}
-              <div style={{ borderTop:"1px solid #1e293b", paddingTop:4 }}>
-                <div style={{ fontSize:10, color:"#374151" }}>Signature</div>
-                <div style={{ fontSize:10, color:"#374151", marginTop:6 }}>Name: ____________________________</div>
-                <div style={{ fontSize:10, color:"#374151", marginTop:6 }}>
-                  Date: {contract.signed_date ? formatDate(contract.signed_date) : "____________"}
-                </div>
-              </div>
-            </div>
-          ))}
+          <ESignBlock
+            label="Customer / Boat Owner"
+            signed={contract.signed_by_customer}
+            signedDate={contract.signed_date ? formatDate(contract.signed_date) : undefined}
+          />
+          <ESignBlock
+            label="Marina Manager"
+            signed={contract.signed_by_marina}
+            signedDate={contract.signed_date ? formatDate(contract.signed_date) : undefined}
+            companyDetails
+          />
         </div>
 
         {/* Footer */}

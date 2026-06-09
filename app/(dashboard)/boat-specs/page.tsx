@@ -10,6 +10,23 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { formatKg, formatM, ftToM, mToFt } from "@/lib/utils"
 
+// Tide safety defaults — must match ramp-booking calculation
+const DEFAULT_TRAILER_M = 0.3  // trailer / support frame height
+const DEFAULT_SAFETY_M  = 0.8  // minimum safety clearance
+const RAMP_DEPTH_OFFSET = 1.0  // subtracted to get tide-table height
+
+/** Compute on-the-fly to avoid relying on potentially corrupted DB columns. */
+function computeDepths(spec: BoatSpec): { actualDepth: string; tideTable: string } {
+  const draft_m = (spec.draft_ft ?? 0) * 0.3048
+  if (draft_m === 0) return { actualDepth: "-", tideTable: "-" }
+  const actualDepth = draft_m + DEFAULT_TRAILER_M + DEFAULT_SAFETY_M
+  const tideTable   = actualDepth - RAMP_DEPTH_OFFSET
+  return {
+    actualDepth: actualDepth.toFixed(2),
+    tideTable:   tideTable.toFixed(2),
+  }
+}
+
 type BoatSpec = {
   id: string
   brand: string
@@ -275,8 +292,15 @@ export default function BoatSpecCatalogPage() {
                       </div>
                     </td>
                     <td className="px-5 py-3 text-xs text-gray-600">
-                      <div>Actual: {spec.required_actual_depth_m ?? "-"} m</div>
-                      <div>Tide table: {spec.required_tide_table_height_m ?? "-"} m</div>
+                      {(() => {
+                        const { actualDepth, tideTable } = computeDepths(spec)
+                        return (
+                          <>
+                            <div>Actual: {actualDepth} m</div>
+                            <div>Tide table: {tideTable} m</div>
+                          </>
+                        )
+                      })()}
                     </td>
                     <td className="px-5 py-3">
                       <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700">

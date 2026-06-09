@@ -93,7 +93,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (body.status === "SENT") {
       const { data: existing, error: existingError } = await supabase
         .from("mms_quotations")
-        .select("id, customer_id, customer_name")
+        .select("id, customer_id, customer_name, subtotal, discount, notes")
         .eq("id", id)
         .single()
       if (existingError) throw existingError
@@ -130,6 +130,26 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
             customer_id: existing.customer_id,
             customer_name: displayName,
           },
+          { status: 409 }
+        )
+      }
+
+      const subtotal = Number(existing.subtotal ?? 0)
+      const discount = Number(existing.discount ?? 0)
+      const discountPercent = subtotal > 0 ? (discount / subtotal) * 100 : 0
+      const hasManagerApproval =
+        String(existing.notes ?? "").includes("[Manager Approval]") ||
+        (body.manager_approval_name && body.manager_approval_signature)
+
+      if (discountPercent > 15) {
+        return NextResponse.json(
+          { error: "Cannot mark quotation SENT: discount above 15% is outside approval limits." },
+          { status: 409 }
+        )
+      }
+      if (discountPercent >= 3 && !hasManagerApproval) {
+        return NextResponse.json(
+          { error: "Cannot mark quotation SENT: manager name and signature are required for L1/L2/L3 discount." },
           { status: 409 }
         )
       }

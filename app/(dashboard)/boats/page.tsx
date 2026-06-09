@@ -9,7 +9,7 @@ import { PageHeader } from "@/components/shared/PageHeader"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { formatDate, formatFt, BOAT_TYPE_LABELS } from "@/lib/utils"
+import { formatDate, formatFt, formatM, ftToM, BOAT_TYPE_LABELS } from "@/lib/utils"
 import type { Boat } from "@/lib/supabase"
 import { useApiList } from "@/hooks/useApiList"
 import { exportRowsCsv } from "@/lib/client-export"
@@ -52,7 +52,7 @@ export default function BoatsPage() {
                     owner: boat.owner_name,
                     type: boat.boat_type,
                     loa_ft: boat.loa_ft,
-                    beam_ft: boat.beam_ft,
+                    beam_m: boat.beam_ft != null ? ftToM(boat.beam_ft) : null,
                     registration_number: boat.registration_number,
                     status: boat.status,
                     current_location_code: boat.current_location_code,
@@ -177,7 +177,7 @@ export default function BoatsPage() {
                         <td className="px-6 py-3.5 text-gray-600">
                           <div className="space-y-0.5 text-xs">
                             <div>LOA: <span className="font-medium">{boat.loa_ft ? formatFt(boat.loa_ft) : "—"}</span></div>
-                            <div>Draft: <span className="font-medium">{boat.draft_ft ? formatFt(boat.draft_ft) : "—"}</span></div>
+                            <div>Draft: <span className="font-medium">{boat.draft_ft ? formatM(ftToM(boat.draft_ft)) : "—"}</span></div>
                           </div>
                         </td>
                         <td className="px-6 py-3.5">

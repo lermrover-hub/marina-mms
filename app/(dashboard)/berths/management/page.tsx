@@ -270,6 +270,19 @@ function dateKey(date: Date) {
   return date.toISOString().slice(0, 10)
 }
 
+function addDays(dateKeyValue: string, count: number) {
+  const date = new Date(`${dateKeyValue}T00:00:00`)
+  date.setDate(date.getDate() + count)
+  return dateKey(date)
+}
+
+function daySpan(startDate: string, endDate: string | null) {
+  if (!endDate) return 0
+  const start = new Date(`${startDate}T00:00:00`).getTime()
+  const end = new Date(`${endDate}T00:00:00`).getTime()
+  return Math.max(0, Math.round((end - start) / (24 * 60 * 60 * 1000)))
+}
+
 function eachDay(months: Date[]) {
   return months.flatMap((month) =>
     Array.from({ length: daysInMonth(month.getFullYear(), month.getMonth()) }, (_, index) => ({
@@ -297,6 +310,7 @@ export default function BerthManagementPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState<{ assignment: Assignment; berthCode: string } | null>(null)
+  const [draggingId, setDraggingId] = useState<string | null>(null)
   const [startMonth, setStartMonth] = useState(() => {
     const now = new Date()
     return new Date(now.getFullYear(), now.getMonth(), 1)
@@ -350,6 +364,47 @@ export default function BerthManagementPage() {
     })
     return map
   }, [assignments])
+
+  async function moveAssignment(assignment: Assignment, targetBerth: Berth, targetStartDate: string) {
+    if (assignment.status !== "RESERVED") return
+    const duration = daySpan(assignment.start_date, assignment.end_date)
+    const nextEndDate = assignment.end_date ? addDays(targetStartDate, duration) : null
+
+    setError(null)
+    try {
+      const res = await fetch(`/api/db/berth-assignments?id=${assignment.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          berth_id: targetBerth.id,
+          start_date: targetStartDate,
+          end_date: nextEndDate,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error ?? "Move failed")
+
+      if (assignment.berth_id !== targetBerth.id) {
+        await Promise.all([
+          fetch(`/api/db/berths/${assignment.berth_id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: "AVAILABLE", current_boat_id: null }),
+          }),
+          fetch(`/api/db/berths/${targetBerth.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: "RESERVED", current_boat_id: assignment.boat_id }),
+          }),
+        ])
+      }
+      fetchData()
+    } catch (e) {
+      setError(String(e))
+    } finally {
+      setDraggingId(null)
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -439,7 +494,16 @@ export default function BerthManagementPage() {
                         {days.map((day) => (
                           <div
                             key={day.key}
-                            className={`h-8 border-r border-gray-300 ${day.key === today ? "bg-blue-50" : ""}`}
+                            onDragOver={(event) => {
+                              if (draggingId) event.preventDefault()
+                            }}
+                            onDrop={(event) => {
+                              event.preventDefault()
+                              const id = event.dataTransfer.getData("text/plain") || draggingId
+                              const assignment = assignments.find((item) => item.id === id)
+                              if (assignment) moveAssignment(assignment, berth, day.key)
+                            }}
+                            className={`h-8 border-r border-gray-300 ${day.key === today ? "bg-blue-50" : ""} ${draggingId ? "hover:bg-teal-50" : ""}`}
                             style={{ width: DAY_WIDTH }}
                           />
                         ))}
@@ -453,11 +517,20 @@ export default function BerthManagementPage() {
                           const end = endIndex === -1 ? days.length : endIndex
                           if (start < 0 || end <= start) return null
                           const width = (end - start) * DAY_WIDTH
+                          const canDrag = assignment.status === "RESERVED"
                           return (
                             <div
                               key={assignment.id}
+                              draggable={canDrag}
+                              onDragStart={(event) => {
+                                if (!canDrag) return
+                                setDraggingId(assignment.id)
+                                event.dataTransfer.setData("text/plain", assignment.id)
+                                event.dataTransfer.effectAllowed = "move"
+                              }}
+                              onDragEnd={() => setDraggingId(null)}
                               onClick={() => setEditing({ assignment, berthCode: berth.code })}
-                              className={`absolute top-1 flex h-6 cursor-pointer items-center justify-center overflow-hidden border text-xs font-medium transition-opacity hover:opacity-80 hover:shadow-md ${barClass(assignment.status, assignment.notes)}`}
+                              className={`absolute top-1 flex h-6 items-center justify-center overflow-hidden border text-xs font-medium transition-opacity hover:opacity-80 hover:shadow-md ${canDrag ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"} ${barClass(assignment.status, assignment.notes)}`}
                               style={{ left: start * DAY_WIDTH, width }}
                               title={`Click to edit · ${assignment.boat_name ?? "Booking"} · ${assignment.start_date} → ${assignment.end_date ?? "open"}`}
                             >

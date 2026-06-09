@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { Customer } from "@/lib/supabase"
+import { ftToM, mToFt } from "@/lib/utils"
 
 const BOAT_TYPES = [
   { value: "SPEEDBOAT",         label: "Speed Boat" },
@@ -117,9 +118,9 @@ export default function NewBoatPage() {
   const [brand, setBrand]                 = useState("")
   const [model, setModel]                 = useState("")
   const [loaFt, setLoaFt]                 = useState("")
-  const [beamFt, setBeamFt]               = useState("")
-  const [draftFt, setDraftFt]             = useState("")
-  const [weightT, setWeightT]             = useState("")
+  const [beamM, setBeamM]                 = useState("")
+  const [draftM, setDraftM]               = useState("")
+  const [weightKg, setWeightKg]           = useState("")
   const [hullMaterial, setHullMaterial]   = useState("fiberglass")
   const [trailerRequired, setTrailer]     = useState(false)
 
@@ -143,9 +144,9 @@ export default function NewBoatPage() {
     setModel(spec.model ?? "")
     setBoatType(spec.boat_type === "SPEED_BOAT" ? "SPEEDBOAT" : spec.boat_type ?? "OTHER")
     setLoaFt(spec.loa_ft != null ? String(spec.loa_ft) : "")
-    setBeamFt(spec.beam_ft != null ? String(spec.beam_ft) : "")
-    setDraftFt(spec.draft_ft != null ? String(spec.draft_ft) : "")
-    setWeightT(spec.weight_t != null ? String(spec.weight_t) : "")
+    setBeamM(spec.beam_ft != null ? String(ftToM(spec.beam_ft)) : "")
+    setDraftM(spec.draft_ft != null ? String(ftToM(spec.draft_ft)) : "")
+    setWeightKg(spec.weight_t != null ? String(Math.round(spec.weight_t * 1000)) : "")
     setTrailer(spec.ramp_trailer_relevance === "High")
 
     const propulsion = (spec.propulsion_type ?? "").toLowerCase()
@@ -179,9 +180,9 @@ export default function NewBoatPage() {
         brand: brand || null,
         model: model || null,
         loa_ft: loaFt ? parseFloat(loaFt) : null,
-        beam_ft: beamFt ? parseFloat(beamFt) : null,
-        draft_ft: draftFt ? parseFloat(draftFt) : null,
-        weight_t: weightT ? parseFloat(weightT) : null,
+        beam_ft: beamM ? mToFt(parseFloat(beamM)) : null,
+        draft_ft: draftM ? mToFt(parseFloat(draftM)) : null,
+        weight_t: weightKg ? parseFloat(weightKg) / 1000 : null,
         hull_material: hullMaterial || null,
         trailer_required: trailerRequired,
         engine_type: engineType || null,
@@ -298,9 +299,9 @@ export default function NewBoatPage() {
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {[
                     { label: "LOA (ft) *",  value: loaFt,    set: setLoaFt,   placeholder: "e.g. 52.0" },
-                    { label: "Beam (ft)",   value: beamFt,   set: setBeamFt,  placeholder: "e.g. 15.2" },
-                    { label: "Draft (ft) *",value: draftFt,  set: setDraftFt, placeholder: "e.g. 4.5" },
-                    { label: "Weight (T)",  value: weightT,  set: setWeightT, placeholder: "e.g. 18.5" },
+                    { label: "Beam (m)",    value: beamM,    set: setBeamM,   placeholder: "e.g. 4.6" },
+                    { label: "Draft (m) *", value: draftM,   set: setDraftM,  placeholder: "e.g. 1.4" },
+                    { label: "Weight (kg)", value: weightKg, set: setWeightKg, placeholder: "e.g. 18500" },
                   ].map(({ label, value, set, placeholder }) => (
                     <div key={label} className="space-y-1.5">
                       <Label>{label}</Label>

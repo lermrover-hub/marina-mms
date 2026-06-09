@@ -495,20 +495,20 @@ export default function BookingInquiryPage() {
                     {errors.boatLoa && <p className="text-red-500 text-xs mt-1">{errors.boatLoa}</p>}
                   </div>
                   <div>
-                    <Label>Beam (ft)</Label>
+                    <Label>Beam (m)</Label>
                     <FieldInput
                       value={form.boatBeam}
                       onChange={(v) => set("boatBeam", v)}
-                      placeholder="e.g. 9"
+                      placeholder="e.g. 2.7"
                       type="number"
                     />
                   </div>
                   <div>
-                    <Label>Draft (ft)</Label>
+                    <Label>Draft (m)</Label>
                     <FieldInput
                       value={form.boatDraft}
                       onChange={(v) => set("boatDraft", v)}
-                      placeholder="e.g. 2.5"
+                      placeholder="e.g. 0.8"
                       type="number"
                     />
                   </div>
@@ -523,7 +523,7 @@ export default function BookingInquiryPage() {
                   </div>
                 </div>
                 <p className="text-xs text-gray-400 mt-2">
-                  LOA = Length Overall. Draft required for ramp tide safety check.
+                  LOA = Length Overall. Draft is in meters and required for ramp tide safety check.
                 </p>
               </div>
 
@@ -780,8 +780,8 @@ export default function BookingInquiryPage() {
                   value={BOAT_TYPES.find((t) => t.value === form.boatType)?.label ?? "—"}
                 />
                 <ReviewRow label="LOA" value={form.boatLoa ? `${form.boatLoa} ft` : "—"} />
-                {form.boatBeam  && <ReviewRow label="Beam"   value={`${form.boatBeam} ft`} />}
-                {form.boatDraft && <ReviewRow label="Draft"  value={`${form.boatDraft} ft`} />}
+                {form.boatBeam  && <ReviewRow label="Beam"   value={`${form.boatBeam} m`} />}
+                {form.boatDraft && <ReviewRow label="Draft"  value={`${form.boatDraft} m`} />}
                 {form.engineCount && <ReviewRow label="Engines" value={form.engineCount} />}
                 {form.boatYear  && <ReviewRow label="Year"   value={form.boatYear} />}
               </ReviewCard>

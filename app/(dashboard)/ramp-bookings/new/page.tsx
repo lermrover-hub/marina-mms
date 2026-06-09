@@ -24,10 +24,11 @@ const OPERATION_TYPES = [
 ]
 
 const ftToM = (ft: number) => ft * 0.3048
+const mToFt = (m: number) => m / 0.3048
 
 function TideCalcPreview({ draft, trailer, safety }: { draft: number; trailer: number; safety: number }) {
   const rampOffset = -1.0
-  const minDepthM  = ftToM(draft + trailer + safety)
+  const minDepthM  = draft + trailer + safety
   const reqTideM   = minDepthM + rampOffset
 
   return (
@@ -64,9 +65,9 @@ export default function NewRampBookingPage() {
   const [boatQuery,      setBoatQuery]      = useState("")
   const [selectedBoat,   setSelectedBoat]   = useState<Boat | null>(null)
   const [customerName,   setCustomerName]   = useState("")
-  const [draftFt,        setDraftFt]        = useState<string>("")
-  const [trailerFt,      setTrailerFt]      = useState<string>("")
-  const [safetyFt,       setSafetyFt]       = useState<string>("1")
+  const [draftM,         setDraftM]         = useState<string>("")
+  const [trailerM,       setTrailerM]       = useState<string>("")
+  const [safetyM,        setSafetyM]        = useState<string>("0.3")
   const [assignedStaff,  setAssignedStaff]  = useState("")
   const [notes,          setNotes]          = useState("")
 
@@ -116,7 +117,7 @@ export default function NewRampBookingPage() {
     setSelectedBoat(boat)
     setBoatQuery(boat.name ?? "")
     setCustomerName(boat.owner_name ?? "")
-    if (boat.draft_ft) setDraftFt(String(boat.draft_ft))
+    if (boat.draft_ft) setDraftM(String(Number(ftToM(boat.draft_ft).toFixed(2))))
     setShowDropdown(false)
   }
 
@@ -137,19 +138,19 @@ export default function NewRampBookingPage() {
         customer_name:  customerName  || selectedBoat?.owner_name || null,
         boat_id:        selectedBoat?.id          ?? null,
         boat_name:      (selectedBoat?.name ?? boatQuery) || null,
-        boat_draft_ft:  draftFt   ? parseFloat(draftFt)   : null,
-        trailer_height_ft: trailerFt ? parseFloat(trailerFt) : null,
-        safety_clearance_ft: safetyFt ? parseFloat(safetyFt) : 1,
+        boat_draft_ft:  draftM ? mToFt(parseFloat(draftM)) : null,
+        trailer_height_ft: trailerM ? mToFt(parseFloat(trailerM)) : null,
+        safety_clearance_ft: safetyM ? mToFt(parseFloat(safetyM)) : mToFt(0.3),
         assigned_staff: assignedStaff || null,
         notes:          notes || null,
         status: "REQUESTED",
       }
 
       // pre-calculate required tide
-      const draft   = parseFloat(draftFt)   || 0
-      const trailer = parseFloat(trailerFt) || 0
-      const safety  = parseFloat(safetyFt)  || 1
-      const reqTide = ftToM(draft + trailer + safety) + (-1.0)
+      const draft   = parseFloat(draftM)   || 0
+      const trailer = parseFloat(trailerM) || 0
+      const safety  = parseFloat(safetyM)  || 0.3
+      const reqTide = draft + trailer + safety + (-1.0)
       body.required_tide_m = parseFloat(reqTide.toFixed(3))
 
       const res = await fetch("/api/db/ramp-bookings", {
@@ -167,9 +168,9 @@ export default function NewRampBookingPage() {
     }
   }
 
-  const draft   = parseFloat(draftFt)   || 0
-  const trailer = parseFloat(trailerFt) || 0
-  const safety  = parseFloat(safetyFt)  || 1
+  const draft   = parseFloat(draftM)   || 0
+  const trailer = parseFloat(trailerM) || 0
+  const safety  = parseFloat(safetyM)  || 0.3
   const showTide = (opType === "LAUNCH" || opType === "RETRIEVAL") && (draft + trailer + safety) > 0
 
   return (
@@ -277,7 +278,7 @@ export default function NewRampBookingPage() {
                           <div className="text-xs text-gray-500">
                             {b.registration_number && <span>{b.registration_number} · </span>}
                             {b.owner_name && <span className="text-blue-600">{b.owner_name}</span>}
-                            {b.draft_ft && <span className="ml-2 text-gray-400">Draft: {b.draft_ft} ft</span>}
+                            {b.draft_ft && <span className="ml-2 text-gray-400">Draft: {ftToM(b.draft_ft).toFixed(2)} m</span>}
                           </div>
                         </button>
                       ))}
@@ -316,36 +317,36 @@ export default function NewRampBookingPage() {
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-3 gap-3">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-gray-700 uppercase tracking-wide">Boat Draft (ft)</label>
+                      <label className="text-xs font-medium text-gray-700 uppercase tracking-wide">Boat Draft (m)</label>
                       <Input
                         type="number"
                         step="0.1"
                         min="0"
-                        placeholder="e.g. 3.5"
-                        value={draftFt}
-                        onChange={e => setDraftFt(e.target.value)}
+                        placeholder="e.g. 1.1"
+                        value={draftM}
+                        onChange={e => setDraftM(e.target.value)}
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-gray-700 uppercase tracking-wide">Trailer Ht. (ft)</label>
+                      <label className="text-xs font-medium text-gray-700 uppercase tracking-wide">Trailer Ht. (m)</label>
                       <Input
                         type="number"
                         step="0.1"
                         min="0"
-                        placeholder="e.g. 1.5"
-                        value={trailerFt}
-                        onChange={e => setTrailerFt(e.target.value)}
+                        placeholder="e.g. 0.45"
+                        value={trailerM}
+                        onChange={e => setTrailerM(e.target.value)}
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-gray-700 uppercase tracking-wide">Safety (ft)</label>
+                      <label className="text-xs font-medium text-gray-700 uppercase tracking-wide">Safety (m)</label>
                       <Input
                         type="number"
                         step="0.1"
                         min="0"
-                        placeholder="default 1"
-                        value={safetyFt}
-                        onChange={e => setSafetyFt(e.target.value)}
+                        placeholder="default 0.3"
+                        value={safetyM}
+                        onChange={e => setSafetyM(e.target.value)}
                       />
                     </div>
                   </div>

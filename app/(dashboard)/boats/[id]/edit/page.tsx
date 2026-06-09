@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { Boat, Customer } from "@/lib/supabase"
+import { ftToM, mToFt } from "@/lib/utils"
 
 const BOAT_TYPES = [
   { value: "SPEED_BOAT",        label: "Speed Boat" },
@@ -83,9 +84,9 @@ export default function EditBoatPage() {
   const [brand,        setBrand]        = useState("")
   const [model,        setModel]        = useState("")
   const [loaFt,        setLoaFt]        = useState("")
-  const [beamFt,       setBeamFt]       = useState("")
-  const [draftFt,      setDraftFt]      = useState("")
-  const [weightT,      setWeightT]      = useState("")
+  const [beamM,        setBeamM]        = useState("")
+  const [draftM,       setDraftM]       = useState("")
+  const [weightKg,     setWeightKg]     = useState("")
   const [hullMaterial, setHullMaterial] = useState("fiberglass")
   const [trailerRequired, setTrailer]   = useState(false)
 
@@ -122,9 +123,9 @@ export default function EditBoatPage() {
         setBrand(boatData.brand ?? "")
         setModel(boatData.model ?? "")
         setLoaFt(boatData.loa_ft != null ? String(boatData.loa_ft) : "")
-        setBeamFt(boatData.beam_ft != null ? String(boatData.beam_ft) : "")
-        setDraftFt(boatData.draft_ft != null ? String(boatData.draft_ft) : "")
-        setWeightT(boatData.weight_t != null ? String(boatData.weight_t) : "")
+        setBeamM(boatData.beam_ft != null ? String(ftToM(boatData.beam_ft)) : "")
+        setDraftM(boatData.draft_ft != null ? String(ftToM(boatData.draft_ft)) : "")
+        setWeightKg(boatData.weight_t != null ? String(Math.round(boatData.weight_t * 1000)) : "")
         setHullMaterial(boatData.hull_material ?? "fiberglass")
         setTrailer((boatData as Boat & { trailer_required?: boolean }).trailer_required ?? false)
         setEngineType(boatData.engine_type ?? "inboard")
@@ -176,9 +177,9 @@ export default function EditBoatPage() {
         brand:               brand || null,
         model:               model || null,
         loa_ft:              loaFt ? parseFloat(loaFt) : null,
-        beam_ft:             beamFt ? parseFloat(beamFt) : null,
-        draft_ft:            draftFt ? parseFloat(draftFt) : null,
-        weight_t:            weightT ? parseFloat(weightT) : null,
+        beam_ft:             beamM ? mToFt(parseFloat(beamM)) : null,
+        draft_ft:            draftM ? mToFt(parseFloat(draftM)) : null,
+        weight_t:            weightKg ? parseFloat(weightKg) / 1000 : null,
         hull_material:       hullMaterial || null,
         engine_type:         engineType || null,
         engine_brand:        engineBrand || null,
@@ -297,9 +298,9 @@ export default function EditBoatPage() {
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {[
                     { label: "LOA (ft) *",   value: loaFt,   set: setLoaFt,   placeholder: "e.g. 52.0" },
-                    { label: "Beam (ft)",    value: beamFt,  set: setBeamFt,  placeholder: "e.g. 15.2" },
-                    { label: "Draft (ft) *", value: draftFt, set: setDraftFt, placeholder: "e.g. 4.5" },
-                    { label: "Weight (T)",   value: weightT, set: setWeightT, placeholder: "e.g. 18.5" },
+                    { label: "Beam (m)",     value: beamM,   set: setBeamM,   placeholder: "e.g. 4.6" },
+                    { label: "Draft (m) *",  value: draftM,  set: setDraftM,  placeholder: "e.g. 1.4" },
+                    { label: "Weight (kg)",  value: weightKg, set: setWeightKg, placeholder: "e.g. 18500" },
                   ].map(({ label, value, set, placeholder }) => (
                     <div key={label} className="space-y-1.5">
                       <Label>{label}</Label>

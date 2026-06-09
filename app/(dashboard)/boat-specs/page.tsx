@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
+import { formatKg, formatM, ftToM, mToFt } from "@/lib/utils"
 
 type BoatSpec = {
   id: string
@@ -40,9 +41,9 @@ const EMPTY_SPEC = {
   boat_category: "",
   propulsion_type: "",
   loa_ft: "",
-  beam_ft: "",
-  draft_ft: "",
-  weight_t: "",
+  beam_m: "",
+  draft_m: "",
+  weight_kg: "",
   ramp_trailer_relevance: "",
   source_url: "",
   notes: "",
@@ -103,9 +104,9 @@ export default function BoatSpecCatalogPage() {
       const body = {
         ...form,
         loa_ft: form.loa_ft ? Number(form.loa_ft) : null,
-        beam_ft: form.beam_ft ? Number(form.beam_ft) : null,
-        draft_ft: form.draft_ft ? Number(form.draft_ft) : null,
-        weight_t: form.weight_t ? Number(form.weight_t) : null,
+        beam_ft: form.beam_m ? mToFt(Number(form.beam_m)) : null,
+        draft_ft: form.draft_m ? mToFt(Number(form.draft_m)) : null,
+        weight_t: form.weight_kg ? Number(form.weight_kg) / 1000 : null,
       }
       const res = await fetch("/api/db/boat-specs", {
         method: "POST",
@@ -181,9 +182,9 @@ export default function BoatSpecCatalogPage() {
               <div><Label>Boat Type</Label><Input value={form.boat_type} onChange={(e) => setField("boat_type", e.target.value)} placeholder="MOTOR_YACHT" /></div>
               <div><Label>Category</Label><Input value={form.boat_category} onChange={(e) => setField("boat_category", e.target.value)} /></div>
               <div><Label>LOA ft</Label><Input type="number" step="0.01" value={form.loa_ft} onChange={(e) => setField("loa_ft", e.target.value)} /></div>
-              <div><Label>Beam ft</Label><Input type="number" step="0.01" value={form.beam_ft} onChange={(e) => setField("beam_ft", e.target.value)} /></div>
-              <div><Label>Draft ft</Label><Input type="number" step="0.01" value={form.draft_ft} onChange={(e) => setField("draft_ft", e.target.value)} /></div>
-              <div><Label>Weight T</Label><Input type="number" step="0.01" value={form.weight_t} onChange={(e) => setField("weight_t", e.target.value)} /></div>
+              <div><Label>Beam m</Label><Input type="number" step="0.01" value={form.beam_m} onChange={(e) => setField("beam_m", e.target.value)} /></div>
+              <div><Label>Draft m</Label><Input type="number" step="0.01" value={form.draft_m} onChange={(e) => setField("draft_m", e.target.value)} /></div>
+              <div><Label>Weight kg</Label><Input type="number" step="1" value={form.weight_kg} onChange={(e) => setField("weight_kg", e.target.value)} /></div>
               <div><Label>Propulsion</Label><Input value={form.propulsion_type} onChange={(e) => setField("propulsion_type", e.target.value)} /></div>
               <div><Label>Ramp Relevance</Label><Input value={form.ramp_trailer_relevance} onChange={(e) => setField("ramp_trailer_relevance", e.target.value)} placeholder="High / Medium / Low" /></div>
               <div className="md:col-span-2"><Label>Source URL</Label><Input value={form.source_url} onChange={(e) => setField("source_url", e.target.value)} /></div>
@@ -262,9 +263,9 @@ export default function BoatSpecCatalogPage() {
                     <td className="px-5 py-3"><Badge>{(spec.boat_type ?? "OTHER").replace(/_/g, " ")}</Badge><p className="mt-1 text-xs text-gray-500">{spec.propulsion_type ?? "-"}</p></td>
                     <td className="px-5 py-3 text-xs text-gray-600">
                       <div>LOA: <span className="font-medium">{spec.loa_ft ?? "-"} ft</span></div>
-                      <div>Beam: <span className="font-medium">{spec.beam_ft ?? "-"} ft</span></div>
-                      <div>Draft: <span className="font-medium">{spec.draft_ft ?? "-"} ft</span></div>
-                      <div>Weight: <span className="font-medium">{spec.weight_t ?? "-"} T</span></div>
+                      <div>Beam: <span className="font-medium">{spec.beam_ft != null ? formatM(ftToM(spec.beam_ft)) : "-"}</span></div>
+                      <div>Draft: <span className="font-medium">{spec.draft_ft != null ? formatM(ftToM(spec.draft_ft)) : "-"}</span></div>
+                      <div>Weight: <span className="font-medium">{spec.weight_kg != null ? formatKg(spec.weight_kg) : spec.weight_t != null ? formatKg(spec.weight_t * 1000) : "-"}</span></div>
                     </td>
                     <td className="px-5 py-3">
                       <div className="flex flex-wrap gap-1">

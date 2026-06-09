@@ -8,7 +8,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { formatDate } from "@/lib/utils"
+import { formatDate, ftToM, mToFt } from "@/lib/utils"
 import type { Boat } from "@/lib/supabase"
 
 type RampBooking = {
@@ -28,8 +28,6 @@ const STATUS_COLORS: Record<string, string> = {
   CANCELLED:"bg-red-100 text-red-600",
 }
 
-const ftToM = (ft: number) => +(ft * 0.3048).toFixed(3)
-
 export default function PortalRampBookingPage() {
   const [bookings,   setBookings]   = useState<RampBooking[]>([])
   const [boats,      setBoats]      = useState<Boat[]>([])
@@ -45,9 +43,9 @@ export default function PortalRampBookingPage() {
   const [showDrop,     setShowDrop]     = useState(false)
   const [reqDate,      setReqDate]      = useState("")
   const [reqTime,      setReqTime]      = useState("")
-  const [draftFt,      setDraftFt]      = useState("")
-  const [trailerFt,    setTrailerFt]    = useState("")
-  const [safetyFt,     setSafetyFt]     = useState("1")
+  const [draftM,       setDraftM]       = useState("")
+  const [trailerM,     setTrailerM]     = useState("")
+  const [safetyM,      setSafetyM]      = useState("0.3")
   const [notes,        setNotes]        = useState("")
 
   const loadData = useCallback(async () => {
@@ -78,7 +76,7 @@ export default function PortalRampBookingPage() {
 
   function selectBoat(b: Boat) {
     setSelectedBoat(b); setBoatQuery(b.name ?? "")
-    if (b.draft_ft) setDraftFt(String(b.draft_ft))
+    if (b.draft_ft) setDraftM(String(ftToM(b.draft_ft)))
     setShowDrop(false)
   }
 
@@ -87,9 +85,9 @@ export default function PortalRampBookingPage() {
     if (!reqDate) { setFormError("Date is required"); return }
     setSubmitting(true); setFormError(null)
     try {
-      const draft   = parseFloat(draftFt)   || 0
-      const trailer = parseFloat(trailerFt) || 0
-      const safety  = parseFloat(safetyFt)  || 1
+      const draft   = parseFloat(draftM)   || 0
+      const trailer = parseFloat(trailerM) || 0
+      const safety  = parseFloat(safetyM)  || 0.3
       const res = await fetch("/api/db/ramp-bookings", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -97,9 +95,9 @@ export default function PortalRampBookingPage() {
           requested_time: reqTime || null,
           boat_id: selectedBoat?.id ?? null,
           boat_name: selectedBoat?.name ?? (boatQuery || null),
-          boat_draft_ft: draft || null, trailer_height_ft: trailer || null,
-          safety_clearance_ft: safety,
-          required_tide_m: parseFloat((ftToM(draft + trailer + safety) - 1.0).toFixed(3)),
+          boat_draft_ft: draft ? mToFt(draft) : null, trailer_height_ft: trailer ? mToFt(trailer) : null,
+          safety_clearance_ft: mToFt(safety),
+          required_tide_m: parseFloat((draft + trailer + safety - 1.0).toFixed(3)),
           notes: notes || null, status: "REQUESTED",
         }),
       })
@@ -108,15 +106,15 @@ export default function PortalRampBookingPage() {
       setSuccess(`Booking ${data.reference} submitted! We will confirm your tide window shortly.`)
       setShowForm(false)
       setReqDate(""); setReqTime(""); setBoatQuery(""); setSelectedBoat(null)
-      setDraftFt(""); setTrailerFt(""); setSafetyFt("1"); setNotes("")
+      setDraftM(""); setTrailerM(""); setSafetyM("0.3"); setNotes("")
       loadData()
     } catch (err) { setFormError(String(err)) }
     finally { setSubmitting(false) }
   }
 
-  const draft   = parseFloat(draftFt)   || 0
-  const trailer = parseFloat(trailerFt) || 0
-  const safety  = parseFloat(safetyFt)  || 1
+  const draft   = parseFloat(draftM)   || 0
+  const trailer = parseFloat(trailerM) || 0
+  const safety  = parseFloat(safetyM)  || 0.3
   const showTide = (opType === "LAUNCH" || opType === "RETRIEVAL") && (draft + trailer + safety) > 0
 
   return (
@@ -174,7 +172,7 @@ export default function PortalRampBookingPage() {
                       {filteredBoats.map(b => (
                         <button key={b.id} type="button" className="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm border-b last:border-0"
                           onClick={() => selectBoat(b)}>
-                          {b.name}{b.draft_ft && <span className="text-gray-400 text-xs ml-1"> Draft: {b.draft_ft}ft</span>}
+                          {b.name}{b.draft_ft && <span className="text-gray-400 text-xs ml-1"> Draft: {ftToM(b.draft_ft).toFixed(2)} m</span>}
                         </button>
                       ))}
                     </div>
@@ -196,14 +194,14 @@ export default function PortalRampBookingPage() {
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5"><Waves className="h-3.5 w-3.5 text-blue-500" />Dimensions (for tide check)</label>
                     <div className="grid grid-cols-3 gap-2">
-                      <Input type="number" step="0.1" placeholder="Draft (ft)" value={draftFt} onChange={e => setDraftFt(e.target.value)} />
-                      <Input type="number" step="0.1" placeholder="Trailer ht (ft)" value={trailerFt} onChange={e => setTrailerFt(e.target.value)} />
-                      <Input type="number" step="0.1" placeholder="Safety (ft)" value={safetyFt} onChange={e => setSafetyFt(e.target.value)} />
+                      <Input type="number" step="0.01" placeholder="Draft (m)" value={draftM} onChange={e => setDraftM(e.target.value)} />
+                      <Input type="number" step="0.01" placeholder="Trailer ht (m)" value={trailerM} onChange={e => setTrailerM(e.target.value)} />
+                      <Input type="number" step="0.01" placeholder="Safety (m)" value={safetyM} onChange={e => setSafetyM(e.target.value)} />
                     </div>
                     {showTide && (
                       <div className="flex justify-between rounded-lg bg-blue-50 border border-blue-200 px-3 py-2 text-xs text-blue-700">
                         <span>Required tide height</span>
-                        <span className="font-bold text-blue-900">{(ftToM(draft + trailer + safety) - 1.0).toFixed(2)} m</span>
+                        <span className="font-bold text-blue-900">{(draft + trailer + safety - 1.0).toFixed(2)} m</span>
                       </div>
                     )}
                     <p className="flex items-center gap-1 text-xs text-amber-600">

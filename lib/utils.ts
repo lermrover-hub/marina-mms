@@ -85,9 +85,30 @@ export function formatFt(value: number | string | null | undefined): string {
   return `${n.toFixed(1)} ft`
 }
 
+/** Format meters with decimal */
+export function formatM(value: number | string | null | undefined): string {
+  if (value === null || value === undefined) return "-"
+  const n = typeof value === "string" ? parseFloat(value) : value
+  if (isNaN(n)) return "-"
+  return `${n.toFixed(2)} m`
+}
+
+/** Format kilograms */
+export function formatKg(value: number | string | null | undefined): string {
+  if (value === null || value === undefined) return "-"
+  const n = typeof value === "string" ? parseFloat(value) : value
+  if (isNaN(n)) return "-"
+  return `${Math.round(n).toLocaleString("en-US")} kg`
+}
+
 /** Convert feet to meters */
 export function ftToM(ft: number): number {
   return Math.round(ft * 0.3048 * 100) / 100
+}
+
+/** Convert meters to feet */
+export function mToFt(m: number): number {
+  return Math.round((m / 0.3048) * 100) / 100
 }
 
 /** Status label maps */

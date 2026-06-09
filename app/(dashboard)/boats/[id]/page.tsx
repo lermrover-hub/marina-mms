@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BoatPhotoUpload } from "@/components/shared/BoatPhotoUpload"
 import type { Boat, Quotation, Invoice } from "@/lib/supabase"
-import { formatDate, formatFt, formatTHB, BOAT_TYPE_LABELS, isExpired, isExpiringSoon } from "@/lib/utils"
+import { formatDate, formatFt, formatKg, formatM, formatTHB, ftToM, BOAT_TYPE_LABELS, isExpired, isExpiringSoon } from "@/lib/utils"
 
 // ─── Detail grid helper ────────────────────────────────────────────────────────
 type DetailRow = { label: string; value: string | number | null | undefined }
@@ -137,7 +137,7 @@ export default function BoatDetailPage() {
         <Card>
           <CardContent className="p-5">
             <p className="text-xs font-semibold text-gray-500 uppercase">Draft</p>
-            <p className="mt-1 text-lg font-bold text-gray-900">{formatFt(boat.draft_ft)}</p>
+            <p className="mt-1 text-lg font-bold text-gray-900">{boat.draft_ft != null ? formatM(ftToM(boat.draft_ft)) : "-"}</p>
           </CardContent>
         </Card>
       </div>
@@ -166,9 +166,9 @@ export default function BoatDetailPage() {
             <CardContent>
               <DetailGrid rows={[
                 { label: "LOA",           value: formatFt(boat.loa_ft) },
-                { label: "Beam",          value: formatFt(boat.beam_ft) },
-                { label: "Draft",         value: formatFt(boat.draft_ft) },
-                { label: "Weight",        value: boat.weight_t != null ? `${boat.weight_t} T` : null },
+                { label: "Beam",          value: boat.beam_ft != null ? formatM(ftToM(boat.beam_ft)) : null },
+                { label: "Draft",         value: boat.draft_ft != null ? formatM(ftToM(boat.draft_ft)) : null },
+                { label: "Weight",        value: boat.weight_t != null ? formatKg(boat.weight_t * 1000) : null },
                 { label: "Hull Material", value: boat.hull_material },
               ]} />
             </CardContent>

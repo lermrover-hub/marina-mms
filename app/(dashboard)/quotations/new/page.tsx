@@ -339,6 +339,9 @@ export default function NewQuotationPage() {
   const [taxRate,        setTaxRate]        = useState(7)
   const [depositPct,     setDepositPct]     = useState(50)
   const [notes,          setNotes]          = useState("")
+  const [customizeBooking, setCustomizeBooking] = useState("")
+  const [managerName,    setManagerName]    = useState("")
+  const [managerSignature, setManagerSignature] = useState("")
   const [saving,         setSaving]         = useState(false)
 
   const [items, setItems] = useState<LineItem[]>([
@@ -358,6 +361,15 @@ export default function NewQuotationPage() {
   const taxAmount      = Math.round(afterDiscount * taxRate / 100)
   const grandTotal     = afterDiscount + taxAmount
   const depositReq     = Math.round(grandTotal * depositPct / 100)
+  const discountPercent = subtotal > 0 ? (discountAmount / subtotal) * 100 : 0
+  const discountLevel =
+    discountPercent >= 10 && discountPercent <= 15 ? "L1" :
+    discountPercent >= 6 && discountPercent < 10 ? "L2" :
+    discountPercent >= 3 && discountPercent < 6 ? "L3" :
+    discountPercent > 15 ? "BLOCKED" : ""
+  const requiresManagerApproval = !!customizeBooking.trim() || discountPercent >= 3
+  const hasManagerApproval = managerName.trim().length > 0 && managerSignature.trim().length > 0
+  const approvalBlocked = discountLevel === "BLOCKED"
 
   // Item handlers
   const addItem = useCallback(() => {
@@ -398,10 +410,23 @@ export default function NewQuotationPage() {
   }, [])
 
   async function handleSave(andSend = false) {
+    if (andSend && approvalBlocked) {
+      alert("Discount above 15% is outside the configured authorization levels.")
+      return
+    }
+    if (andSend && requiresManagerApproval && !hasManagerApproval) {
+      alert("Manager name and signature are required before sending this customized or discounted quotation.")
+      return
+    }
     setSaving(true)
     try {
       const validUntilDate = new Date()
       validUntilDate.setDate(validUntilDate.getDate() + validDays)
+      const approvalNotes = [
+        customizeBooking.trim() ? `[Customize Booking]\n${customizeBooking.trim()}` : "",
+        requiresManagerApproval ? `[Manager Approval]\nLevel: ${discountLevel || "Required"}\nManager: ${managerName.trim() || "-"}\nSignature: ${managerSignature.trim() || "-"}\nDiscount percent: ${discountPercent.toFixed(2)}%` : "",
+      ].filter(Boolean).join("\n\n")
+      const finalNotes = [notes.trim(), approvalNotes].filter(Boolean).join("\n\n")
       const body = {
         customer_id:      customerId || null,
         boat_id:          boatId || null,
@@ -412,7 +437,11 @@ export default function NewQuotationPage() {
         discount_value:   discountValue,
         tax_rate:         taxRate,
         deposit_pct:      depositPct,
-        notes:            notes || null,
+        notes:            finalNotes || null,
+        customize_booking: customizeBooking.trim() || null,
+        manager_approval_name: managerName.trim() || null,
+        manager_approval_signature: managerSignature.trim() || null,
+        discount_authorization_level: discountLevel || null,
         subtotal,
         discount_amount:  discountAmount,
         after_discount:   afterDiscount,
@@ -469,7 +498,7 @@ export default function NewQuotationPage() {
             <Button variant="outline" size="sm" onClick={() => handleSave(false)} disabled={saving} className="gap-2">
               <Save className="h-4 w-4" /> Save Draft
             </Button>
-            <Button size="sm" variant="teal" onClick={() => handleSave(true)} disabled={saving} className="gap-2">
+            <Button size="sm" variant="teal" onClick={() => handleSave(true)} disabled={saving || !customerId || approvalBlocked || (requiresManagerApproval && !hasManagerApproval)} className="gap-2">
               <Send className="h-4 w-4" /> Save & Send
             </Button>
           </div>
@@ -566,7 +595,44 @@ export default function NewQuotationPage() {
                     onChange={(e) => setDiscountValue(parseFloat(e.target.value) || 0)}
                   />
                 )}
+                {discountPercent > 0 && (
+                  <div className={cn(
+                    "rounded-md border px-3 py-2 text-xs",
+                    approvalBlocked ? "border-red-200 bg-red-50 text-red-700" : "border-amber-200 bg-amber-50 text-amber-700"
+                  )}>
+                    Authorization: {discountLevel || "Below L3"} {discountLevel === "L3" ? "(3-5%)" : discountLevel === "L2" ? "(6-10%)" : discountLevel === "L1" ? "(10-15%)" : approvalBlocked ? "(over 15% not allowed)" : ""}
+                  </div>
+                )}
               </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="customize-booking">Customize Booking</Label>
+                <textarea
+                  id="customize-booking"
+                  rows={3}
+                  value={customizeBooking}
+                  onChange={(e) => setCustomizeBooking(e.target.value)}
+                  placeholder="Customer negotiation, special booking conditions, or price adjustment reason..."
+                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 resize-y"
+                />
+              </div>
+
+              {requiresManagerApproval && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">Manager Confirmation Required</p>
+                    <p className="mt-1 text-xs text-amber-700">Customized booking or L1/L2/L3 discount cannot be sent until a manager confirms with name and signature.</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="manager-name">Manager Name</Label>
+                    <Input id="manager-name" value={managerName} onChange={(e) => setManagerName(e.target.value)} placeholder="Approving manager" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="manager-signature">Manager Signature</Label>
+                    <Input id="manager-signature" value={managerSignature} onChange={(e) => setManagerSignature(e.target.value)} placeholder="Typed signature / approval code" />
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-1.5">
                 <Label htmlFor="deposit">Deposit Required (%)</Label>
@@ -718,12 +784,18 @@ export default function NewQuotationPage() {
                 <Button className="flex-1 gap-2" variant="outline" onClick={() => handleSave(false)} disabled={saving}>
                   <Save className="h-4 w-4" /> Save as Draft
                 </Button>
-                <Button className="flex-1 gap-2" variant="teal" onClick={() => handleSave(true)} disabled={saving || !customerId}>
+                <Button className="flex-1 gap-2" variant="teal" onClick={() => handleSave(true)} disabled={saving || !customerId || approvalBlocked || (requiresManagerApproval && !hasManagerApproval)}>
                   <Send className="h-4 w-4" /> {saving ? "Saving…" : "Save & Send to Customer"}
                 </Button>
               </div>
               {!customerId && (
                 <p className="text-xs text-center text-amber-600 mt-2">Select a customer before sending.</p>
+              )}
+              {approvalBlocked && (
+                <p className="text-xs text-center text-red-600 mt-2">Discount over 15% is outside L1/L2/L3 approval limits.</p>
+              )}
+              {customerId && !approvalBlocked && requiresManagerApproval && !hasManagerApproval && (
+                <p className="text-xs text-center text-amber-600 mt-2">Manager name and signature are required before sending.</p>
               )}
             </CardContent>
           </Card>

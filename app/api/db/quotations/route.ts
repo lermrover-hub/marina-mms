@@ -48,7 +48,7 @@ export async function POST(req: Request) {
       customerId
         ? supabase
             .from("mms_customers")
-            .select("company_name, first_name, last_name, email")
+            .select("company_name, first_name, last_name, email, line_user_id, whatsapp_number")
             .eq("id", customerId)
             .maybeSingle()
         : Promise.resolve({ data: null }),
@@ -71,6 +71,31 @@ export async function POST(req: Request) {
     const totalAmount = Number(body.grand_total ?? body.total_amount ?? 0)
     const depositAmount = Number(body.deposit_req ?? body.deposit_amount ?? 0)
     const status = body.status === "SENT" ? "SENT" : "DRAFT"
+    const discountPercent = subtotal > 0 ? (discount / subtotal) * 100 : 0
+    const discountLevel =
+      discountPercent >= 10 && discountPercent <= 15 ? "L1" :
+      discountPercent >= 6 && discountPercent < 10 ? "L2" :
+      discountPercent >= 3 && discountPercent < 6 ? "L3" :
+      discountPercent > 15 ? "BLOCKED" : null
+    const customizeBooking = String(body.customize_booking ?? "").trim()
+    const managerName = String(body.manager_approval_name ?? "").trim()
+    const managerSignature = String(body.manager_approval_signature ?? "").trim()
+
+    if (status === "SENT") {
+      if (!customerId) {
+        return NextResponse.json({ error: "Cannot send quotation: customer is required." }, { status: 409 })
+      }
+      const hasDeliveryChannel = !!(customer?.email || customer?.line_user_id || customer?.whatsapp_number)
+      if (!hasDeliveryChannel) {
+        return NextResponse.json({ error: "Cannot send quotation: customer has no email, LINE user ID, or WhatsApp number." }, { status: 409 })
+      }
+      if (discountLevel === "BLOCKED") {
+        return NextResponse.json({ error: "Cannot send quotation: discount above 15% is outside approval limits." }, { status: 409 })
+      }
+      if ((customizeBooking || discountPercent >= 3) && (!managerName || !managerSignature)) {
+        return NextResponse.json({ error: "Cannot send quotation: manager name and signature are required for customized booking or L1/L2/L3 discount." }, { status: 409 })
+      }
+    }
 
     const { data, error } = await supabase
       .from("mms_quotations")

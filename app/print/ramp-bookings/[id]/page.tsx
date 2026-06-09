@@ -72,8 +72,11 @@ export default function RampBookingPrintPage() {
   const draft   = booking.boat_draft_ft ?? 0
   const trailer = booking.trailer_height_ft ?? 0
   const safety  = booking.safety_clearance_ft ?? 1
+  const draftM = ftToM(draft)
+  const trailerM = ftToM(trailer)
+  const safetyM = ftToM(safety)
   const rampOffset = -1.0
-  const minDepthM = ftToM(draft + trailer + safety)
+  const minDepthM = draftM + trailerM + safetyM
   const reqTideM  = minDepthM + rampOffset
 
   const LAUNCH_CHECKLIST = [
@@ -176,18 +179,15 @@ export default function RampBookingPrintPage() {
           <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr) 2fr", gap:12 }}>
             <div style={{ background:"#f8fafc", border:"1px solid #e2e8f0", borderRadius:8, padding:"10px 12px", textAlign:"center" }}>
               <div style={{ fontSize:10, color:"#64748b", marginBottom:4 }}>Boat Draft</div>
-              <div style={{ fontSize:18, fontWeight:700, color:"#1e293b" }}>{draft} ft</div>
-              <div style={{ fontSize:10, color:"#94a3b8" }}>({ftToM(draft).toFixed(2)} m)</div>
+              <div style={{ fontSize:18, fontWeight:700, color:"#1e293b" }}>{draftM.toFixed(2)} m</div>
             </div>
             <div style={{ background:"#f8fafc", border:"1px solid #e2e8f0", borderRadius:8, padding:"10px 12px", textAlign:"center" }}>
               <div style={{ fontSize:10, color:"#64748b", marginBottom:4 }}>Trailer Height</div>
-              <div style={{ fontSize:18, fontWeight:700, color:"#1e293b" }}>{trailer} ft</div>
-              <div style={{ fontSize:10, color:"#94a3b8" }}>({ftToM(trailer).toFixed(2)} m)</div>
+              <div style={{ fontSize:18, fontWeight:700, color:"#1e293b" }}>{trailerM.toFixed(2)} m</div>
             </div>
             <div style={{ background:"#f8fafc", border:"1px solid #e2e8f0", borderRadius:8, padding:"10px 12px", textAlign:"center" }}>
               <div style={{ fontSize:10, color:"#64748b", marginBottom:4 }}>Safety Clearance</div>
-              <div style={{ fontSize:18, fontWeight:700, color:"#1e293b" }}>{safety} ft</div>
-              <div style={{ fontSize:10, color:"#94a3b8" }}>({ftToM(safety).toFixed(2)} m)</div>
+              <div style={{ fontSize:18, fontWeight:700, color:"#1e293b" }}>{safetyM.toFixed(2)} m</div>
             </div>
             <div style={{ background:"#0d948810", border:"1.5px solid #0d9488", borderRadius:8, padding:"10px 12px" }}>
               <div style={{ fontSize:10, fontWeight:700, color:"#0d9488", marginBottom:6, textTransform:"uppercase", letterSpacing:0.5 }}>Required Tide Height</div>

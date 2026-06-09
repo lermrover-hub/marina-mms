@@ -43,7 +43,7 @@ function TideCalcPreview({ draft, trailer, safety }: { draft: number; trailer: n
         <span className="font-bold text-blue-900">{reqTideM.toFixed(2)} m</span>
       </div>
       <p className="text-xs text-blue-600 pt-1">
-        Formula: (Draft + Trailer + Safety) × 0.3048 + Ramp Offset ({rampOffset} m)
+        Formula: (Draft + Trailer + Safety) + Ramp Offset ({rampOffset} m)
       </p>
       <div className="rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-700 flex items-start gap-1.5 mt-1">
         <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" />

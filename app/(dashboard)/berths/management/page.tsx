@@ -24,22 +24,25 @@ type Assignment = {
 function EditAssignmentModal({
   assignment,
   berthCode,
+  berths,
   onClose,
   onSaved,
 }: {
   assignment: Assignment
   berthCode: string
+  berths: Berth[]
   onClose: () => void
   onSaved: () => void
 }) {
-  const [startDate, setStart]   = useState(assignment.start_date)
-  const [endDate,   setEnd]     = useState(assignment.end_date ?? "")
-  const [status,    setStatus]  = useState(assignment.status)
-  const [notes,     setNotes]   = useState(assignment.notes ?? "")
-  const [saving,    setSaving]  = useState(false)
-  const [deleting,  setDeleting]= useState(false)
-  const [error,     setError]   = useState<string | null>(null)
-  const [confirmDel,setConfirm] = useState(false)
+  const [startDate,    setStart]      = useState(assignment.start_date)
+  const [endDate,      setEnd]        = useState(assignment.end_date ?? "")
+  const [status,       setStatus]     = useState(assignment.status)
+  const [notes,        setNotes]      = useState(assignment.notes ?? "")
+  const [targetBerthId,setTargetBerth]= useState(assignment.berth_id)
+  const [saving,       setSaving]     = useState(false)
+  const [deleting,     setDeleting]   = useState(false)
+  const [error,        setError]      = useState<string | null>(null)
+  const [confirmDel,   setConfirm]    = useState(false)
 
   async function patchJson(url: string, body: Record<string, unknown>) {
     const res = await fetch(url, {
@@ -53,22 +56,25 @@ function EditAssignmentModal({
     }
   }
 
-  async function syncBerthAndBoat(nextStatus: Assignment["status"]) {
+  async function syncBerthAndBoat(nextStatus: Assignment["status"], newBerthId?: string) {
+    const isMoving = newBerthId && newBerthId !== assignment.berth_id
+    const occupyId = newBerthId ?? assignment.berth_id
+
     if (nextStatus === "COMPLETED" || nextStatus === "CANCELLED") {
-      await patchJson(`/api/db/berths/${assignment.berth_id}`, {
-        status: "AVAILABLE",
-        current_boat_id: null,
-      })
+      await patchJson(`/api/db/berths/${assignment.berth_id}`, { status: "AVAILABLE", current_boat_id: null })
+      if (isMoving) {
+        await patchJson(`/api/db/berths/${occupyId}`, { status: "AVAILABLE", current_boat_id: null })
+      }
       if (assignment.boat_id) {
-        await patchJson(`/api/db/boats/${assignment.boat_id}`, {
-          status: "ACTIVE",
-          current_location_code: null,
-        })
+        await patchJson(`/api/db/boats/${assignment.boat_id}`, { status: "ACTIVE", current_location_code: null })
       }
       return
     }
 
-    await patchJson(`/api/db/berths/${assignment.berth_id}`, {
+    if (isMoving) {
+      await patchJson(`/api/db/berths/${assignment.berth_id}`, { status: "AVAILABLE", current_boat_id: null })
+    }
+    await patchJson(`/api/db/berths/${occupyId}`, {
       status: nextStatus === "RESERVED" ? "RESERVED" : "OCCUPIED",
       current_boat_id: assignment.boat_id,
     })
@@ -78,10 +84,12 @@ function EditAssignmentModal({
     setSaving(true)
     setError(null)
     try {
+      const newBerthId = targetBerthId !== assignment.berth_id ? targetBerthId : undefined
       const res = await fetch(`/api/db/berth-assignments?id=${assignment.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          ...(newBerthId ? { berth_id: newBerthId } : {}),
           start_date: startDate,
           end_date:   endDate || startDate,
           status,
@@ -92,7 +100,7 @@ function EditAssignmentModal({
         const j = await res.json().catch(() => ({}))
         throw new Error(j?.error ?? "Failed to save")
       }
-      await syncBerthAndBoat(status)
+      await syncBerthAndBoat(status, newBerthId)
       onSaved()
       onClose()
     } catch (err) {
@@ -205,6 +213,27 @@ function EditAssignmentModal({
               placeholder="e.g. own trailer, company trailer, extended by customer..."
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none resize-none"
             />
+          </div>
+
+          {/* Re-assign Berth Slot */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-gray-700">Re-assign Berth Slot</label>
+            <select
+              value={targetBerthId}
+              onChange={(e) => setTargetBerth(e.target.value)}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none bg-white"
+            >
+              {berths.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.code}{b.id === assignment.berth_id ? " (current)" : ""}
+                </option>
+              ))}
+            </select>
+            {targetBerthId !== assignment.berth_id && (
+              <p className="text-xs font-medium text-teal-700">
+                ↳ Move from {berthCode} → {berths.find((b) => b.id === targetBerthId)?.code ?? "selected slot"}
+              </p>
+            )}
           </div>
 
           {/* Confirm delete */}
@@ -366,7 +395,7 @@ export default function BerthManagementPage() {
   }, [assignments])
 
   async function moveAssignment(assignment: Assignment, targetBerth: Berth, targetStartDate: string) {
-    if (assignment.status !== "RESERVED") return
+    if (assignment.status === "COMPLETED" || assignment.status === "CANCELLED") return
     const duration = daySpan(assignment.start_date, assignment.end_date)
     const nextEndDate = assignment.end_date ? addDays(targetStartDate, duration) : null
 
@@ -394,7 +423,7 @@ export default function BerthManagementPage() {
           fetch(`/api/db/berths/${targetBerth.id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ status: "RESERVED", current_boat_id: assignment.boat_id }),
+            body: JSON.stringify({ status: assignment.status === "RESERVED" ? "RESERVED" : "OCCUPIED", current_boat_id: assignment.boat_id }),
           }),
         ])
       }
@@ -517,7 +546,7 @@ export default function BerthManagementPage() {
                           const end = endIndex === -1 ? days.length : endIndex
                           if (start < 0 || end <= start) return null
                           const width = (end - start) * DAY_WIDTH
-                          const canDrag = assignment.status === "RESERVED"
+                          const canDrag = assignment.status === "RESERVED" || assignment.status === "ACTIVE"
                           return (
                             <div
                               key={assignment.id}
@@ -558,6 +587,7 @@ export default function BerthManagementPage() {
         <EditAssignmentModal
           assignment={editing.assignment}
           berthCode={editing.berthCode}
+          berths={rows}
           onClose={() => setEditing(null)}
           onSaved={() => { setEditing(null); fetchData() }}
         />

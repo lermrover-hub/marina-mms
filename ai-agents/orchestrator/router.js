@@ -8,6 +8,7 @@
  */
 
 import { ask } from "../lib/claude-client.js"
+import { loadPrompt } from "../lib/load-prompt.js"
 
 const RULES = [
   // doc-writer first — "pdf" + "docx" are unambiguous output-format signals
@@ -21,7 +22,7 @@ const RULES = [
   { keywords: ["staff", "performance", "procedure"],                                               route: "hr" },
 ]
 
-const SYSTEM_PROMPT = `You are a routing classifier for a Marina & Boat Yard management system.
+const SYSTEM_PROMPT = loadPrompt("router-system", `You are a routing classifier for a Marina & Boat Yard management system.
 Classify the following request into exactly one category:
   marina      – berth, storage, boat movement, contracts, insurance
   finance     – invoices, payments, AR, overdue
@@ -31,7 +32,7 @@ Classify the following request into exactly one category:
   tide        – tide safety calculation, launch/retrieval time window
   doc-writer  – generate a PDF, DOCX, or Excel document
 
-Reply with ONLY the category name, nothing else.`
+Reply with ONLY the category name, nothing else.`)
 
 export async function classifyIntent(text) {
   const lower = (text ?? "").toLowerCase()

@@ -3,8 +3,9 @@
  * Drafts Job Descriptions, KPI reports, SOPs, onboarding checklists.
  */
 import { ask, askJson } from "../lib/claude-client.js"
+import { loadPrompt } from "../lib/load-prompt.js"
 
-const SYSTEM = `You are an HR specialist for a marina and boat yard in Ko Samui, Thailand.
+const SYSTEM = loadPrompt("hr-agent-system", `You are an HR specialist for a marina and boat yard in Ko Samui, Thailand.
 You draft professional HR documents in English (with Thai translations when requested).
 Always be concise, practical, and tailored to marina/boat yard operations.
 
@@ -13,7 +14,7 @@ FORBIDDEN — you must NEVER:
 - Disclose individual staff salary, performance rating, or disciplinary record
 - Make hiring or firing decisions
 - Send any document directly to staff (drafts only — management reviews before use)
-- Include real staff names in documents unless explicitly provided by the requester`
+- Include real staff names in documents unless explicitly provided by the requester`)
 
 export async function run({ content = "", task, role, language = "en" } = {}) {
   console.log("[HRAgent] Starting…")

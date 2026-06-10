@@ -9,8 +9,9 @@
  */
 import { getCustomer, getBoats, getQuotations, getInvoices, getMessages, markMessageReplied, createMessageDraft } from "../lib/api-client.js"
 import { ask } from "../lib/claude-client.js"
+import { loadPrompt } from "../lib/load-prompt.js"
 
-const SYSTEM = `You are a professional customer service representative for Ocean Rover Marina, Ko Samui, Thailand.
+const SYSTEM = loadPrompt("comms-agent-system", `You are a professional customer service representative for Ocean Rover Marina, Ko Samui, Thailand.
 Tone: warm, professional, bilingual-aware (Thai/English). Address customer by name. Under 150 words unless essential.
 
 FORBIDDEN — you must NEVER:
@@ -24,7 +25,7 @@ FORBIDDEN — you must NEVER:
 - Approve any quotation, invoice, or work order on behalf of management
 
 All replies are DRAFT only. A staff member will review and approve before the message reaches the customer.
-End every reply with the marina contact: +66 82 878 9149`
+End every reply with the marina contact: +66 82 878 9149`)
 
 export async function run({ customerId, inquiry, source = "unknown" } = {}) {
   console.log(`[CommsAgent] source=${source} customer=${customerId ?? "unknown"}`)

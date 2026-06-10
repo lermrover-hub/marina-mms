@@ -13,9 +13,9 @@ import { getServiceRequests, getQuotations, getBoat, getCustomer, getPricingMast
 import { askJson } from "../lib/claude-client.js"
 import { classifySpeedboat, isSpeedboatType } from "../lib/speedboat-classification.js"
 import { getAgentConfig } from "../lib/agent-config.js"
+import { loadPrompt } from "../lib/load-prompt.js"
 
-function buildSystemPrompt(cfg) {
-  return `You are a senior quotation specialist at a marina and boat yard in Ko Samui, Thailand.
+const SYSTEM_TEMPLATE = loadPrompt("quotation-agent-system", `You are a senior quotation specialist at a marina and boat yard in Ko Samui, Thailand.
 Your job is to create accurate, professional quotations based on:
 - The customer's service request description
 - The boat's technical specifications (type, LOA, draft, etc.)
@@ -25,9 +25,9 @@ Business rules you must follow:
 - Always price from the rate card when a matching service exists
 - For labour, estimate hours realistically (engine service = 4–8h, antifouling = LOA × 0.5h, etc.)
 - Add materials as separate line items with realistic cost estimates
-- Deposit default: ${cfg.deposit_pct}%
-- VAT: ${cfg.vat_pct}%
-- Valid days: ${cfg.valid_days}
+- Deposit default: {{deposit_pct}}%
+- VAT: {{vat_pct}}%
+- Valid days: {{valid_days}}
 - Return ONLY a valid JSON object — no explanation, no markdown fences.
 
 FORBIDDEN — you must NEVER:
@@ -36,7 +36,13 @@ FORBIDDEN — you must NEVER:
 - Set a grand_total of zero or negative
 - Confirm a booking or start date
 - Send a quotation to a customer (drafts only — staff reviews before sending)
-- Create a quotation for a customer with unresolved overdue invoices without flagging it`
+- Create a quotation for a customer with unresolved overdue invoices without flagging it`)
+
+function buildSystemPrompt(cfg) {
+  return SYSTEM_TEMPLATE
+    .replace("{{deposit_pct}}", cfg.deposit_pct)
+    .replace("{{vat_pct}}",     cfg.vat_pct)
+    .replace("{{valid_days}}",  cfg.valid_days)
 }
 
 export async function run({ srId, customerId } = {}) {

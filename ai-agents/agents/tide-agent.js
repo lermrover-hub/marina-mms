@@ -5,6 +5,13 @@
 import { apiFetch, getBoat } from "../lib/api-client.js"
 import { getAgentConfig } from "../lib/agent-config.js"
 
+// FORBIDDEN — this agent must NEVER:
+// - Declare a launch or haul-out window SAFE without actual tide data
+// - Override or suppress the operational safety warning
+// - Approve a vessel launch (advisory only — dockmaster confirms on the day)
+// - Change ramp offset or safety clearance values directly in code
+//   (use Settings → AI Agent Rules → Tide Agent instead)
+
 export async function run({ boatId, date, tideData, trailerHeight, safetyClearance, rampDepthOffset } = {}) {
   const cfg = await getAgentConfig("tide")
   console.log(`[TideAgent] boat=${boatId ?? "unknown"} date=${date ?? "today"}`)

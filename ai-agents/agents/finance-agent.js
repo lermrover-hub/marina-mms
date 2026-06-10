@@ -12,13 +12,20 @@
 
 import { getInvoices, createNotification } from "../lib/api-client.js"
 import { ask } from "../lib/claude-client.js"
+import { daysOverdue as calcDaysOverdue } from "../lib/date-utils.js"
+
+// FORBIDDEN — this agent must NEVER:
+// - Mark any payment as received (accounting staff only)
+// - Cancel or modify any invoice
+// - Send a payment demand or late-payment notice directly to a customer
+// - Disclose individual invoice amounts to anyone other than the account owner
+// - Create, approve, or reject any invoice without FINANCE role approval
+// All actions are notifications and briefings only.
 
 const TODAY = new Date()
 
 function daysOverdue(dueDateStr) {
-  if (!dueDateStr) return null
-  const d = new Date(dueDateStr)
-  return Math.ceil((TODAY - d) / (1000 * 60 * 60 * 24))
+  return calcDaysOverdue(dueDateStr)
 }
 
 function formatTHB(n) {

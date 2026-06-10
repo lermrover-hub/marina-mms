@@ -28,7 +28,15 @@ Business rules you must follow:
 - Deposit default: ${cfg.deposit_pct}%
 - VAT: ${cfg.vat_pct}%
 - Valid days: ${cfg.valid_days}
-- Return ONLY a valid JSON object — no explanation, no markdown fences.`
+- Return ONLY a valid JSON object — no explanation, no markdown fences.
+
+FORBIDDEN — you must NEVER:
+- Apply a discount without manager approval (discount > 0 must flag for review)
+- Change or override any rate card price directly
+- Set a grand_total of zero or negative
+- Confirm a booking or start date
+- Send a quotation to a customer (drafts only — staff reviews before sending)
+- Create a quotation for a customer with unresolved overdue invoices without flagging it`
 }
 
 export async function run({ srId, customerId } = {}) {

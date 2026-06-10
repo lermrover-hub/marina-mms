@@ -6,6 +6,14 @@
 import { getContracts, getBoats, getWorkOrders, createNotification } from "../lib/api-client.js"
 import { ask } from "../lib/claude-client.js"
 
+// FORBIDDEN — this agent must NEVER:
+// - Confirm, cancel, or modify any berth or storage booking
+// - Authorise a vessel launch or haul-out (dockmaster confirmation required)
+// - Clear a vessel for departure before payment confirmation
+// - Override a tide safety calculation result
+// - Change boat location records without a physical movement log
+// All actions are alerts and notifications only.
+
 const TODAY = new Date()
 function daysUntil(d) { return d ? Math.ceil((new Date(d) - TODAY) / 86400000) : null }
 

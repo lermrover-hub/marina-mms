@@ -129,6 +129,16 @@ export const markMessageReplied = (id) =>
 
 export const getAgentConfigAll = () => apiFetch("/api/db/agent-config")
 
+// ─── Outbound message drafts ──────────────────────────────────────────────────
+export const createMessageDraft = (body) =>
+  DRY_RUN
+    ? Promise.resolve(dryRunResult("message-draft", body))
+    : apiFetch("/api/db/messages", { method: "POST", body: JSON.stringify(body) })
+
+// ─── Agent audit log ──────────────────────────────────────────────────────────
+export const createAuditLog = (body) =>
+  apiFetch("/api/db/agent-audit-log", { method: "POST", body: JSON.stringify(body) })
+
 // ─── Notifications (read) ─────────────────────────────────────────────────────
 export const getNotifications = (params = "") =>
   apiFetch(`/api/db/notifications${params ? "?" + params : ""}`)

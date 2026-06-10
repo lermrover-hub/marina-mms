@@ -1,15 +1,30 @@
 /**
  * Comms Agent — L2 Specialist
  * Handles customer inquiries (LINE, Email, Web Form, Portal).
- * Merges customer-service-agent + messaging-agent concerns at specialist level.
+ * Canonical communication agent. messaging-agent.js and customer-service-agent.js
+ * are compatibility shims pointing here.
+ *
+ * APPROVAL GATE: All outbound messages are saved as PENDING_APPROVAL drafts.
+ * Staff must approve in the UI before the message is actually sent to the customer.
  */
-import { getCustomer, getBoats, getQuotations, getInvoices, getMessages, markMessageReplied } from "../lib/api-client.js"
+import { getCustomer, getBoats, getQuotations, getInvoices, getMessages, markMessageReplied, createMessageDraft } from "../lib/api-client.js"
 import { ask } from "../lib/claude-client.js"
-import { sendLineText, sendWhatsAppText, formatReply } from "../lib/messaging.js"
 
 const SYSTEM = `You are a professional customer service representative for Ocean Rover Marina, Ko Samui, Thailand.
 Tone: warm, professional, bilingual-aware (Thai/English). Address customer by name. Under 150 words unless essential.
-Never commit to prices or timelines without operations confirmation. End with: +66 82 878 9149`
+
+FORBIDDEN — you must NEVER:
+- Confirm a booking, berth reservation, or launch slot
+- Commit to any price, rate, or discount amount
+- Promise a specific completion date or timeline
+- Send or reference any late-payment notice or payment demand
+- Reference data belonging to a different customer
+- Disclose internal cost, margin, or rate card pricing
+- Cancel or modify any existing booking or reservation
+- Approve any quotation, invoice, or work order on behalf of management
+
+All replies are DRAFT only. A staff member will review and approve before the message reaches the customer.
+End every reply with the marina contact: +66 82 878 9149`
 
 export async function run({ customerId, inquiry, source = "unknown" } = {}) {
   console.log(`[CommsAgent] source=${source} customer=${customerId ?? "unknown"}`)
@@ -41,7 +56,26 @@ export async function run({ customerId, inquiry, source = "unknown" } = {}) {
 
   const reply = await ask(SYSTEM, context)
   console.log(`[CommsAgent] Draft reply for ${name}: "${reply.slice(0, 80)}…"`)
-  return { customer: name, customerId, reply, source }
+
+  // Save as PENDING_APPROVAL draft — do NOT send directly
+  let draftId = null
+  try {
+    const draft = await createMessageDraft({
+      channel:          source,
+      direction:        "OUTBOUND",
+      customer_id:      customerId ?? null,
+      content:          reply,
+      approval_status:  "PENDING_APPROVAL",
+      agent_generated:  true,
+      created_at:       new Date().toISOString(),
+    })
+    draftId = draft?.id ?? null
+    console.log(`[CommsAgent] Message draft saved: ${draftId} (awaiting staff approval)`)
+  } catch (e) {
+    console.warn("[CommsAgent] Could not save draft:", e.message)
+  }
+
+  return { customer: name, customerId, reply, source, draftId, status: "PENDING_APPROVAL" }
 }
 
 async function processInboundMessages() {
@@ -52,26 +86,33 @@ async function processInboundMessages() {
     throw e
   }
   const messages = Array.isArray(raw) ? raw : []
-  console.log(`[CommsAgent] ${messages.length} unreplied messages`)
+  console.log(`[CommsAgent] ${messages.length} unreplied inbound messages`)
   const results = []
 
   for (const msg of messages) {
     try {
       const context = `Channel: ${msg.channel}\nMessage: "${msg.content}"`
       const reply = await ask(SYSTEM, context)
-      const outbound = formatReply(reply)
 
-      if (msg.channel === "LINE") await sendLineText(msg.sender_id, outbound)
-      else if (msg.channel === "WHATSAPP") await sendWhatsAppText(msg.sender_id, outbound)
+      // Save as PENDING_APPROVAL draft — staff approves before send
+      const draft = await createMessageDraft({
+        channel:         msg.channel,
+        direction:       "OUTBOUND",
+        customer_id:     msg.customer_id ?? null,
+        content:         reply,
+        approval_status: "PENDING_APPROVAL",
+        agent_generated: true,
+        created_at:      new Date().toISOString(),
+      })
 
       await markMessageReplied(msg.id)
-      results.push({ id: msg.id, status: "replied" })
+      results.push({ id: msg.id, draftId: draft?.id, status: "draft_pending_approval" })
     } catch (e) {
       results.push({ id: msg.id, status: "error", error: e.message })
     }
   }
 
-  const ok = results.filter(r => r.status === "replied").length
-  console.log(`[CommsAgent] ${ok}/${messages.length} replied`)
-  return { processed: messages.length, replied: ok }
+  const ok = results.filter(r => r.status === "draft_pending_approval").length
+  console.log(`[CommsAgent] ${ok}/${messages.length} drafts saved for approval`)
+  return { processed: messages.length, drafted: ok }
 }

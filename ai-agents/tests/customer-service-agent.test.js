@@ -5,7 +5,7 @@
 
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { daysOverdue, isOverdueInvoice } from "../agents/customer-service-agent.js"
+import { daysOverdue, isOverdueInvoice } from "../lib/date-utils.js"
 
 test("daysOverdue: past due returns positive", () => {
   const past = new Date(Date.now() - 5 * 86400000).toISOString()

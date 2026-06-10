@@ -4,7 +4,7 @@ import Link from "next/link"
 import {
   Anchor, BarChart3, Bell, CalendarDays, CreditCard, Database,
   FileText, FolderOpen, Globe, HelpCircle, LayoutDashboard, Navigation,
-  Package, Receipt, Search, Settings, ShieldAlert, Ship, Users, Wrench, Zap,
+  Package, Receipt, Search, Settings, ShieldAlert, Ship, Tag, Users, Wrench, Zap,
 } from "lucide-react"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -138,6 +138,65 @@ const guideItems: GuideItem[] = [
     purpose: "Prepare service or marina fee quotations for customer approval.",
     steps: ["Create quote for customer/boat.", "Add line items and VAT.", "Send or print quote.", "Convert accepted quote to downstream work/invoice where supported."],
     tips: ["Use clear item descriptions because they appear on customer documents."],
+  },
+  {
+    section: "Pricing & Rates",
+    title: "Pricing Master",
+    href: "/pricing-master",
+    icon: Tag,
+    purpose: "View and manage the standard rate card for all marina services — wet berth, dry storage, ramp, repair labor, cleaning, and more. Rates here are used in all quotations and invoices.",
+    steps: [
+      "Go to Pricing & Quotations → Pricing Master (or Settings → Pricing Rules).",
+      "Browse all 14 categories: Wet Berth, Dry Storage, Ramp, Wash & Cleaning, Labor, etc.",
+      "Use the search box or Category filter to find a specific service.",
+      "Click Edit (in Settings view) or click the Pilot Rate cell (in Pricing Master) to update a rate.",
+      "Use Export CSV to download the full rate card for review in Excel.",
+    ],
+    tips: [
+      "Standard Rate is the official price on all customer documents — change it only when a permanent price update is agreed.",
+      "The rate card has 99 services. Use the Category filter to work on one group at a time.",
+    ],
+  },
+  {
+    section: "Pricing & Rates",
+    title: "Pilot Rate & Pilot Notes",
+    href: "/pricing-master",
+    icon: Tag,
+    purpose: "Pilot Rate is a temporary price override that sits on top of the Standard Rate without replacing it. Use it for seasonal pricing, short-term promotions, package deals, or AI quotation agent testing. The system uses Pilot Rate when it is set; otherwise it falls back to Standard Rate.",
+    steps: [
+      "Open Pricing Master (/pricing-master).",
+      "Find the service row — use search or category filter.",
+      "Click the Pilot Rate cell (orange column, labelled 'click to edit') on that row.",
+      "Type the new trial price and press Enter or click outside the cell to save.",
+      "Add a Pilot Note in the next column to record why the rate was changed, e.g. 'Low season promo May–Oct' or 'Package deal for Complete Marine'.",
+      "To apply a bulk discount: type a % in the 'Discount % e.g. 30' box, then click 'Apply to N rows'. This sets all visible rows to Standard Rate × (1 − discount%).",
+      "To remove all pilot rates and return to Standard Rate for every row, click 'Clear pilot rates'.",
+    ],
+    tips: [
+      "Pilot Rate = blank means not set — the system uses Standard Rate automatically.",
+      "Always fill Pilot Notes when setting a pilot rate so other staff understand the reason.",
+      "Use the 'Pilot rate set' counter at the top to see how many services currently have a trial price active.",
+      "Clear pilot rates after the promotion or trial period ends to avoid billing errors.",
+    ],
+  },
+  {
+    section: "Pricing & Rates",
+    title: "How to Change Pricing",
+    href: "/settings",
+    icon: Tag,
+    purpose: "There are two ways to change a price: (1) permanent update via Settings → Pricing Rules for long-term rate changes, and (2) temporary override via Pricing Master Pilot Rate for trials or promotions. Choose the right method to avoid unintended changes to customer documents.",
+    steps: [
+      "For a permanent price change: go to Settings → Pricing Rules, find the service, click Edit, update the price, and save.",
+      "For a temporary or trial price: go to Pricing Master, click the Pilot Rate cell for that service, enter the trial price, and add a Pilot Note.",
+      "For a seasonal bulk discount: go to Pricing Master, filter by category, enter a discount percentage in the bulk field, and click Apply.",
+      "To review current effective prices: open Pricing Master and look at the Pilot Rate column — any row with a pilot price is using that rate instead of Standard Rate.",
+      "To revert all pilot prices back to standard: click 'Clear pilot rates' in Pricing Master.",
+    ],
+    tips: [
+      "Settings → Pricing Rules edit changes the Standard Rate permanently and affects all new quotes immediately.",
+      "Pilot Rate changes are safe to test because they do not overwrite the Standard Rate — you can always clear them.",
+      "Never edit Standard Rate as a workaround for a one-time deal — use Pilot Rate instead.",
+    ],
   },
   {
     section: "Finance",

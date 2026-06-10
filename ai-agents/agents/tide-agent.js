@@ -3,12 +3,10 @@
  * Calls /api/tide/calculate, returns safe windows for a boat/date.
  */
 import { apiFetch, getBoat } from "../lib/api-client.js"
-
-const RAMP_DEPTH_OFFSET = -1.0
-const DEFAULT_SAFETY_CLEARANCE = 0.3  // metres
-const DEFAULT_TRAILER_HEIGHT   = 0.6  // metres
+import { getAgentConfig } from "../lib/agent-config.js"
 
 export async function run({ boatId, date, tideData, trailerHeight, safetyClearance, rampDepthOffset } = {}) {
+  const cfg = await getAgentConfig("tide")
   console.log(`[TideAgent] boat=${boatId ?? "unknown"} date=${date ?? "today"}`)
 
   // Get boat draft
@@ -39,9 +37,9 @@ export async function run({ boatId, date, tideData, trailerHeight, safetyClearan
 
   const body = {
     boatDraft:       draftM,
-    trailerHeight:   trailerHeight   ?? DEFAULT_TRAILER_HEIGHT,
-    safetyClearance: safetyClearance ?? DEFAULT_SAFETY_CLEARANCE,
-    rampDepthOffset: rampDepthOffset ?? RAMP_DEPTH_OFFSET,
+    trailerHeight:   trailerHeight   ?? cfg.trailer_height_m,
+    safetyClearance: safetyClearance ?? cfg.safety_clearance_m,
+    rampDepthOffset: rampDepthOffset ?? cfg.ramp_offset_m,
     tideData:        slots,
   }
 

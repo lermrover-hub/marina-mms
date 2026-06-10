@@ -309,6 +309,9 @@ model Quotation {
   approvedAt      DateTime?       @map("approved_at")
   sentAt          DateTime?       @map("sent_at")
   acceptedAt      DateTime?       @map("accepted_at")
+  draftByAgent    Boolean         @default(false) @map("draft_by_agent")
+  approvalStatus  String          @default("draft") @map("approval_status")
+  aiOrderId       String?         @map("ai_order_id")
   createdAt       DateTime        @default(now()) @map("created_at")
   updatedAt       DateTime        @updatedAt @map("updated_at")
 
@@ -320,6 +323,7 @@ model Quotation {
   invoices   Invoice[]
 
   @@map("quotations")
+  @@index([approvalStatus])
 }
 
 model QuotationItem {
@@ -355,6 +359,9 @@ model Invoice {
   outstandingBalance Decimal       @db.Decimal(12, 2) @default(0) @map("outstanding_balance")
   dueDate            DateTime?     @db.Date @map("due_date")
   notes              String?
+  draftByAgent       Boolean       @default(false) @map("draft_by_agent")
+  approvalStatus     String        @default("draft") @map("approval_status")
+  aiOrderId          String?       @map("ai_order_id")
   createdById        String?       @map("created_by_id")
   createdAt          DateTime      @default(now()) @map("created_at")
   updatedAt          DateTime      @updatedAt @map("updated_at")
@@ -367,6 +374,7 @@ model Invoice {
   payments  Payment[]
 
   @@map("invoices")
+  @@index([approvalStatus])
 }
 
 model InvoiceItem {
@@ -458,4 +466,83 @@ model PricingMaster {
   updatedAt       DateTime @updatedAt @map("updated_at")
 
   @@map("pricing_master")
+}
+
+// ─── AI Approval System ───────────────────────────────────────────────────────
+
+model AiOrder {
+  id                    String   @id @default(uuid())
+  agentName             String   @map("agent_name")
+  action                String
+  entityType            String   @map("entity_type")
+  entityId              String?  @map("entity_id")
+  inputData             Json     @map("input_data")
+  status                String   @default("pending") // pending, approved, rejected, executed, cancelled
+  approvalCount         Int      @default(0) @map("approval_count")
+  approvalRequiredRole  String   @default("MANAGING_DIRECTOR") @map("approval_required_role")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+  createdBy             String?  @map("created_by")
+
+  approvalQueue ApprovalQueueItem[]
+  toolCalls     AiToolCall[]
+
+  @@map("ai_orders")
+  @@index([agentName, status])
+  @@index([entityType, entityId])
+}
+
+model ApprovalQueueItem {
+  id         String   @id @default(uuid())
+  orderId    String   @map("order_id")
+  approverRole String  @map("approver_role")
+  status     String   @default("pending") // pending, approved, rejected
+  reason     String?
+  approvedBy String?  @map("approved_by")
+  approvedAt DateTime? @map("approved_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  order AiOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("approval_queue")
+  @@index([orderId])
+  @@index([status])
+  @@index([approverRole, status])
+}
+
+model AiToolCall {
+  id             String   @id @default(uuid())
+  agentName      String   @map("agent_name")
+  orderId        String?  @map("order_id")
+  apiEndpoint    String   @map("api_endpoint")
+  method         String
+  inputData      Json?    @map("input_data")
+  outputData     Json?    @map("output_data")
+  statusCode     Int?     @map("status_code")
+  errorMessage   String?  @map("error_message")
+  durationMs     Int?     @map("duration_ms")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  order AiOrder? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@map("ai_tool_calls")
+  @@index([agentName, createdAt])
+  @@index([orderId])
+  @@index([apiEndpoint])
+}
+
+model AiPermission {
+  id               String   @id @default(uuid())
+  agentName        String   @map("agent_name")
+  action           String
+  entityType       String   @map("entity_type")
+  requiresApproval Boolean  @default(true) @map("requires_approval")
+  approvalRole     String?  @map("approval_role")
+  maxAmount        Decimal? @db.Decimal(12, 2) @map("max_amount")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@map("ai_permissions")
+  @@unique([agentName, action, entityType])
+  @@index([agentName, action])
 }

@@ -41,6 +41,34 @@ export async function POST(req: Request) {
     const body = await req.json()
     const supabase = createServerClient()
 
+    // APPROVAL GATE: If this is agent-created, require approval order
+    if (body.generated_by === "ai-agent" || body.draft_by_agent) {
+      if (!body.ai_order_id) {
+        return NextResponse.json(
+          { error: "AI-generated quotations must have ai_order_id and be created through approval workflow. Use /api/ai/orders instead." },
+          { status: 403 }
+        )
+      }
+
+      // Check order exists and is approved
+      const { data: order, error: orderErr } = await supabase
+        .from("ai_orders")
+        .select("status")
+        .eq("id", body.ai_order_id)
+        .single()
+
+      if (orderErr || !order) {
+        return NextResponse.json({ error: "Invalid ai_order_id" }, { status: 400 })
+      }
+
+      if (order.status !== "approved") {
+        return NextResponse.json(
+          { error: `AI order must be approved first. Current status: ${order.status}` },
+          { status: 403 }
+        )
+      }
+    }
+
     const customerId = body.customer_id || null
     const boatId = body.boat_id || null
 

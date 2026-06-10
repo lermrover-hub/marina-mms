@@ -3,16 +3,19 @@
  *
  * Finds service requests that have no quotation yet, then uses Claude
  * to draft a quotation based on the request description, boat data,
- * and the active pricing master. Saves the draft via API.
+ * and the active pricing master. Creates an AI order for approval
+ * instead of writing directly to database.
  *
  * Does NOT touch the web app codebase.
  */
 
-import { getServiceRequests, getQuotations, getBoat, getCustomer, getPricingMaster, createQuotation } from "../lib/api-client.js"
+import { getServiceRequests, getQuotations, getBoat, getCustomer, getPricingMaster, apiFetch } from "../lib/api-client.js"
 import { askJson } from "../lib/claude-client.js"
 import { classifySpeedboat, isSpeedboatType } from "../lib/speedboat-classification.js"
+import { getAgentConfig } from "../lib/agent-config.js"
 
-const SYSTEM_PROMPT = `You are a senior quotation specialist at a marina and boat yard in Ko Samui, Thailand.
+function buildSystemPrompt(cfg) {
+  return `You are a senior quotation specialist at a marina and boat yard in Ko Samui, Thailand.
 Your job is to create accurate, professional quotations based on:
 - The customer's service request description
 - The boat's technical specifications (type, LOA, draft, etc.)
@@ -22,12 +25,15 @@ Business rules you must follow:
 - Always price from the rate card when a matching service exists
 - For labour, estimate hours realistically (engine service = 4–8h, antifouling = LOA × 0.5h, etc.)
 - Add materials as separate line items with realistic cost estimates
-- Deposit default: 50%
-- VAT: 7%
-- Valid days: 7
+- Deposit default: ${cfg.deposit_pct}%
+- VAT: ${cfg.vat_pct}%
+- Valid days: ${cfg.valid_days}
 - Return ONLY a valid JSON object — no explanation, no markdown fences.`
+}
 
 export async function run({ srId, customerId } = {}) {
+  const cfg = await getAgentConfig("quotation")
+  const systemPrompt = buildSystemPrompt(cfg)
   console.log("[QuotationAgent] Starting…")
 
   // 1. Fetch service requests and existing quotations (sequential to avoid cold-start timeouts)
@@ -146,29 +152,30 @@ Return a JSON object with this exact structure:
   ]
 }`
 
-      const draft = await askJson(SYSTEM_PROMPT, prompt)
+      const draft = await askJson(systemPrompt, prompt)
 
-      // 5. Calculate totals
-      const items        = draft.items ?? []
-      const subtotal     = items.reduce((s, i) => s + (Number(i.qty) || 1) * (Number(i.unitPrice) || 0), 0)
-      const taxAmount    = Math.round(subtotal * 0.07)
-      const grandTotal   = subtotal + taxAmount
-      const depositReq   = Math.round(grandTotal * 0.5)
+      // 5. Calculate totals using DB-sourced config
+      const vatRate    = cfg.vat_pct / 100
+      const items      = draft.items ?? []
+      const subtotal   = items.reduce((s, i) => s + (Number(i.qty) || 1) * (Number(i.unitPrice) || 0), 0)
+      const taxAmount  = Math.round(subtotal * vatRate)
+      const grandTotal = subtotal + taxAmount
+      const depositReq = Math.round(grandTotal * cfg.deposit_pct / 100)
 
       const validUntil = new Date()
-      validUntil.setDate(validUntil.getDate() + 7)
+      validUntil.setDate(validUntil.getDate() + cfg.valid_days)
 
       const quotationBody = {
         customer_id:     req.customer_id ?? null,
         boat_id:         req.boat_id ?? null,
         service_request_id: req.id,
         title:           draft.title ?? `Quotation — ${req.title ?? req.id}`,
-        valid_days:      7,
+        valid_days:      cfg.valid_days,
         valid_until:     validUntil.toISOString().split("T")[0],
         discount_type:   "NONE",
         discount_value:  0,
-        tax_rate:        7,
-        deposit_pct:     50,
+        tax_rate:        cfg.vat_pct,
+        deposit_pct:     cfg.deposit_pct,
         notes:           draft.notes ?? null,
         subtotal,
         discount_amount: 0,
@@ -183,9 +190,23 @@ Return a JSON object with this exact structure:
         generated_by:    "ai-agent",
       }
 
-      const created = await createQuotation(quotationBody)
-      console.log(`[QuotationAgent] ✓ Draft quotation created: ${created?.id ?? "?"} (฿${grandTotal.toLocaleString()})`)
-      results.push({ requestId: req.id, quotationId: created?.id, grandTotal })
+      // Create approval order instead of direct write
+      // Manager must approve before quotation is actually created
+      const t0 = Date.now()
+      const created = await apiFetch("/api/ai/orders", {
+        method: "POST",
+        body: JSON.stringify({
+          agent_name: "quotation",
+          action: "create_quotation",
+          entity_type: "quotation",
+          input_data: quotationBody,
+          approval_required_role: "MANAGING_DIRECTOR",
+        }),
+      })
+      const duration = Date.now() - t0
+
+      console.log(`[QuotationAgent] ✓ Approval order created: ${created?.id ?? "?"} (awaiting manager approval, ฿${grandTotal.toLocaleString()})`)
+      results.push({ requestId: req.id, orderId: created?.id, grandTotal, status: "pending_approval", duration })
 
     } catch (err) {
       console.error(`[QuotationAgent] ✗ Failed for request ${req.id}: ${err.message}`)

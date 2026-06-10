@@ -1,7 +1,7 @@
 "use client"
 import React, { useState, useEffect } from "react"
 import Link from "next/link"
-import { Building2, Users, Tag, FileText, Bell, ShieldCheck, Sliders, ChevronRight, Loader2, Upload, Download, Trash2, File, Receipt, PlayCircle, CheckCircle2, AlertTriangle, Globe, Mail } from "lucide-react"
+import { Bot, Building2, Users, Tag, FileText, Bell, ShieldCheck, Sliders, ChevronRight, Loader2, Upload, Download, Trash2, File, Receipt, PlayCircle, CheckCircle2, AlertTriangle, Globe, Mail, Save } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { PageHeader } from "@/components/shared/PageHeader"
@@ -36,6 +36,7 @@ const SETTING_GROUPS = [
   { id: "email",      label: "Email",             icon: Mail,       description: "Resend email integration and test" },
   { id: "language",   label: "Language & Region", icon: Globe,      description: "UI language, date format, and locale" },
   { id: "system",     label: "System",            icon: Sliders,    description: "VAT rate, currency, date format, locale" },
+  { id: "ai_agent",  label: "AI Agent Rules",    icon: Bot,        description: "Configurable rules for quotation, comms, finance, tide, and marina agents" },
 ]
 
 const ROLE_LABELS: Record<string, { label: string; color: string; desc: string }> = {
@@ -60,6 +61,63 @@ const TEMPLATE_TYPES: { type: string; label: string; description: string }[] = [
   { type: "INCIDENT",         label: "Incident Report",       description: "Safety incident report form" },
   { type: "OTHER",            label: "Other",                 description: "General purpose templates" },
 ]
+
+// ─── AI Agent config types & field definitions ────────────────────────────────
+
+type AgentConfigRow = {
+  agent_id: string
+  label: string
+  config: Record<string, unknown>
+  updated_at: string | null
+  updated_by: string | null
+}
+
+type FieldDef = {
+  key: string
+  label: string
+  type: "number" | "text" | "textarea" | "select"
+  description?: string
+  options?: { value: string; label: string }[]
+  step?: number
+}
+
+const AGENT_FIELDS: Record<string, FieldDef[]> = {
+  quotation: [
+    { key: "vat_pct",            label: "VAT %",                  type: "number",   description: "Applied to all quotation totals (default: 7)" },
+    { key: "deposit_pct",        label: "Deposit %",              type: "number",   description: "Default deposit required before starting work (default: 50)" },
+    { key: "valid_days",         label: "Valid Days",             type: "number",   description: "Quotation expires after this many days (default: 7)" },
+    { key: "extra_instructions", label: "Extra Instructions",     type: "textarea", description: "Additional rules appended to the agent's system prompt" },
+  ],
+  comms: [
+    { key: "max_words",          label: "Max Response Words",     type: "number",   description: "Maximum length of agent replies (default: 150)" },
+    { key: "language",           label: "Language Mode",          type: "select",
+      options: [
+        { value: "EN",                    label: "English only" },
+        { value: "TH",                    label: "Thai only" },
+        { value: "EN/TH bilingual-aware", label: "EN/TH bilingual-aware (default)" },
+      ],
+    },
+    { key: "phone",              label: "Phone in Signature",     type: "text",     description: "Contact number added to the end of outgoing messages" },
+    { key: "tone",               label: "Tone Instruction",       type: "text",     description: "e.g. warm, professional, friendly" },
+    { key: "extra_instructions", label: "Extra Instructions",     type: "textarea", description: "Additional rules appended to the agent's system prompt" },
+  ],
+  finance: [
+    { key: "overdue_warn_days",      label: "Overdue Warning (days)",      type: "number", description: "Create reminder when invoice is this many days overdue (default: 7)" },
+    { key: "escalation_amount_thb",  label: "Escalation Threshold (฿)",    type: "number", description: "Notify manager when overdue amount exceeds this value" },
+    { key: "extra_instructions",     label: "Extra Instructions",          type: "textarea", description: "Additional rules appended to the agent's system prompt" },
+  ],
+  tide: [
+    { key: "ramp_offset_m",       label: "Ramp Depth Offset (m)",     type: "number", step: 0.1, description: "Ramp surface offset from tide-table zero — usually negative (default: −1.0)" },
+    { key: "safety_clearance_m",  label: "Safety Clearance (m)",      type: "number", step: 0.1, description: "Minimum clearance added above the boat's draft (default: 0.8)" },
+    { key: "trailer_height_m",    label: "Default Trailer Height (m)", type: "number", step: 0.1, description: "Assumed trailer/cradle height when not provided (default: 0.3)" },
+  ],
+  marina: [
+    { key: "contract_expiry_warn_days",  label: "Contract Expiry Warning (days)",  type: "number", description: "Send alert this many days before a berth/storage contract expires" },
+    { key: "insurance_expiry_warn_days", label: "Insurance Expiry Warning (days)", type: "number", description: "Send alert this many days before a boat's insurance expires" },
+  ],
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`
@@ -95,6 +153,14 @@ export default function SettingsPage() {
   const [emailTestLoading,  setEmailTestLoading]  = useState(false)
   const [emailTestResult,   setEmailTestResult]   = useState<{ configured?: boolean; sent?: boolean; to?: string; id?: string; message?: string; error?: string } | null>(null)
 
+  // AI Agent config state
+  const [agentConfigs,     setAgentConfigs]     = useState<AgentConfigRow[]>([])
+  const [agentDrafts,      setAgentDrafts]      = useState<Record<string, Record<string, unknown>>>({})
+  const [agentConfigLoading, setAgentConfigLoading] = useState(false)
+  const [agentSaving,      setAgentSaving]      = useState<string | null>(null)
+  const [agentSaveMsg,     setAgentSaveMsg]      = useState<Record<string, "ok" | "error">>({})
+  const [activeAgentTab,   setActiveAgentTab]    = useState("quotation")
+
   function showSettingsNotice(feature: string) {
     alert(`${feature} is not connected to a save API yet.`)
   }
@@ -114,6 +180,9 @@ export default function SettingsPage() {
     if (activeGroup === "pricing") {
       loadPricingRules()
     }
+    if (activeGroup === "ai_agent") {
+      loadAgentConfigs()
+    }
   }, [activeGroup])
 
   function loadPricingRules() {
@@ -127,6 +196,41 @@ export default function SettingsPage() {
       })
       .catch(() => setPricingError("Failed to load pricing master"))
       .finally(() => setPricingLoading(false))
+  }
+
+  function loadAgentConfigs() {
+    setAgentConfigLoading(true)
+    fetch("/api/db/agent-config")
+      .then(r => r.json())
+      .then(d => {
+        if (Array.isArray(d)) {
+          setAgentConfigs(d)
+          const drafts: Record<string, Record<string, unknown>> = {}
+          d.forEach((row: AgentConfigRow) => { drafts[row.agent_id] = { ...row.config } })
+          setAgentDrafts(drafts)
+        }
+      })
+      .catch(() => {})
+      .finally(() => setAgentConfigLoading(false))
+  }
+
+  async function saveAgentConfig(agentId: string) {
+    setAgentSaving(agentId)
+    setAgentSaveMsg(prev => { const n = { ...prev }; delete n[agentId]; return n })
+    try {
+      const res = await fetch("/api/db/agent-config", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agent_id: agentId, config: agentDrafts[agentId] ?? {} }),
+      })
+      if (!res.ok) throw new Error("Save failed")
+      setAgentSaveMsg(prev => ({ ...prev, [agentId]: "ok" }))
+      loadAgentConfigs()
+    } catch {
+      setAgentSaveMsg(prev => ({ ...prev, [agentId]: "error" }))
+    } finally {
+      setAgentSaving(null)
+    }
   }
 
   function loadTemplates() {
@@ -1025,6 +1129,167 @@ export default function SettingsPage() {
                       <li>Restart the dev server and click &ldquo;Send Test Email&rdquo; to verify</li>
                     </ol>
                   </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {activeGroup === "ai_agent" && (
+            <div className="space-y-4">
+              {/* Info banner */}
+              <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700 flex items-start gap-3">
+                <Bot className="h-4 w-4 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium">AI Agent Rules</p>
+                  <p className="text-xs text-blue-600 mt-0.5">
+                    Rules are stored in the database and loaded by each agent on its next run.
+                    Changes here take effect immediately — no code deployment required.
+                  </p>
+                </div>
+              </div>
+
+              {agentConfigLoading ? (
+                <div className="flex items-center justify-center py-16 gap-2 text-gray-400">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span className="text-sm">Loading agent configuration…</span>
+                </div>
+              ) : agentConfigs.length === 0 ? (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                  No agent config found. Run the database migration to create the <code className="bg-amber-100 px-1 rounded">mms_agent_config</code> table.
+                </div>
+              ) : (
+                <Card>
+                  {/* Sub-tabs */}
+                  <div className="flex overflow-x-auto border-b border-gray-200 bg-gray-50 rounded-t-lg">
+                    {agentConfigs.map((cfg) => (
+                      <button
+                        key={cfg.agent_id}
+                        onClick={() => { setActiveAgentTab(cfg.agent_id); setAgentSaveMsg({}) }}
+                        className={`shrink-0 px-5 py-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                          activeAgentTab === cfg.agent_id
+                            ? "border-teal-600 text-teal-700 bg-white"
+                            : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-white/60"
+                        }`}
+                      >
+                        {cfg.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {agentConfigs.map((cfg) => {
+                    if (activeAgentTab !== cfg.agent_id) return null
+                    const fields = AGENT_FIELDS[cfg.agent_id] ?? []
+                    const draft  = agentDrafts[cfg.agent_id] ?? {}
+                    const saving = agentSaving === cfg.agent_id
+                    const msg    = agentSaveMsg[cfg.agent_id]
+
+                    function setField(key: string, value: unknown) {
+                      setAgentDrafts(prev => ({
+                        ...prev,
+                        [cfg.agent_id]: { ...prev[cfg.agent_id], [key]: value },
+                      }))
+                    }
+
+                    return (
+                      <CardContent key={cfg.agent_id} className="space-y-5 p-6">
+                        {/* Updated-at info */}
+                        {cfg.updated_at && (
+                          <p className="text-xs text-gray-400">
+                            Last saved: {new Date(cfg.updated_at).toLocaleString("en-GB")}
+                            {cfg.updated_by ? ` by ${cfg.updated_by}` : ""}
+                          </p>
+                        )}
+
+                        {/* Fields */}
+                        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                          {fields.map((field) => (
+                            <div key={field.key} className={`space-y-1.5 ${field.type === "textarea" ? "sm:col-span-2" : ""}`}>
+                              <Label className="text-sm font-medium text-gray-700">{field.label}</Label>
+                              {field.description && (
+                                <p className="text-xs text-gray-400">{field.description}</p>
+                              )}
+                              {field.type === "select" ? (
+                                <select
+                                  value={String(draft[field.key] ?? "")}
+                                  onChange={e => setField(field.key, e.target.value)}
+                                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                >
+                                  {field.options?.map(opt => (
+                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                  ))}
+                                </select>
+                              ) : field.type === "textarea" ? (
+                                <textarea
+                                  value={String(draft[field.key] ?? "")}
+                                  onChange={e => setField(field.key, e.target.value)}
+                                  rows={3}
+                                  placeholder="Leave blank to use default agent instructions"
+                                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y"
+                                />
+                              ) : (
+                                <Input
+                                  type={field.type}
+                                  step={field.step}
+                                  value={String(draft[field.key] ?? "")}
+                                  onChange={e => setField(field.key, field.type === "number" ? Number(e.target.value) : e.target.value)}
+                                />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Save row */}
+                        <div className="flex items-center gap-3 border-t pt-4">
+                          <Button
+                            size="sm"
+                            className="bg-teal-600 hover:bg-teal-700 text-white gap-2"
+                            disabled={saving}
+                            onClick={() => saveAgentConfig(cfg.agent_id)}
+                          >
+                            {saving
+                              ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…</>
+                              : <><Save className="h-3.5 w-3.5" /> Save {cfg.label} Rules</>
+                            }
+                          </Button>
+                          {msg === "ok" && (
+                            <span className="flex items-center gap-1 text-sm text-green-600">
+                              <CheckCircle2 className="h-4 w-4" /> Saved
+                            </span>
+                          )}
+                          {msg === "error" && (
+                            <span className="flex items-center gap-1 text-sm text-red-600">
+                              <AlertTriangle className="h-4 w-4" /> Save failed
+                            </span>
+                          )}
+                        </div>
+                      </CardContent>
+                    )
+                  })}
+                </Card>
+              )}
+
+              {/* How agents use these rules */}
+              <Card>
+                <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Bot className="h-4 w-4 text-teal-500" /> How Agents Use These Rules</CardTitle></CardHeader>
+                <CardContent className="space-y-3 text-sm text-gray-600">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {[
+                      { agent: "Quotation Agent", reads: "VAT %, deposit %, valid days, extra instructions → injected into quotation system prompt" },
+                      { agent: "Comms Agent",     reads: "Language mode, tone, max words, phone → shapes every customer message" },
+                      { agent: "Finance Agent",   reads: "Overdue warning days, escalation threshold → controls when reminders and alerts fire" },
+                      { agent: "Tide Agent",      reads: "Ramp offset, safety clearance, trailer height → used in launch/retrieval safety formula" },
+                      { agent: "Marina Agent",    reads: "Contract & insurance expiry days → controls when renewal alerts are sent" },
+                    ].map(({ agent, reads }) => (
+                      <div key={agent} className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                        <p className="font-medium text-gray-800 text-xs mb-1">{agent}</p>
+                        <p className="text-xs text-gray-500">{reads}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-400 border-t pt-3">
+                    Agents call <code className="bg-gray-100 px-1 rounded">GET /api/db/agent-config</code> at startup and merge DB values over their built-in defaults.
+                    If the API is unreachable, agents fall back to the hardcoded defaults automatically.
+                  </p>
                 </CardContent>
               </Card>
             </div>

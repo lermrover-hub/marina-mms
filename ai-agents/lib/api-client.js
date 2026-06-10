@@ -127,6 +127,8 @@ export const markMessageReplied = (id) =>
     ? Promise.resolve(dryRunResult("message-replied", { id }))
     : apiFetch(`/api/db/messages/${id}`, { method: "PATCH", body: JSON.stringify({ replied: true }) })
 
+export const getAgentConfigAll = () => apiFetch("/api/db/agent-config")
+
 // ─── Notifications (read) ─────────────────────────────────────────────────────
 export const getNotifications = (params = "") =>
   apiFetch(`/api/db/notifications${params ? "?" + params : ""}`)

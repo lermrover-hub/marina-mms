@@ -81,7 +81,7 @@ The tide agent returns:
   "ok": true,
   "draftM": 0.50,
   "requiredActualDepth": 1.30,
-  "requiredTideHeight": 0.30,
+  "requiredTideHeight": 2.30,
   "earliestSafeHour": "06:00",
   "safeWindows": [
     { "hour": "06:00", "tide": 0.45, "safe": true },

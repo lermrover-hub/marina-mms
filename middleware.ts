@@ -21,7 +21,11 @@ export function middleware(req: NextRequest) {
   const agentKey = process.env.MARINA_AGENT_API_KEY
   const suppliedAgentKey = req.headers.get("x-agent-api-key")
   const isAgentApiRoute =
-    pathname.startsWith("/api/db/") || pathname.startsWith("/api/pricing-master")
+    pathname.startsWith("/api/db/") ||
+    pathname.startsWith("/api/pricing-master") ||
+    pathname.startsWith("/api/tide/") ||
+    (pathname === "/api/ai/orders" && (req.method === "GET" || req.method === "POST")) ||
+    (pathname.match(/^\/api\/ai\/orders\/[^/]+$/) && req.method === "GET")
 
   if (isAgentApiRoute && agentKey && suppliedAgentKey === agentKey) {
     const isReadOnlyRequest = req.method === "GET" || req.method === "HEAD"

@@ -193,9 +193,9 @@ These files re-export from their canonical agent. Do not add new logic here.
 
 | File | Points to | Reason |
 |---|---|---|
-| `agents/customer-service-agent.js` | `comms-agent.js` | Renamed; shim for backward compat |
-| `agents/messaging-agent.js` | `comms-agent.js` | Renamed; shim for backward compat |
-| `agents/operations-agent.js` | `marina-agent.js` | Renamed; shim for backward compat |
+| `agents/_deprecated/customer-service-agent.js` | `comms-agent.js` | Renamed; shim for backward compat |
+| `agents/_deprecated/messaging-agent.js` | `comms-agent.js` | Renamed; shim for backward compat |
+| `agents/_deprecated/operations-agent.js` | `marina-agent.js` | Renamed; shim for backward compat |
 
 ---
 

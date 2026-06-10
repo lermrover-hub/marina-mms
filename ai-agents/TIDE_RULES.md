@@ -38,8 +38,13 @@ minimum_required_actual_depth_m = boat_draft_m + 0.70 + 0.10
 ### Step 2 — Minimum Required Tide-Table Height
 
 ```
-minimum_required_tide_table_height_m = minimum_required_actual_depth_m + ramp_offset_m
-                                     = minimum_required_actual_depth_m − 1.00
+minimum_required_tide_table_height_m = minimum_required_actual_depth_m - ramp_offset_m
+```
+
+Because `ramp_offset_m = −1.00` (negative — ramp surface is 1 m below tide datum):
+```
+= minimum_required_actual_depth_m - (−1.00)
+= minimum_required_actual_depth_m + 1.00
 ```
 
 ### Step 3 — Safety Classification
@@ -49,12 +54,20 @@ A time slot is classified **SAFE** when:
 predicted_tide_height_m >= minimum_required_tide_table_height_m
 ```
 
+### Example (zero draft, Ko Samui spreadsheet reference case)
+
+```
+minimum_required_actual_depth = 0 + 0.70 + 0.10       = 0.80 m  ← matches spreadsheet
+minimum_required_tide_table   = 0.80 - (−1.00)         = 1.80 m  ← matches spreadsheet
+→ SAFE when predicted tide ≥ 1.80 m
+```
+
 ### Example (0.50 m draft, approved defaults)
 
 ```
-minimum_required_actual_depth = 0.50 + 0.70 + 0.10 = 1.30 m
-minimum_required_tide_table   = 1.30 − 1.00         = 0.30 m
-→ SAFE when predicted tide ≥ 0.30 m
+minimum_required_actual_depth = 0.50 + 0.70 + 0.10    = 1.30 m
+minimum_required_tide_table   = 1.30 - (−1.00)         = 2.30 m
+→ SAFE when predicted tide ≥ 2.30 m
 ```
 
 ---

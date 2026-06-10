@@ -9,7 +9,7 @@
  */
 
 // Re-export the canonical run function
-export { run } from "./comms-agent.js"
+export { run } from "../comms-agent.js"
 
 // Re-export date utilities from their new home
-export { daysOverdue, isOverdueInvoice } from "../lib/date-utils.js"
+export { daysOverdue, isOverdueInvoice } from "../../lib/date-utils.js"

@@ -107,9 +107,9 @@ const AGENT_FIELDS: Record<string, FieldDef[]> = {
     { key: "extra_instructions",     label: "Extra Instructions",          type: "textarea", description: "Additional rules appended to the agent's system prompt" },
   ],
   tide: [
-    { key: "ramp_offset_m",       label: "Ramp Depth Offset (m)",     type: "number", step: 0.1, description: "Ramp surface offset from tide-table zero — usually negative (default: −1.0)" },
-    { key: "safety_clearance_m",  label: "Safety Clearance (m)",      type: "number", step: 0.1, description: "Minimum clearance added above the boat's draft (default: 0.8)" },
-    { key: "trailer_height_m",    label: "Default Trailer Height (m)", type: "number", step: 0.1, description: "Assumed trailer/cradle height when not provided (default: 0.3)" },
+    { key: "ramp_offset_m",       label: "Ramp Depth Offset (m)",     type: "number", step: 0.1, description: "Ramp surface offset from tide-table zero — usually negative (default: −1.00)" },
+    { key: "safety_clearance_m",  label: "Safety Clearance (m)",      type: "number", step: 0.1, description: "Minimum clearance added above the boat's draft (default: 0.10)" },
+    { key: "trailer_height_m",    label: "Default Trailer Height (m)", type: "number", step: 0.1, description: "Assumed trailer/cradle height when not provided (default: 0.70)" },
   ],
   marina: [
     { key: "contract_expiry_warn_days",  label: "Contract Expiry Warning (days)",  type: "number", description: "Send alert this many days before a berth/storage contract expires" },

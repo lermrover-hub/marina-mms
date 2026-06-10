@@ -20,6 +20,17 @@ function calcTotals(items) {
   return { subtotal, taxAmount, grandTotal, depositReq }
 }
 
+// Config-aware version — mirrors what quotation-agent.js does with getAgentConfig()
+function calcTotalsWithConfig(items, { vatPct = 7, depositPct = 50, validDays = 7 } = {}) {
+  const subtotal   = items.reduce((s, i) => s + (Number(i.qty) || 1) * (Number(i.unitPrice) || 0), 0)
+  const taxAmount  = Math.round(subtotal * (vatPct / 100))
+  const grandTotal = subtotal + taxAmount
+  const depositReq = Math.round(grandTotal * (depositPct / 100))
+  const validUntil = new Date()
+  validUntil.setDate(validUntil.getDate() + validDays)
+  return { subtotal, taxAmount, grandTotal, depositReq, validUntil: validUntil.toISOString().split("T")[0] }
+}
+
 // ── Unit tests: total calculation ─────────────────────────────────────────────
 
 test("calcTotals: single item", () => {
@@ -96,6 +107,44 @@ test("already-quoted requests are excluded", () => {
   const pending = requests.filter(r => !quotedIds.has(r.id))
   assert.equal(pending.length, 1)
   assert.equal(pending[0].id, "req-2")
+})
+
+// ── DB config path tests — non-default VAT / deposit / validDays ─────────────
+// These verify the agent uses getAgentConfig() values, not hardcoded constants.
+
+test("config: vat 0% produces zero tax", () => {
+  const items = [{ qty: 1, unitPrice: 10000 }]
+  const t = calcTotalsWithConfig(items, { vatPct: 0, depositPct: 50 })
+  assert.equal(t.taxAmount,  0)
+  assert.equal(t.grandTotal, 10000)
+  assert.equal(t.depositReq, 5000)
+})
+
+test("config: non-default deposit 30% is applied correctly", () => {
+  const items = [{ qty: 1, unitPrice: 10000 }]
+  const t = calcTotalsWithConfig(items, { vatPct: 7, depositPct: 30 })
+  assert.equal(t.subtotal,   10000)
+  assert.equal(t.taxAmount,  700)
+  assert.equal(t.grandTotal, 10700)
+  assert.equal(t.depositReq, Math.round(10700 * 0.3))
+})
+
+test("config: validDays 14 sets validUntil 14 days out", () => {
+  const items = [{ qty: 1, unitPrice: 500 }]
+  const t = calcTotalsWithConfig(items, { vatPct: 7, depositPct: 50, validDays: 14 })
+  const expected = new Date()
+  expected.setDate(expected.getDate() + 14)
+  assert.equal(t.validUntil, expected.toISOString().split("T")[0])
+})
+
+test("config: vatPct=7 depositPct=50 matches hardcoded calcTotals (default path)", () => {
+  const items = [{ qty: 2, unitPrice: 1000 }, { qty: 1, unitPrice: 3000 }]
+  const hardcoded = calcTotals(items)
+  const configured = calcTotalsWithConfig(items, { vatPct: 7, depositPct: 50 })
+  assert.equal(configured.subtotal,   hardcoded.subtotal)
+  assert.equal(configured.taxAmount,  hardcoded.taxAmount)
+  assert.equal(configured.grandTotal, hardcoded.grandTotal)
+  assert.equal(configured.depositReq, hardcoded.depositReq)
 })
 
 // ── Live API smoke test ────────────────────────────────────────────────────────

@@ -31,9 +31,9 @@ See `AGENTS.md` for the full agent registry with permissions, forbidden actions,
 
 | File | Points to |
 |---|---|
-| `agents/customer-service-agent.js` | `comms-agent.js` |
-| `agents/messaging-agent.js` | `comms-agent.js` |
-| `agents/operations-agent.js` | `marina-agent.js` |
+| `agents/_deprecated/customer-service-agent.js` | `comms-agent.js` |
+| `agents/_deprecated/messaging-agent.js` | `comms-agent.js` |
+| `agents/_deprecated/operations-agent.js` | `marina-agent.js` |
 
 ---
 
@@ -154,3 +154,5 @@ Manager approves in UI
 | `PRICING_RULES.md` | Speedboat classification, yacht per-foot, VAT, deposit, valid days, GL mapping |
 | `TIDE_RULES.md` | Approved Ko Samui 2026 values, tide formula, dockmaster approval rule |
 | `lib/constants.js` | Canonical marina name, phone, URL, default labels |
+| `lib/load-prompt.js` | Reads `prompts/<name>.md`; falls back to inline string |
+| `prompts/` | Editable system prompts for comms, hr, quotation, router agents |

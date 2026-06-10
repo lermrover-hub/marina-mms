@@ -9,11 +9,12 @@
  *   WHATSAPP_ACCESS_TOKEN
  */
 
+import { MARINA_NAME, MARINA_PHONE, MARINA_PORTAL_URL } from "./constants.js"
+
 const LINE_TOKEN   = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? ""
 const WA_PHONE_ID  = process.env.WHATSAPP_PHONE_NUMBER_ID  ?? ""
 const WA_TOKEN     = process.env.WHATSAPP_ACCESS_TOKEN     ?? ""
 const WA_VERSION   = process.env.WHATSAPP_API_VERSION      ?? "v20.0"
-const SITE_URL     = process.env.MARINA_API_BASE            ?? "https://marina-mms.vercel.app"
 const DRY_RUN      = process.env.AI_AGENT_DRY_RUN === "true"
 
 // ─── LINE ─────────────────────────────────────────────────────────────────────
@@ -85,5 +86,5 @@ export async function sendWhatsAppText(to, text) {
 // ─── Shared reply formatter ────────────────────────────────────────────────────
 
 export function formatReply(text) {
-  return `⚓ *Ocean Rover Marina*\n\n${text}\n\nFor urgent matters: *+66 82 878 9149*\n${SITE_URL}/portal`
+  return `⚓ *${MARINA_NAME}*\n\n${text}\n\nFor urgent matters: *${MARINA_PHONE}*\n${MARINA_PORTAL_URL}`
 }

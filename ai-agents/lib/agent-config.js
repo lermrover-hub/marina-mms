@@ -6,6 +6,7 @@
  */
 
 import { getAgentConfigAll } from "./api-client.js"
+import { MARINA_PHONE } from "./constants.js"
 
 const DEFAULTS = {
   quotation: {
@@ -17,7 +18,7 @@ const DEFAULTS = {
   comms: {
     max_words: 150,
     language: "EN/TH bilingual-aware",
-    phone: "+66 82 878 9149",
+    phone: MARINA_PHONE,
     tone: "warm, professional",
     extra_instructions: "",
   },

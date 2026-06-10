@@ -81,7 +81,7 @@ export async function run() {
   const totalOverdue  = overdue.reduce((s, i)  => s + outstanding(i), 0)
   const totalUpcoming = upcoming.reduce((s, i) => s + outstanding(i), 0)
 
-  const summaryPrompt = `Daily AR summary for Marina MMS — ${TODAY.toDateString()}
+  const summaryPrompt = `Daily AR summary for Ocean Rover Marina — ${TODAY.toDateString()}
 
 Overdue invoices: ${overdue.length} (total outstanding: ${formatTHB(totalOverdue)})
 Upcoming (due in ≤3 days): ${upcoming.length} (total: ${formatTHB(totalUpcoming)})

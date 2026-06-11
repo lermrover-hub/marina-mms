@@ -57,7 +57,7 @@ export async function POST(
     }
 
     // Update order with entity_id and mark executed
-    await supabase
+    const { error: updateErr } = await supabase
       .from('ai_orders')
       .update({
         entity_id: entityId,
@@ -65,6 +65,12 @@ export async function POST(
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
+
+    if (updateErr) {
+      const table = order.action === 'create_quotation' ? 'mms_quotations' : 'mms_invoices'
+      await supabase.from(table).delete().eq('id', entityId)
+      throw updateErr
+    }
 
     return NextResponse.json({ success: true, order_id: id, entity_id: entityId, entity: result })
   } catch (e) {

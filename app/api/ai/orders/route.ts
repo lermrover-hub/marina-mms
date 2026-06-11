@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
     if (orderErr) throw orderErr
 
     // Create approval queue entry
-    await supabase
+    const { error: queueErr } = await supabase
       .from('approval_queue')
       .insert({
         order_id: order.id,
@@ -86,6 +86,11 @@ export async function POST(req: NextRequest) {
         status: 'pending',
         created_at: new Date().toISOString(),
       })
+
+    if (queueErr) {
+      await supabase.from('ai_orders').delete().eq('id', order.id)
+      throw queueErr
+    }
 
     return NextResponse.json(order, { status: 201 })
   } catch (e) {

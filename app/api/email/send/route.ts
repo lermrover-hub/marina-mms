@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { isRealCustomerMessagesEnabled, safeModeResponse } from "@/lib/safe-mode"
 import { sendEmail } from "@/lib/email"
 import {
   invoiceIssued,
@@ -60,6 +61,10 @@ const SUBJECT_MAP: Record<EmailType, (data: Record<string, unknown>) => string> 
 }
 
 export async function POST(req: Request) {
+  if (!isRealCustomerMessagesEnabled()) {
+    return safeModeResponse("ENABLE_REAL_CUSTOMER_MESSAGES")
+  }
+
   try {
     const body = (await req.json()) as SendEmailBody
 

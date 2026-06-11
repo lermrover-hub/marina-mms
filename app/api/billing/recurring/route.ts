@@ -22,6 +22,7 @@
  */
 
 import { NextResponse } from "next/server"
+import { isRealCustomerMessagesEnabled } from "@/lib/safe-mode"
 import { auth } from "@/auth"
 import { createServerClient } from "@/lib/supabase-server"
 import { sendEmail } from "@/lib/email"
@@ -300,8 +301,8 @@ export async function POST(req: Request) {
 
       generated.push(newInvoice)
 
-      // ── Notify customer via email + LINE + WhatsApp ─────────────────────
-      if (contract.customer_id) {
+      // ── Notify customer via email + LINE + WhatsApp (guarded by flag) ────
+      if (contract.customer_id && isRealCustomerMessagesEnabled()) {
         try {
           const { data: customer } = await supabase
             .from("mms_customers")

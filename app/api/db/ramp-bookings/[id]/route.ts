@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { isProductionBookingsEnabled, safeModeResponse } from "@/lib/safe-mode"
 import { createServerClient } from "@/lib/supabase-server"
 
 const supabase = createServerClient()
@@ -21,6 +22,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (!isProductionBookingsEnabled()) {
+    return safeModeResponse("ENABLE_PRODUCTION_BOOKINGS")
+  }
+
   try {
     const { id } = await params
     const body = await req.json()

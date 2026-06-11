@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { isRealCustomerMessagesEnabled } from "@/lib/safe-mode"
 import { createServerClient } from "@/lib/supabase-server"
 import { sendEmail } from "@/lib/email"
 import { quotationSent } from "@/lib/email-templates"
@@ -163,8 +164,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       .single()
     if (error) throw error
 
-    // ── Send email when quotation is marked SENT ───────────────────────────
-    if (body.status === "SENT" && data?.customer_id) {
+    // ── Notify customer when quotation is marked SENT (guarded by flag) ────
+    if (body.status === "SENT" && data?.customer_id && isRealCustomerMessagesEnabled()) {
       try {
         const { data: customer } = await supabase
           .from("mms_customers")

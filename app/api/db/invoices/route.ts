@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { isRealCustomerMessagesEnabled } from "@/lib/safe-mode"
 import { createServerClient } from "@/lib/supabase-server"
 import { sendEmail } from "@/lib/email"
 import { invoiceIssued } from "@/lib/email-templates"
@@ -37,8 +38,8 @@ export async function POST(req: Request) {
       .single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-    // Send invoice email — wrapped so it never breaks the main flow
-    try {
+    // Send invoice email — only when real customer messages are enabled
+    if (isRealCustomerMessagesEnabled()) try {
       // Fetch customer email if we have a customer_id
       if (data?.customer_id) {
         const { data: customer } = await supabase

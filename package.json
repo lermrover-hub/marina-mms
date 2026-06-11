@@ -6,6 +6,7 @@
     "dev": "next dev",
     "dev:staging": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-staging.ps1",
     "dev:staging:writes": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-staging.ps1 -EnableAgentWrites",
+    "test": "node --test tests/*.test.js",
     "agents:test": "npm.cmd --prefix ai-agents test",
     "agents:test:live": "npm.cmd --prefix ai-agents run test:live",
     "agents:dry-run": "npm.cmd --prefix ai-agents run dry-run",

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { isRealCustomerMessagesEnabled } from "@/lib/safe-mode"
 import { createServerClient } from "@/lib/supabase-server"
 import { sendEmail } from "@/lib/email"
 import { quotationSent } from "@/lib/email-templates"
@@ -180,8 +181,8 @@ export async function POST(req: Request) {
       }
     }
 
-    // Email is only sent for explicit Send flow. Draft saves must stay internal.
-    try {
+    // Email is only sent for explicit Send flow, and only when real messages are enabled.
+    if (isRealCustomerMessagesEnabled()) try {
       if (status === "SENT" && data?.customer_id) {
         const recipientEmail = customer?.email
         const recipientName = customerName ?? "Valued Customer"

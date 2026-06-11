@@ -5,11 +5,14 @@
  * Windows system certificate store and proxy settings are respected.
  */
 
-import https from "https"
-import http  from "http"
+import https          from "https"
+import http           from "http"
+import { appendFileSync } from "fs"
+import { resolve }    from "path"
 
-const BASE    = process.env.MARINA_API_BASE ?? "http://localhost:3000"
-const DRY_RUN = process.env.AI_AGENT_DRY_RUN === "true"
+const BASE          = process.env.MARINA_API_BASE ?? "http://localhost:3000"
+const DRY_RUN       = process.env.AI_AGENT_DRY_RUN === "true"
+const AUDIT_LOG_PATH = resolve(process.env.AI_AUDIT_LOG_PATH ?? ".ai-audit-log.jsonl")
 
 function nodeRequest(url, options = {}, redirects = 0) {
   return new Promise((resolve, reject) => {
@@ -136,8 +139,15 @@ export const createMessageDraft = (body) =>
     : apiFetch("/api/db/messages", { method: "POST", body: JSON.stringify(body) })
 
 // ─── Agent audit log ──────────────────────────────────────────────────────────
-export const createAuditLog = (body) =>
-  apiFetch("/api/db/agent-audit-log", { method: "POST", body: JSON.stringify(body) })
+export const createAuditLog = (body) => {
+  if (DRY_RUN) {
+    const entry = JSON.stringify({ ...body, dry_run: true, logged_at: new Date().toISOString() })
+    try { appendFileSync(AUDIT_LOG_PATH, entry + "\n") } catch { }
+    console.log(`[ApiClient] DRY RUN: audit log written locally → ${AUDIT_LOG_PATH}`)
+    return Promise.resolve({ id: "dry-run-audit-log", dry_run: true, ...body })
+  }
+  return apiFetch("/api/db/agent-audit-log", { method: "POST", body: JSON.stringify(body) })
+}
 
 // ─── Notifications (read) ─────────────────────────────────────────────────────
 export const getNotifications = (params = "") =>

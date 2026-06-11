@@ -5,8 +5,8 @@
 ### Current production state
 
 - Production URL: `https://marina-mms.vercel.app`
-- Latest pushed commit: `e7710b7`
-- Vercel deployment: **Ready · Latest · Current** (redeployed ~01:20 ICT)
+- Latest pushed commit: `01ce426` (handoff update; runtime fix remains `e7710b7`)
+- Vercel deployment: **Ready · Latest · Current** (deployed 2026-06-12 01:26 ICT)
 - Production is in safe mode — all flags fail-closed:
   - `AI_AGENT_DRY_RUN=true`
   - `ENABLE_AI_AGENT_WRITES=false`
@@ -58,12 +58,13 @@
 | `afa6238` | fix(middleware): allow POST /api/tide/calculate in safe mode — pure computation |
 | `e7710b7` | fix(api): fetch quotation items in separate query to avoid PostgREST embed error |
 
-### One remaining open item
+### Vercel email-provider check complete
 
-- **`RESEND_API_KEY` in Vercel production**: user must manually confirm it is
-  absent from Vercel Dashboard → Environment Variables → Production. Cannot
-  be verified by HTTP probe. Safe-mode pilot should not proceed to real customer
-  messaging until this is confirmed absent (or intentionally present and guarded).
+- **`RESEND_API_KEY` is absent** from the Vercel project environments.
+- Verified through the authenticated Vercel API on 2026-06-12 without reading,
+  downloading, or printing any environment variable values.
+- Real customer messaging remains disabled by
+  `ENABLE_REAL_CUSTOMER_MESSAGES=false`.
 
 ### Safety rules — carry forward unchanged
 

@@ -306,11 +306,11 @@ export async function POST(req: Request) {
         try {
           const { data: customer } = await supabase
             .from("mms_customers")
-            .select("full_name, company_name, email, line_user_id, whatsapp_number")
+            .select("first_name, last_name, company_name, email, line_user_id, whatsapp_number")
             .eq("id", contract.customer_id)
             .single()
 
-          const customerName = customer?.full_name ?? customer?.company_name ?? "Valued Customer"
+          const customerName = customer?.company_name ?? [customer?.first_name, customer?.last_name].filter(Boolean).join(" ") || "Valued Customer"
           const siteUrl      = process.env.NEXTAUTH_URL ?? "https://marina-mms.vercel.app"
           const dueDateLabel = new Date(dueDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
 

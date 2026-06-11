@@ -58,10 +58,10 @@ create index if not exists idx_inquiries_email        on public.inquiries (email
 -- Auto-update updated_at
 create or replace function public.set_inquiries_updated_at()
 returns trigger language plpgsql as $$
-begin
-  new.updated_at = now();
-  return new;
-end;
+BEGIN
+    NEW.updated_at := now();
+    RETURN NEW;
+END;
 $$;
 
 drop trigger if exists trg_inquiries_updated_at on public.inquiries;

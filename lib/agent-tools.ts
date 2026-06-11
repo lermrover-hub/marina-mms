@@ -70,24 +70,25 @@ export async function createApprovalOrder(opts: CreateOrderOptions) {
 export async function logToolCall(log: ToolCallLog) {
   const supabase = createServerClient()
 
-  await supabase
-    .from('ai_tool_calls')
-    .insert({
-      agent_name: log.agentName,
-      order_id: log.orderId || null,
-      api_endpoint: log.apiEndpoint,
-      method: log.method,
-      input_data: log.inputData || null,
-      output_data: log.outputData || null,
-      status_code: log.statusCode || null,
-      error_message: log.errorMessage || null,
-      duration_ms: log.durationMs || null,
-      created_at: new Date().toISOString(),
-    })
-    .catch(err => {
-      // Don't fail tool execution if logging fails, just warn
-      console.warn('[agent-tools] Tool call log failed:', err.message)
-    })
+  try {
+    const { error } = await supabase
+      .from('ai_tool_calls')
+      .insert({
+        agent_name: log.agentName,
+        order_id: log.orderId || null,
+        api_endpoint: log.apiEndpoint,
+        method: log.method,
+        input_data: log.inputData || null,
+        output_data: log.outputData || null,
+        status_code: log.statusCode || null,
+        error_message: log.errorMessage || null,
+        duration_ms: log.durationMs || null,
+        created_at: new Date().toISOString(),
+      })
+    if (error) console.warn('[agent-tools] Tool call log failed:', error.message)
+  } catch (err: unknown) {
+    console.warn('[agent-tools] Tool call log failed:', err instanceof Error ? err.message : String(err))
+  }
 }
 
 /**

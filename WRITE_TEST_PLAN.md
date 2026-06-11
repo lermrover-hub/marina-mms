@@ -360,10 +360,225 @@ SELECT COUNT(*) AS pricing_master_rows FROM pricing_master;
 ---
 
 ## Run 2 — Local Write, Mock Claude
-_Awaiting user approval. Run 1 passed on staging with dry-run writes._
+_DRY_RUN=false · SKIP_CLAUDE=true · staging only · no messaging credentials_
+
+### Purpose
+Confirm every agent write path creates real DB rows. Claude is still mocked so the
+test is deterministic. Approving an AI order and executing it proves the full
+order → approval → execute chain works end-to-end before involving real LLM calls.
+
+### Pre-run staging setup (one-time, before first Run 2)
+
+The staging schema is missing tables the write paths need. Apply them once:
+
+1. Open the Staging Supabase SQL Editor:
+   https://supabase.com/dashboard/project/zanlunbgupdtqznruzok/sql/new
+
+2. Paste and run `scripts/staging-ai-tables.sql` (adds `ai_orders`,
+   `approval_queue`, `mms_agent_audit_log`, and extra columns on
+   `mms_messages` and `mms_quotations`).
+
+3. Confirm the verification query at the bottom returns 3 rows (all counts = 0).
+
+### Local server setup
+
+```powershell
+cd C:\marina-mms
+npm.cmd run dev:staging
+```
+
+### Run 2 execution (second terminal)
+
+```powershell
+cd C:\marina-mms
+$env:AI_AGENT_DRY_RUN     = "false"
+$env:AI_AGENT_SKIP_CLAUDE = "true"
+$env:MARINA_API_BASE      = "http://localhost:3004"
+$env:MARINA_AGENT_API_KEY = "local-test-key"
+node scripts/run2-e2e-test.mjs
+```
+
+The script drives the full chain automatically:
+
+| Step | Action | Table(s) written |
+|---|---|---|
+| 1 | Re-seed staging | (idempotent — no net change) |
+| 2 | quotation-agent | `ai_orders`, `approval_queue` |
+| 3 | Approve AI order | `ai_orders.status`, `approval_queue.status` |
+| 4 | Execute order | `mms_quotations`, `mms_quotation_items` |
+| 5 | comms-agent | `mms_messages` (OUTBOUND draft), `mms_messages.replied=true` |
+| 6 | finance-agent | `mms_notifications` (invoice_overdue) |
+| 7 | marina-agent | `mms_notifications` (contract_expiry) |
+| 8 | Audit log | `mms_agent_audit_log` |
+| 9 | Safety checks | pricing_master unchanged · no non-test customer data |
+
+### Expected output — exact pass criteria
+
+```
+Phase 5D Run 2 (Mock Claude) — http://localhost:3004
+  DRY_RUN=false  SKIP_CLAUDE=true
+
+── Step 1: Re-seed staging test records ──────────────────
+  ✓ Seed records verified (5 rows)
+
+── Step 2: quotation-agent → creates ai_orders row ──────
+  ✓ quotation-agent ran without error
+  ✓ processed 1 request
+  ✓ ai_orders row created
+  ✓ ai_orders.action = create_quotation
+  ✓ approval_queue row created
+
+── Step 3: Approve ai_orders row via API ─────────────────
+  ✓ order status = approved
+  ✓ approval_queue status = approved
+
+── Step 4: Execute order → mms_quotations row ────────────
+  ✓ execute returned success
+  ✓ entity_id set
+  ✓ ai_orders status = executed
+  ✓ mms_quotations row exists
+  ✓ quotation status = DRAFT
+  ✓ generated_by = ai-agent
+  ✓ quotation.customer_id correct
+  ✓ quotation items created
+
+── Step 5: comms-agent → PENDING_APPROVAL message draft ─
+  ✓ comms-agent ran without error
+  ✓ outbound draft message created
+  ✓ approval_status = PENDING_APPROVAL
+  ✓ agent_generated = true
+  ✓ inbound message marked replied
+
+── Step 6: finance-agent → overdue notification ──────────
+  ✓ finance-agent ran without error
+  ✓ overdue count ≥ 1
+  ✓ invoice_overdue notification created
+  ✓ priority = MEDIUM (20d overdue)
+
+── Step 7: marina-agent → contract expiry notification ───
+  ✓ marina-agent ran without error
+  ✓ alerts ≥ 1
+  ✓ contract_expiry notification created
+  ✓ priority = HIGH (≤7d)
+
+── Step 8: Write audit log row ───────────────────────────
+  ✓ audit log row created
+  ✓ audit log row in DB
+
+── Step 9: Safety checks ─────────────────────────────────
+  ✓ pricing_master unchanged (≥99 rows)
+  ✓ no quotations written for non-test customers
+  ✓ draft not sent (still PENDING_APPROVAL)
+
+══════════════════════════════════════════════════════════
+  Phase 5D Run 2 (Mock Claude) — DD/MM/YYYY, HH:MM:SS
+  PASSED 27/27  |  FAILED 0/27
+══════════════════════════════════════════════════════════
+```
+
+### Manual DB verification after Run 2
+
+```sql
+-- Run against STAGING (zanlunbgupdtqznruzok):
+
+SELECT id, status, action FROM ai_orders
+  WHERE agent_name = 'quotation' ORDER BY created_at DESC LIMIT 1;
+-- Expected: status = executed, action = create_quotation
+
+SELECT id, status FROM approval_queue
+  WHERE order_id = (SELECT id FROM ai_orders WHERE agent_name='quotation' ORDER BY created_at DESC LIMIT 1);
+-- Expected: status = approved
+
+SELECT id, status, generated_by FROM mms_quotations
+  WHERE customer_id = '2fe7332a-4e66-42a5-b882-91293f276515' ORDER BY created_at DESC LIMIT 1;
+-- Expected: status = DRAFT, generated_by = ai-agent
+
+SELECT COUNT(*) FROM mms_quotation_items
+  WHERE quotation_id = (SELECT id FROM mms_quotations WHERE customer_id='2fe7332a-4e66-42a5-b882-91293f276515' ORDER BY created_at DESC LIMIT 1);
+-- Expected: ≥ 1
+
+SELECT id, direction, approval_status, agent_generated FROM mms_messages
+  WHERE direction = 'OUTBOUND' AND agent_generated = true ORDER BY created_at DESC LIMIT 1;
+-- Expected: approval_status = PENDING_APPROVAL, agent_generated = true
+
+SELECT replied FROM mms_messages WHERE id = '2f7e64e9-9f64-4b98-b2d3-08dc368bc0aa';
+-- Expected: true
+
+SELECT type, priority FROM mms_notifications
+  WHERE customer_id::text = '2fe7332a-4e66-42a5-b882-91293f276515';
+-- Expected: invoice_overdue (MEDIUM) + contract_expiry (HIGH)
+
+SELECT agent_name, action FROM mms_agent_audit_log
+  WHERE agent_name = 'run2-e2e-test';
+-- Expected: 1 row, action = run2_completed
+
+SELECT COUNT(*) FROM pricing_master;
+-- Expected: ≥ 99 (unchanged)
+```
+
+---
 
 ## Run 3 — Local Write, Real Claude
-_Awaiting Run 2 approval. Details available on request._
+_DRY_RUN=false · SKIP_CLAUDE=false · ANTHROPIC_API_KEY required · staging only_
+
+### Purpose
+End-to-end with real Claude API calls. Quotation items and message drafts are now
+genuinely AI-generated. Validates quality of Claude output against the rate card.
+
+### Pre-conditions
+
+- Run 2 has passed all 27 checks.
+- `ANTHROPIC_API_KEY` is available in the shell (not in any committed file).
+- No LINE / WhatsApp / email credentials in the local shell.
+
+### Run 3 execution
+
+```powershell
+cd C:\marina-mms
+$env:AI_AGENT_DRY_RUN     = "false"
+$env:AI_AGENT_SKIP_CLAUDE = "false"
+$env:ANTHROPIC_API_KEY    = "<your-key>"
+$env:MARINA_API_BASE      = "http://localhost:3004"
+$env:MARINA_AGENT_API_KEY = "local-test-key"
+node scripts/run2-e2e-test.mjs
+```
+
+The same 27 checks run. The script auto-detects SKIP_CLAUDE=false and labels
+the report "Run 3 (Real Claude)".
+
+### Additional Run 3 review (manual, after script passes)
+
+Inspect the actual Claude-generated content in staging:
+
+```sql
+SELECT title, notes, total_amount FROM mms_quotations
+  WHERE customer_id = '2fe7332a-4e66-42a5-b882-91293f276515'
+  ORDER BY created_at DESC LIMIT 1;
+
+SELECT description, qty, unit_price FROM mms_quotation_items
+  WHERE quotation_id = (
+    SELECT id FROM mms_quotations
+    WHERE customer_id = '2fe7332a-4e66-42a5-b882-91293f276515'
+    ORDER BY created_at DESC LIMIT 1
+  );
+
+SELECT content FROM mms_messages
+  WHERE direction = 'OUTBOUND' AND agent_generated = true
+  ORDER BY created_at DESC LIMIT 1;
+```
+
+Review checklist:
+- [ ] Quotation title matches the service request ("antifouling", "hull wash", etc.)
+- [ ] Line items include at least one rate-card code (e.g. ANTI_xxx)
+- [ ] Total amount is reasonable for a 45ft yacht antifouling (expect THB 15,000–60,000)
+- [ ] Message draft is professional, under 150 words, and does NOT commit to a date or price
+- [ ] Message draft ends with marina contact number (+66 82 878 9149)
+- [ ] No real customer data appears anywhere
+
+### Safety boundaries unchanged (Run 3)
+
+All rules from the Safety Boundaries section above remain in force.
+`ENABLE_AI_AGENT_WRITES` stays unset in Vercel. Only staging is written to.
 
 ---
 
@@ -371,11 +586,12 @@ _Awaiting Run 2 approval. Details available on request._
 
 | Gate | Requires | Approved | Date |
 |---|---|---|---|
-| Staging DB decision | User confirms production Supabase is acceptable OR provides staging credentials | pending | — |
-| Backup / pre-insert dry run | Zero-count query shows clean slate | pending | — |
-| Seed record insertion (5 records) | User approves this section | pending | — |
-| Run 1 execution | Seed insertion confirmed | pending | — |
-| Run 2 plan details | Run 1 results approved | pending | — |
+| Staging DB decision | User confirms production Supabase is acceptable OR provides staging credentials | ✓ | 2026-06-05 |
+| Backup / pre-insert dry run | Zero-count query shows clean slate | ✓ | 2026-06-05 |
+| Seed record insertion (5 records) | User approves this section | ✓ | 2026-06-05 |
+| Run 1 execution | Seed insertion confirmed | ✓ PASSED | 2026-06-05 |
+| Staging AI tables applied | `scripts/staging-ai-tables.sql` run in Supabase SQL Editor | pending | — |
+| Run 2 plan details | Run 1 results approved | ✓ | 2026-06-11 |
 | Run 2 execution | Run 2 plan approved | pending | — |
 | Run 3 execution | Run 2 results approved | pending | — |
 | Enable `ENABLE_AI_AGENT_WRITES` in Vercel | Run 3 results approved | pending | — |

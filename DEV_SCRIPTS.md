@@ -1,5 +1,82 @@
 # Marina MMS - Development State and Safe Commands
 
+## ACTIVE HANDOFF TO CODEX - 2026-06-12 01:25 ICT
+
+### Current production state
+
+- Production URL: `https://marina-mms.vercel.app`
+- Latest pushed commit: `e7710b7`
+- Vercel deployment: **Ready · Latest · Current** (redeployed ~01:20 ICT)
+- Production is in safe mode — all flags fail-closed:
+  - `AI_AGENT_DRY_RUN=true`
+  - `ENABLE_AI_AGENT_WRITES=false`
+  - `ENABLE_REAL_CUSTOMER_MESSAGES=false`
+  - `ENABLE_PRODUCTION_BOOKINGS=false`
+  - `ENABLE_AUTOMATION_WRITES=false`
+- All write probes return **403**. Reads return **200**.
+- `MARINA_AGENT_API_KEY` was accidentally set to a wrong value (`sk_live_a12...`)
+  in Vercel. **User corrected it at ~01:14 ICT.** Redeployed and verified.
+- Agent key is in `C:\marina-mms\ai-agents\.env` — always read it with
+  `grep MARINA_AGENT_API_KEY ai-agents/.env | cut -d= -f2` to avoid
+  `l` vs `1` transcription errors.
+
+### All verification checks PASS (2026-06-12 ~01:25 ICT)
+
+| Check | Result |
+|---|---|
+| GET /api/db/quotations/88d9a6ca HTTP 200 | ✅ PASS |
+| Response has mms_quotation_items (1 item) | ✅ PASS |
+| subtotal=1000, vat=70, total=1070 | ✅ PASS |
+| Quotation status = DRAFT | ✅ PASS |
+| GET /api/db/customers returns 200 | ✅ PASS |
+| POST /api/db/messages blocked 403 | ✅ PASS |
+| POST /api/db/ramp-bookings blocked 403 | ✅ PASS |
+| POST /api/db/quotations blocked 403 | ✅ PASS |
+| POST /api/ai/orders blocked 403 | ✅ PASS |
+| POST /api/tide/calculate returns 200 | ✅ PASS |
+| /quotations/88d9a6ca page loads 200 | ✅ PASS |
+| /print/quotations/88d9a6ca page loads 200 | ✅ PASS |
+
+### Controlled pilot quotation (DO NOT TOUCH)
+
+- Test customer: `5D3TEST-CUST-PHASE5D-001` (`TEST AI CUSTOMER`, inactive)
+- Test boat: `5D3TEST-BOAT-PHASE5D-001` (`TEST SAXDOR 400`)
+- AI order: `74cd5c77-fad7-4efd-970b-55464c1816ee`
+- Approval: approved by `admin@marina.com`
+- Order status: `executed`
+- Quotation ID: `88d9a6ca-6ce3-4ab0-b355-d5f5c62e3b2f`
+- Quote number: `PILOT-AI-20260611-200519`
+- Status: `DRAFT` — do not send, accept, cancel, or edit
+- Total: THB 1,070
+
+### Commits in this Claude session (2026-06-11–12)
+
+| Commit | Description |
+|---|---|
+| `22ffa34` | fix: harden production safe-mode write guards |
+| `a019383` | fix(billing): use first_name + last_name instead of non-existent full_name column |
+| `afa6238` | fix(middleware): allow POST /api/tide/calculate in safe mode — pure computation |
+| `e7710b7` | fix(api): fetch quotation items in separate query to avoid PostgREST embed error |
+
+### One remaining open item
+
+- **`RESEND_API_KEY` in Vercel production**: user must manually confirm it is
+  absent from Vercel Dashboard → Environment Variables → Production. Cannot
+  be verified by HTTP probe. Safe-mode pilot should not proceed to real customer
+  messaging until this is confirmed absent (or intentionally present and guarded).
+
+### Safety rules — carry forward unchanged
+
+- Do not cancel, send, accept, delete, or edit the pilot quotation.
+- Do not enable production writes (`ENABLE_AI_AGENT_WRITES`, etc.).
+- Do not send real customer messages.
+- Do not create real bookings.
+- Do not modify Vercel environment variables.
+- Do not change Rate Card or any real customer record.
+- W = Workshop (not Wet Berth). Wet Berth = WB.
+
+---
+
 ## Customer Delivery Contact - 2026-06-08 (Codex, user-approved)
 
 User approved using their own dummy contact instead of Complete Marine Services'

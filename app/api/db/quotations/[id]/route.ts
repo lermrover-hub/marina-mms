@@ -13,13 +13,24 @@ export const dynamic = "force-dynamic"
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const { data, error } = await supabase
+    const { data: quotation, error: quotationError } = await supabase
       .from("mms_quotations")
-      .select("*, mms_quotation_items(*)")
+      .select("*")
       .eq("id", id)
       .single()
-    if (error) throw error
-    return NextResponse.json(data)
+    if (quotationError) throw quotationError
+
+    const { data: items, error: itemsError } = await supabase
+      .from("mms_quotation_items")
+      .select("*")
+      .eq("quotation_id", id)
+      .order("sort_order")
+    if (itemsError) throw itemsError
+
+    return NextResponse.json({
+      ...quotation,
+      mms_quotation_items: items ?? [],
+    })
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 })
   }

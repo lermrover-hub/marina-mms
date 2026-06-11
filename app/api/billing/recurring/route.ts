@@ -310,7 +310,8 @@ export async function POST(req: Request) {
             .eq("id", contract.customer_id)
             .single()
 
-          const customerName = customer?.company_name ?? [customer?.first_name, customer?.last_name].filter(Boolean).join(" ") || "Valued Customer"
+          const personName = [customer?.first_name, customer?.last_name].filter(Boolean).join(" ")
+          const customerName = customer?.company_name?.trim() || personName || "Valued Customer"
           const siteUrl      = process.env.NEXTAUTH_URL ?? "https://marina-mms.vercel.app"
           const dueDateLabel = new Date(dueDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
 

@@ -43,7 +43,7 @@ export function safeModeBody(flag: string) {
   }
 }
 
-/** Return a 200 safe-mode response — not an error, a deliberate hold. */
+/** Return a blocked response so callers cannot mistake a rejected write for success. */
 export function safeModeResponse(flag: string): NextResponse {
-  return NextResponse.json(safeModeBody(flag), { status: 200 })
+  return NextResponse.json(safeModeBody(flag), { status: 403 })
 }

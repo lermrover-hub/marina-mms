@@ -63,3 +63,53 @@ for (const name of FLAGS) {
     if (saved !== undefined) process.env[name] = saved; else delete process.env[name]
   })
 }
+
+// ── Middleware write-guard logic ───────────────────────────────────────────────
+// Mirrors the decision made in middleware.ts so the guard contract is tested
+// without spinning up a Next.js server.
+
+function middlewareWriteAllowed(pathname, method, agentWritesEnabled) {
+  const isAgentApiRoute =
+    pathname.startsWith("/api/db/") ||
+    pathname.startsWith("/api/pricing-master") ||
+    pathname.startsWith("/api/tide/") ||
+    pathname === "/api/ai/orders" ||
+    /^\/api\/ai\/orders\/[^/]+$/.test(pathname)
+
+  if (!isAgentApiRoute) return true  // falls through to session auth
+
+  // POST /api/tide/calculate is pure computation — no DB write, exempt from guard
+  const isTideCalculation = pathname === "/api/tide/calculate"
+  const isReadOnly = method === "GET" || method === "HEAD" || isTideCalculation
+
+  if (!isReadOnly && agentWritesEnabled !== "true") return false
+  return true
+}
+
+// Tide calculation: allowed in safe mode (writes disabled)
+test("middleware: POST /api/tide/calculate allowed when writes disabled",
+  () => assert.equal(middlewareWriteAllowed("/api/tide/calculate", "POST", "false"), true))
+
+test("middleware: POST /api/tide/calculate allowed when writes enabled",
+  () => assert.equal(middlewareWriteAllowed("/api/tide/calculate", "POST", "true"),  true))
+
+// Write routes still blocked in safe mode
+test("middleware: POST /api/db/messages blocked when writes disabled",
+  () => assert.equal(middlewareWriteAllowed("/api/db/messages",      "POST", "false"), false))
+
+test("middleware: POST /api/db/ramp-bookings blocked when writes disabled",
+  () => assert.equal(middlewareWriteAllowed("/api/db/ramp-bookings", "POST", "false"), false))
+
+test("middleware: POST /api/db/quotations blocked when writes disabled",
+  () => assert.equal(middlewareWriteAllowed("/api/db/quotations",    "POST", "false"), false))
+
+// Read routes always pass
+test("middleware: GET /api/db/customers allowed when writes disabled",
+  () => assert.equal(middlewareWriteAllowed("/api/db/customers",     "GET",  "false"), true))
+
+test("middleware: GET /api/tide/calculate allowed (GET) when writes disabled",
+  () => assert.equal(middlewareWriteAllowed("/api/tide/calculate",   "GET",  "false"), true))
+
+// Non-tide POST routes under /api/tide/ remain blocked (future-proofing)
+test("middleware: POST /api/tide/other-route blocked when writes disabled",
+  () => assert.equal(middlewareWriteAllowed("/api/tide/other",       "POST", "false"), false))

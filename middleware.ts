@@ -28,7 +28,9 @@ export function middleware(req: NextRequest) {
     (pathname.match(/^\/api\/ai\/orders\/[^/]+$/) && req.method === "GET")
 
   if (isAgentApiRoute && agentKey && suppliedAgentKey === agentKey) {
-    const isReadOnlyRequest = req.method === "GET" || req.method === "HEAD"
+    // /api/tide/calculate is pure computation (no DB write) — allow POST in safe mode
+    const isTideCalculation = pathname === "/api/tide/calculate"
+    const isReadOnlyRequest = req.method === "GET" || req.method === "HEAD" || isTideCalculation
     if (!isReadOnlyRequest && process.env.ENABLE_AI_AGENT_WRITES !== "true") {
       return NextResponse.json(
         { error: "AI agent writes are disabled" },

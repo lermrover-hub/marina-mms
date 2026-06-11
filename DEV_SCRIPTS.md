@@ -1,6 +1,74 @@
 # Marina MMS - Development State and Safe Commands
 
-## ACTIVE HANDOFF TO CODEX - 2026-06-12 01:25 ICT
+> Current Claude Code handoff: read `C:\marina-mms\CLAUDE_HANDOFF.md` first. It contains the active branch, completed AI Agent Control Center work, test evidence, remaining full-app QA, deployment steps, and production safety boundaries.
+
+## ACTIVE HANDOFF TO CODEX - 2026-06-12 (Claude → Codex)
+
+**Read `C:\marina-mms\CLAUDE_HANDOFF.md` first — it has the full task spec.**
+
+### Branch and commit state
+
+- Active branch: `codex/ai-agent-control-center`
+- Latest commit: `ee25b7a` (docs handoff — no code)
+- All AI Agent Control Center code is **uncommitted** in the working tree
+- `main` is at `01ce426` — do not merge until build passes and QA is clean
+
+### What Codex built (all uncommitted — DO NOT discard)
+
+- `/ai-agents` web page — configure and preview all six agents
+- `/api/ai/control` API routes — config GET/PATCH, preview run
+- `lib/agent-config-schema.ts` and `lib/agent-access.ts` — shared libraries
+- Six agent runtimes updated to consume DB config instead of hardcoded values
+- `app/(dashboard)/settings/page.tsx` and `Sidebar.tsx` updated
+- `scripts/production-ai-tables.sql` updated
+
+### Tests that PASS on current working tree
+
+| Suite | Result |
+|---|---|
+| `npm.cmd test` (web) | 34/34 PASS |
+| `npm.cmd --prefix ai-agents test` | 124 passed / 20 live skipped / 0 failed |
+| `npx.cmd tsc --noEmit` | PASS |
+| `npm.cmd run lint -- --quiet` | PASS |
+| Browser QA (6 agent previews) | PASS locally |
+| VAT 25% validation rejection | PASS — no DB write |
+
+### ONE pending item before commit
+
+- `npm.cmd run build` timed out at ~184 seconds — did NOT report a compile error
+- Re-run with longer timeout; fix any actual failure, then commit
+
+### Codex task (from CLAUDE_HANDOFF.md)
+
+1. `npm.cmd run build` — fix if broken, otherwise proceed
+2. Local QA: `/ai-agents` page, all six previews, route/link/button audit
+3. Commit all changes on `codex/ai-agent-control-center`
+4. Push branch, merge/fast-forward to `main`, push to trigger Vercel
+5. Wait for Vercel Ready, smoke-test production `/ai-agents`
+6. Report: bugs found, files fixed, build/test/deploy results
+
+---
+
+## AI AGENT CONTROL CENTER - 2026-06-12
+
+- Added `/ai-agents` to configure and run safe previews for all six scheduled
+  agents: quotation, marina, finance, communications, HR, and tide.
+- Added shared config validation, default merging, and HR config support.
+- Agent runtime now consumes database rules for all six agents; thresholds are
+  no longer hardcoded in Finance, Marina, Communications, or HR workflows.
+- Web runs are preview-only and always return `writes_performed=false`.
+- Production database writes, customer messages, and bookings remain blocked.
+- Anthropic-backed analysis is implemented but remains disabled until
+  `ANTHROPIC_API_KEY` is explicitly approved and configured in the web app
+  environment. No secret was changed during this implementation.
+- Browser QA passed for all six previews. Invalid VAT 25% was rejected by API
+  validation before any database update.
+- Verification: web tests 34 passed; agent tests 124 passed / 20 live skipped;
+  TypeScript, lint, and production build passed.
+
+---
+
+## PREVIOUS HANDOFF (Claude session 2026-06-12 01:25 ICT)
 
 ### Current production state
 

@@ -62,6 +62,7 @@ export default function AiAgentsPage() {
   const [saving, setSaving] = useState(false)
   const [running, setRunning] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [messageKind, setMessageKind] = useState<"success" | "error">("success")
   const [result, setResult] = useState<Record<string, unknown> | null>(null)
   const [hrTask, setHrTask] = useState("kpi")
   const [hrRole, setHrRole] = useState("Marina team member")
@@ -83,6 +84,7 @@ export default function AiAgentsPage() {
       setDrafts(Object.fromEntries(configData.map((row: ConfigRow) => [row.agent_id, { ...row.config }])))
       setStatus(statusData)
     } catch (error) {
+      setMessageKind("error")
       setMessage(error instanceof Error ? error.message : "Unable to load AI agents")
     } finally {
       setLoading(false)
@@ -113,9 +115,11 @@ export default function AiAgentsPage() {
       })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error ?? "Save failed")
+      setMessageKind("success")
       setMessage(`${definition.label} configuration saved.`)
       await load()
     } catch (error) {
+      setMessageKind("error")
       setMessage(error instanceof Error ? error.message : "Save failed")
     } finally {
       setSaving(false)
@@ -144,8 +148,10 @@ export default function AiAgentsPage() {
       const data = await response.json()
       if (!response.ok) throw new Error(data.error ?? "Preview failed")
       setResult(data)
+      setMessageKind("success")
       setMessage(`${definition.label} ${generateAi ? "AI analysis" : "preview"} completed without writes.`)
     } catch (error) {
+      setMessageKind("error")
       setMessage(error instanceof Error ? error.message : "Preview failed")
     } finally {
       setRunning(false)
@@ -168,7 +174,7 @@ export default function AiAgentsPage() {
         <StatusTile label="Production bookings" value={status?.safety.production_bookings ? "Enabled" : "Blocked"} safe={!status?.safety.production_bookings} />
       </div>
 
-      {message && <div className="rounded-md border border-[#bde7e2] bg-[#effbf9] px-4 py-3 text-sm text-[#145e59]">{message}</div>}
+      {message && <div className={cn("rounded-md border px-4 py-3 text-sm", messageKind === "error" ? "border-red-200 bg-red-50 text-red-700" : "border-[#bde7e2] bg-[#effbf9] text-[#145e59]")}>{message}</div>}
 
       <div className="grid gap-6 xl:grid-cols-[260px_minmax(0,1fr)]">
         <div className="space-y-2">

@@ -68,3 +68,13 @@ The final `npm.cmd run build` was terminated by command timeout after about 184 
 - Typecheck, lint, app tests, agent tests, and build results.
 - Commit SHA, branch, Vercel deployment status, and final production URLs.
 - Remaining risks, especially model generation unavailable until `ANTHROPIC_API_KEY` is explicitly configured.
+
+## Codex Review After Claude Commit - 2026-06-12
+
+Claude committed and pushed the feature as `9ce1389`. Codex review found and fixed these issues after that commit:
+
+1. Finance web preview ignored `upcoming_due_days` and returned overdue invoices only. The preview now returns upcoming invoices, counts, and totals as configured.
+2. Marina web preview ignored Supabase errors and could report empty successful results when a query failed. Query errors now fail the preview explicitly.
+3. Control Center displayed API/validation failures using the same success styling as completed previews. Error messages now use a distinct red error state.
+
+Verification required after these fixes: typecheck, lint, web tests, agent tests, production build, local browser previews, then commit/push/deploy verification. Production write flags must remain disabled.

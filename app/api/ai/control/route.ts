@@ -18,7 +18,8 @@ function daysFromToday(value: unknown) {
 
 async function getConfigs() {
   const supabase = createServerClient()
-  const { data } = await supabase.from("mms_agent_config").select("agent_id, config")
+  const { data, error } = await supabase.from("mms_agent_config").select("agent_id, config")
+  if (error) throw error
   return Object.fromEntries(AGENT_CONFIG_DEFINITIONS.map((definition) => {
     const row = data?.find((item) => item.agent_id === definition.id)
     return [definition.id, mergeAgentConfig(definition.id, row?.config)]
@@ -74,11 +75,16 @@ export async function POST(req: NextRequest) {
       const candidates = (requests ?? []).filter((row) => ["NEW", "NEW_REQUEST", "INSPECTION_REQUIRED"].includes(String(row.status).toUpperCase()) && !quoted.has(row.id))
       result = { candidates: candidates.slice(0, 20), candidate_count: candidates.length, active_rate_count: activeRates ?? 0 }
     } else if (agentId === "marina") {
-      const [{ data: contracts }, { data: boats }, { data: workOrders }] = await Promise.all([
+      const [contractResult, boatResult, workOrderResult] = await Promise.all([
         supabase.from("mms_contracts").select("*"),
         supabase.from("mms_boats").select("id, name, owner_id, insurance_expiry"),
         supabase.from("mms_work_orders").select("id, title, status, created_at"),
       ])
+      const previewError = contractResult.error ?? boatResult.error ?? workOrderResult.error
+      if (previewError) throw previewError
+      const contracts = contractResult.data
+      const boats = boatResult.data
+      const workOrders = workOrderResult.data
       const contractDays = Number(config.contract_expiry_warn_days)
       const insuranceDays = Number(config.insurance_expiry_warn_days)
       const overdueDays = Number(config.work_order_overdue_days)
@@ -89,12 +95,26 @@ export async function POST(req: NextRequest) {
     } else if (agentId === "finance") {
       const { data, error } = await supabase.from("mms_invoices").select("id, invoice_number, customer_id, status, due_date, total_amount, paid_amount, outstanding_balance")
       if (error) throw error
-      const overdue = (data ?? []).filter((row) => {
-        if (["PAID", "CANCELLED"].includes(String(row.status).toUpperCase())) return false
+      const openInvoices = (data ?? []).filter((row) => !["PAID", "CANCELLED"].includes(String(row.status).toUpperCase()))
+      const overdue = openInvoices.filter((row) => {
         return (daysFromToday(row.due_date) ?? 0) < -Number(config.overdue_warn_days)
       })
-      const total = overdue.reduce((sum, row) => sum + Number(row.outstanding_balance ?? Number(row.total_amount ?? 0) - Number(row.paid_amount ?? 0)), 0)
-      result = { overdue_invoices: overdue, overdue_count: overdue.length, overdue_total: total, escalation_required: total >= Number(config.escalation_amount_thb) }
+      const upcoming = openInvoices.filter((row) => {
+        const days = daysFromToday(row.due_date)
+        return days !== null && days >= 0 && days <= Number(config.upcoming_due_days)
+      })
+      const outstanding = (row: Row) => Number(row.outstanding_balance ?? Number(row.total_amount ?? 0) - Number(row.paid_amount ?? 0))
+      const overdueTotal = overdue.reduce((sum, row) => sum + outstanding(row), 0)
+      const upcomingTotal = upcoming.reduce((sum, row) => sum + outstanding(row), 0)
+      result = {
+        overdue_invoices: overdue,
+        overdue_count: overdue.length,
+        overdue_total: overdueTotal,
+        upcoming_invoices: upcoming,
+        upcoming_count: upcoming.length,
+        upcoming_total: upcomingTotal,
+        escalation_required: overdueTotal >= Number(config.escalation_amount_thb),
+      }
     } else if (agentId === "comms") {
       const { data, error } = await supabase.from("mms_messages").select("*").order("created_at", { ascending: false }).limit(100)
       if (error) throw error

@@ -1,5 +1,13 @@
 # Marina MMS - Development State and Safe Commands
 
+## CODEX REVIEW OF CLAUDE COMMIT 9ce1389 - 2026-06-12
+
+- Found Finance preview did not apply `upcoming_due_days`; fixed upcoming invoice count/list/total output.
+- Found Marina preview silently ignored Supabase query errors; fixed it to fail explicitly.
+- Found Control Center error messages used success styling; added distinct error state.
+- Full findings and remaining verification are recorded in `CLAUDE_HANDOFF.md`.
+- Production writes/messages/bookings remain disabled. Do not change those flags for verification.
+
 > Current Claude Code handoff: read `C:\marina-mms\CLAUDE_HANDOFF.md` first. It contains the active branch, completed AI Agent Control Center work, test evidence, remaining full-app QA, deployment steps, and production safety boundaries.
 
 ## ACTIVE HANDOFF TO CODEX - 2026-06-12 (Claude → Codex)

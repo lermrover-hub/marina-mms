@@ -86,3 +86,35 @@ The same booking page also treated the default 0.3 m safety clearance as if vess
 Claude then added receipt commit `f78c2fb`. Codex found that receipt links and the receipt API accepted every payment status, which could produce an official-looking receipt for `PENDING`, `REJECTED`, or `REFUNDED` payments. Receipt access is now limited to `CONFIRMED` payments in both UI and API. The payment-detail API also now propagates linked-invoice query errors instead of silently returning an incomplete receipt.
 
 Production smoke testing then exposed that Supabase could not resolve the embedded `mms_invoices -> mms_invoice_items` relationship, causing both receipt and invoice detail APIs to return HTTP 500 while local testing passed. Both routes now query invoice items explicitly by `invoice_id`, preserve the existing response shape, and return the actual Supabase error message instead of `[object Object]`.
+
+## Pause Handoff to Claude Code - 2026-06-13
+
+- Current branch/HEAD: `main` at `5096e75` (also on `origin/main`).
+- Claude added `611bc28` and `5096e75` after the receipt review. These commits include contractors, suppliers, purchase orders, stock movements, timesheets, audit log, report pages, recurring billing UI, quotation conversion, inventory usage reports, and Work Order labor UI.
+- Codex verification on current HEAD passed: TypeScript, ESLint `--quiet`, web tests `34/34`, AI-agent tests `124 passed / 20 skipped`, and Next production build with `77/77` static pages.
+- Build still reports non-blocking warnings, including an `no-unused-expressions` warning in `app/(dashboard)/reports/aging/page.tsx`; review this first.
+- Production deployment is Ready, but Codex was paused before completing current-HEAD browser/API smoke tests. Re-test `/api/db/payments/[confirmed-id]`, `/print/receipts/[confirmed-id]`, invoice detail, and the new pages/routes before claiming production completion.
+- Keep all production writes, real messages, and production bookings disabled. Do not create test financial records.
+- User preference going forward: Claude Code implements new functions; Codex performs review, debugging, and tests afterward.
+
+## Claude QA Pass - 2026-06-13
+
+**Fixed:** `no-unused-expressions` ESLint warning in `app/(dashboard)/reports/aging/page.tsx`.
+Replaced the ternary-for-side-effects pattern `n.has(name) ? n.delete(name) : n.add(name)` with an explicit `if/else` block.
+
+**Verification results (HEAD after fix):**
+
+| Check | Result |
+|---|---|
+| `npx.cmd tsc --noEmit` | ✅ PASS — exit 0 |
+| `npm.cmd run lint -- --quiet` | ✅ PASS — exit 0, no errors or warnings |
+| `npm.cmd run build` | ✅ PASS — exit 0, 77/77 static pages |
+
+Remaining non-blocking build warnings (pre-existing, unchanged):
+- Unused imports in several dashboard pages (HardHat, Plus, Save, ArrowRight, FileText, TrendingUp, Users, Clock, Anchor)
+- `no-unused-vars` for `rejected` variable in `/reports/quotations/page.tsx`
+- `no-explicit-any` in `lib/agent-tools.ts` and AI order execute route
+
+**Next required step for Codex:** run `npm.cmd test` (web 34/34) and `npm.cmd --prefix ai-agents test` (124/20 skip), then browser/API smoke tests for receipt, invoice detail, and all new modules from `611bc28`/`5096e75`. Production write flags must remain disabled.
+
+**Commit to be created:** `fix: resolve no-unused-expressions warning in aging report toggle`

@@ -1,5 +1,19 @@
 # Marina MMS - Development State and Safe Commands
 
+## CLAUDE QA PASS - 2026-06-13
+
+- Fixed `no-unused-expressions` warning in `app/(dashboard)/reports/aging/page.tsx` (ternary-for-side-effects → if/else).
+- `tsc --noEmit`: ✅ exit 0 | `lint --quiet`: ✅ exit 0 | `next build`: ✅ exit 0 (77/77 pages).
+- **Pending for Codex:** run web tests, agent tests, then browser/API smoke tests for receipts, invoice detail, and new modules from `611bc28`/`5096e75`. Production write flags remain disabled.
+
+## PAUSED HANDOFF TO CLAUDE - 2026-06-13
+
+- Current HEAD: `5096e75` on `main`/`origin/main`.
+- Current HEAD passes typecheck, lint `--quiet`, web tests `34/34`, agent tests `124 pass / 20 skip`, and production build (`77/77` pages).
+- Production browser/API smoke testing for receipt/invoice fixes and the new `611bc28`/`5096e75` modules remains pending.
+- Review the build warning in `app/(dashboard)/reports/aging/page.tsx` first. ← RESOLVED (see Claude QA Pass above)
+- Workflow decision: Claude implements; Codex reviews/debugs/tests. Production write flags remain disabled.
+
 ## CODEX REVIEW OF CLAUDE COMMIT 9ce1389 - 2026-06-12
 
 - Found Finance preview did not apply `upcoming_due_days`; fixed upcoming invoice count/list/total output.

@@ -38,7 +38,12 @@ export default function AgingReportPage() {
   useEffect(() => { load() }, [])
 
   function toggle(name: string) {
-    setOpen(s => { const n = new Set(s); n.has(name) ? n.delete(name) : n.add(name); return n })
+    setOpen(s => {
+      const n = new Set(s)
+      if (n.has(name)) n.delete(name)
+      else n.add(name)
+      return n
+    })
   }
 
   return (

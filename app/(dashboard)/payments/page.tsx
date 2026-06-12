@@ -373,15 +373,17 @@ export default function PaymentsPage() {
                             >
                               View
                             </Link>
-                            <Link
-                              href={`/print/receipts/${p.id}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-gray-500 hover:text-teal-700 flex items-center gap-1"
-                              title="Print Receipt"
-                            >
-                              <Printer className="h-3 w-3" /> Receipt
-                            </Link>
+                            {p.status === "CONFIRMED" && (
+                              <Link
+                                href={`/print/receipts/${p.id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-gray-500 hover:text-teal-700 flex items-center gap-1"
+                                title="Print Receipt"
+                              >
+                                <Printer className="h-3 w-3" /> Receipt
+                              </Link>
+                            )}
                           </div>
                         </td>
                       </tr>

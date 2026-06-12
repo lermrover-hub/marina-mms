@@ -19,16 +19,23 @@ export async function GET(
 
     if (error) throw error
     if (!payment) return NextResponse.json({ error: "Payment not found" }, { status: 404 })
+    if (payment.status !== "CONFIRMED") {
+      return NextResponse.json(
+        { error: "Receipt is available only for confirmed payments" },
+        { status: 409 }
+      )
+    }
 
     // Attach linked invoice + its items for receipt rendering
     let invoice = null
     let invoiceItems: unknown[] = []
     if (payment.invoice_id) {
-      const { data: inv } = await supabase
+      const { data: inv, error: invoiceError } = await supabase
         .from("mms_invoices")
         .select("*, mms_invoice_items(*)")
         .eq("id", payment.invoice_id)
         .maybeSingle()
+      if (invoiceError) throw invoiceError
       if (inv) {
         const { mms_invoice_items, ...invData } = inv
         invoice = invData

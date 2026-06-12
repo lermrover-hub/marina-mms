@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { createServerClient } from "@/lib/supabase-server"
 
 interface TideSlot {
   hour: number
@@ -27,14 +28,29 @@ export async function POST(req: NextRequest) {
     const trailerHeight: number = Number(body.trailerHeight ?? 0)
     const safetyClearance: number = Number(body.safetyClearance ?? 0)
     const rampDepthOffset: number = Number(body.rampDepthOffset ?? -1.0)
-    const tideData: TideSlot[] = Array.isArray(body.tideData) ? body.tideData : []
+
+    // If a date is provided, load tide data from DB instead of requiring it in the body
+    let tideData: TideSlot[] = Array.isArray(body.tideData) ? body.tideData : []
+    if (tideData.length === 0 && body.date) {
+      const supabase = createServerClient()
+      const { data, error } = await supabase
+        .from("mms_tide_records")
+        .select("hour, tide_m")
+        .eq("date", body.date)
+        .order("hour")
+      if (error) return NextResponse.json({ error: `Tide data error: ${error.message}` }, { status: 500 })
+      if (!data || data.length === 0) {
+        return NextResponse.json({ error: `No tide data found for date: ${body.date}` }, { status: 404 })
+      }
+      tideData = data.map((r) => ({ hour: Number(r.hour), height: Number(r.tide_m) }))
+    }
 
     if (boatDraft < 0 || trailerHeight < 0 || safetyClearance < 0) {
       return NextResponse.json({ error: "Draft, trailer height, and safety clearance must be non-negative." }, { status: 400 })
     }
 
     if (tideData.length === 0) {
-      return NextResponse.json({ error: "tideData must be a non-empty array of { hour, height }." }, { status: 400 })
+      return NextResponse.json({ error: "Provide either 'date' (YYYY-MM-DD) to load from DB, or 'tideData' array of { hour, height }." }, { status: 400 })
     }
 
     // Business formula
@@ -100,4 +116,21 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 })
   }
+}
+
+// GET /api/tide/calculate?date=2026-06-12 — returns raw hourly tide data for a date
+export async function GET(req: NextRequest) {
+  const date = req.nextUrl.searchParams.get("date")
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return NextResponse.json({ error: "date query param required (YYYY-MM-DD)" }, { status: 400 })
+  }
+  const supabase = createServerClient()
+  const { data, error } = await supabase
+    .from("mms_tide_records")
+    .select("hour, tide_m, source")
+    .eq("date", date)
+    .order("hour")
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (!data || data.length === 0) return NextResponse.json({ error: `No tide data for ${date}` }, { status: 404 })
+  return NextResponse.json({ date, records: data })
 }

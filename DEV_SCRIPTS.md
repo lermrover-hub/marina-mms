@@ -8,6 +8,7 @@
 - Reviewed concurrent tide commit `2bee980`: fixed New Ramp Booking required-tide formula, which understated the threshold by 2.0 m, and fixed blank ramp-offset fallback in Tide Calculator.
 - New Ramp Booking no longer calculates a safe window from zero draft/trailer values; both dimensions are required for Launch/Retrieval.
 - Reviewed receipt commit `f78c2fb`: receipt links/API now allow only `CONFIRMED` payments, and linked-invoice query failures are no longer ignored.
+- Production receipt smoke test found embedded invoice-item relationship lookup returning HTTP 500; payment and invoice detail routes now load items explicitly by `invoice_id`.
 - Full findings and remaining verification are recorded in `CLAUDE_HANDOFF.md`.
 - Production writes/messages/bookings remain disabled. Do not change those flags for verification.
 

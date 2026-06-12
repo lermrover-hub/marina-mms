@@ -112,15 +112,15 @@ const REPORT_GROUPS = [
       { name: "Job Profitability",        description: "Revenue, cost, margin per WO",   available: true,  href: "/work-orders" },
       { name: "Technician Timesheets",    description: "Hours and labor cost by staff",   available: true,  href: "/timesheets" },
       { name: "Contractor Cost",          description: "Subcontractor spend by job",      available: true,  href: "/contractors" },
-      { name: "Stock Movements",          description: "Inventory in/out transactions",   available: true,  href: "/inventory/movements" },
+      { name: "Inventory Usage by WO",    description: "Material costs issued to repairs", available: true, href: "/reports/inventory-usage" },
     ],
   },
   {
     title: "Sales & CRM", icon: TrendingUp, color: "bg-purple-100 text-purple-700",
     reports: [
-      { name: "Quotation Conversion", description: "Quote-to-invoice rate",         available: true,  href: "/quotations" },
-      { name: "Revenue by Customer",  description: "Top customers by revenue",      available: false, href: null },
-      { name: "Audit Log",            description: "Security and sensitive action log", available: true, href: "/audit-log" },
+      { name: "Quotation Conversion", description: "Quote-to-invoice conversion pipeline", available: true, href: "/reports/quotations" },
+      { name: "Recurring Billing",    description: "Contract billing preview & run",        available: true, href: "/billing/recurring" },
+      { name: "Audit Log",            description: "Security and sensitive action log",      available: true, href: "/audit-log" },
     ],
   },
 ]

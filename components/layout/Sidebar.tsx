@@ -8,7 +8,7 @@ import {
   FileText, Receipt, BarChart3, Settings, ChevronDown,
   Waves, ClipboardList, ChevronRight, Package, UserCog,
   ShieldAlert, CreditCard, FolderOpen, Globe, Bell, CalendarDays, Zap, Database, HelpCircle, Bot,
-  HardHat, Truck, ShoppingCart, ArrowLeftRight, Clock, Shield,
+  HardHat, Truck, ShoppingCart, ArrowLeftRight, Clock, Shield, RefreshCw,
 } from "lucide-react"
 
 interface NavItem {
@@ -57,6 +57,7 @@ const navItems: NavItem[] = [
   },
   { label: "Invoices",        href: "/invoices",    icon: Receipt },
   { label: "Payments",        href: "/payments",    icon: CreditCard },
+  { label: "Recurring Billing", href: "/billing/recurring", icon: RefreshCw },
   {
     label: "Inventory", icon: Package,
     children: [
@@ -79,10 +80,12 @@ const navItems: NavItem[] = [
   {
     label: "Reports", icon: BarChart3,
     children: [
-      { label: "Reports Overview",   href: "/reports",            icon: BarChart3 },
-      { label: "Revenue Report",     href: "/reports/revenue",    icon: BarChart3 },
-      { label: "Occupancy Report",   href: "/reports/occupancy",  icon: Anchor },
-      { label: "Customer Aging",     href: "/reports/aging",      icon: Receipt },
+      { label: "Reports Overview",     href: "/reports",                   icon: BarChart3 },
+      { label: "Revenue Report",       href: "/reports/revenue",           icon: BarChart3 },
+      { label: "Occupancy Report",     href: "/reports/occupancy",         icon: Anchor },
+      { label: "Customer Aging",       href: "/reports/aging",             icon: Receipt },
+      { label: "Quotation Conversion", href: "/reports/quotations",        icon: FileText },
+      { label: "Inventory Usage",      href: "/reports/inventory-usage",   icon: Package },
     ],
   },
   { label: "Documents",       href: "/documents",    icon: FolderOpen },

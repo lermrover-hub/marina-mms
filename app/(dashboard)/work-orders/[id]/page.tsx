@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useParams } from "next/navigation"
 import {
   AlertCircle, CheckCircle2, Image as ImageIcon,
-  Package, Ship, Wrench, XCircle, TrendingUp, Trash2, Loader2, PlusCircle, Printer,
+  Package, Ship, Wrench, XCircle, TrendingUp, Trash2, Loader2, PlusCircle, Printer, Clock,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/shared/PageHeader"
@@ -65,6 +65,12 @@ export default function WorkOrderDetailPage() {
   const [adding,           setAdding]           = useState(false)
   const [deletingId,       setDeletingId]       = useState<string | null>(null)
 
+  // Timesheets (live)
+  const [timesheets,        setTimesheets]        = useState<{id:string;staff_name?:string;date?:string;hours_worked?:number;hourly_rate?:number;total_cost?:number;notes?:string}[]>([])
+  const [tsLoading,         setTsLoading]         = useState(false)
+  const [tsForm,            setTsForm]            = useState({ staff_name: "", date: new Date().toISOString().slice(0,10), hours_worked: "", hourly_rate: "", notes: "" })
+  const [tsAdding,          setTsAdding]          = useState(false)
+
   // Fetch WO
   useEffect(() => {
     if (!id) return
@@ -107,10 +113,39 @@ export default function WorkOrderDetailPage() {
     }
   }, [id])
 
+  const fetchTimesheets = useCallback(async () => {
+    if (!id) return
+    setTsLoading(true)
+    try {
+      const res = await fetch(`/api/db/timesheets?work_order_id=${id}`)
+      const data = await res.json()
+      if (Array.isArray(data)) setTimesheets(data)
+    } catch { /* ignore */ }
+    finally { setTsLoading(false) }
+  }, [id])
+
   useEffect(() => {
-    if (activeTab === "tasks")     fetchTasks()
-    if (activeTab === "materials") fetchMaterials()
-  }, [activeTab, fetchTasks, fetchMaterials])
+    if (activeTab === "tasks")      fetchTasks()
+    if (activeTab === "materials")  fetchMaterials()
+    if (activeTab === "labor")      fetchTimesheets()
+  }, [activeTab, fetchTasks, fetchMaterials, fetchTimesheets])
+
+  async function handleAddTimesheet(e: React.FormEvent) {
+    e.preventDefault()
+    if (!tsForm.staff_name.trim() || !tsForm.hours_worked) return
+    setTsAdding(true)
+    try {
+      const res = await fetch("/api/db/timesheets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ work_order_id: id, ...tsForm, hours_worked: Number(tsForm.hours_worked), hourly_rate: tsForm.hourly_rate ? Number(tsForm.hourly_rate) : null }),
+      })
+      if (!res.ok) throw new Error(await res.text())
+      setTsForm(f => ({ ...f, staff_name: "", hours_worked: "", notes: "" }))
+      fetchTimesheets()
+    } catch (e) { alert("Failed: " + String(e)) }
+    finally { setTsAdding(false) }
+  }
 
   async function handleAddTask(e: React.FormEvent) {
     e.preventDefault()
@@ -313,13 +348,16 @@ export default function WorkOrderDetailPage() {
         {/* ── Main: tabs ── */}
         <div className="lg:col-span-2">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="w-full grid grid-cols-4">
+            <TabsList className="w-full grid grid-cols-5">
               <TabsTrigger value="tasks" className="gap-1.5">
                 <Wrench className="h-3.5 w-3.5" /> Tasks{tasks.length > 0 && <span className="ml-1 rounded-full bg-gray-200 px-1.5 py-0.5 text-xs">{tasks.length}</span>}
               </TabsTrigger>
               <TabsTrigger value="materials" className="gap-1.5">
                 <Package className="h-3.5 w-3.5" />
                 Materials{materials.length > 0 && <span className="ml-1 rounded-full bg-gray-200 px-1.5 py-0.5 text-xs">{materials.length}</span>}
+              </TabsTrigger>
+              <TabsTrigger value="labor" className="gap-1.5">
+                <Clock className="h-3.5 w-3.5" /> Labor{timesheets.length > 0 && <span className="ml-1 rounded-full bg-gray-200 px-1.5 py-0.5 text-xs">{timesheets.length}</span>}
               </TabsTrigger>
               <TabsTrigger value="photos" className="gap-1.5">
                 <ImageIcon className="h-3.5 w-3.5" /> Photos
@@ -594,6 +632,95 @@ export default function WorkOrderDetailPage() {
                     </div>
                   </form>
                 </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* ── LABOR ── */}
+            <TabsContent value="labor" className="mt-4 space-y-4">
+              <Card>
+                <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Clock className="h-4 w-4 text-teal-600" />Add Labor Entry</CardTitle></CardHeader>
+                <CardContent>
+                  <form onSubmit={handleAddTimesheet} className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Staff Name *</label>
+                        <input required className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+                          value={tsForm.staff_name} onChange={e => setTsForm(f => ({...f, staff_name: e.target.value}))} placeholder="e.g. สมชาย" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Date</label>
+                        <input type="date" className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+                          value={tsForm.date} onChange={e => setTsForm(f => ({...f, date: e.target.value}))} />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Hours *</label>
+                        <input required type="number" step="0.5" min="0.5" className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+                          value={tsForm.hours_worked} onChange={e => setTsForm(f => ({...f, hours_worked: e.target.value}))} placeholder="8" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Hourly Rate (฿)</label>
+                        <input type="number" step="1" className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+                          value={tsForm.hourly_rate} onChange={e => setTsForm(f => ({...f, hourly_rate: e.target.value}))} placeholder="200" />
+                      </div>
+                      <div className="sm:col-span-3">
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Notes</label>
+                        <input className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+                          value={tsForm.notes} onChange={e => setTsForm(f => ({...f, notes: e.target.value}))} placeholder="Optional" />
+                      </div>
+                    </div>
+                    {tsForm.hours_worked && tsForm.hourly_rate && (
+                      <p className="text-xs text-gray-500">Cost: <strong>{formatTHB(Number(tsForm.hours_worked) * Number(tsForm.hourly_rate))}</strong></p>
+                    )}
+                    <div className="flex justify-end">
+                      <Button type="submit" size="sm" variant="teal" disabled={tsAdding} className="gap-2">
+                        {tsAdding ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlusCircle className="h-4 w-4" />} Add Entry
+                      </Button>
+                    </div>
+                  </form>
+                </CardContent>
+              </Card>
+              <Card>
+                {tsLoading ? (
+                  <CardContent className="py-8 text-center"><Loader2 className="h-5 w-5 animate-spin mx-auto text-gray-300" /></CardContent>
+                ) : timesheets.length === 0 ? (
+                  <CardContent className="py-10 text-center text-gray-400">
+                    <Clock className="h-8 w-8 mx-auto mb-2 opacity-30" /><p className="text-sm">No labor entries yet.</p>
+                  </CardContent>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead><tr className="border-b bg-gray-50">
+                        <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase">Staff</th>
+                        <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase">Date</th>
+                        <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase">Hours</th>
+                        <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase">Rate</th>
+                        <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase">Cost</th>
+                        <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase">Notes</th>
+                      </tr></thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {timesheets.map(t => (
+                          <tr key={t.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 font-medium">{t.staff_name ?? "—"}</td>
+                            <td className="px-4 py-3 text-gray-500">{t.date ? new Date(t.date).toLocaleDateString("en-GB") : "—"}</td>
+                            <td className="px-4 py-3 text-right font-mono">{t.hours_worked ?? "—"}</td>
+                            <td className="px-4 py-3 text-right font-mono">{t.hourly_rate ? formatTHB(t.hourly_rate) : "—"}</td>
+                            <td className="px-4 py-3 text-right font-mono font-medium text-orange-700">{t.total_cost ? formatTHB(t.total_cost) : "—"}</td>
+                            <td className="px-4 py-3 text-xs text-gray-400">{t.notes ?? "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot className="border-t-2 bg-gray-50">
+                        <tr>
+                          <td colSpan={4} className="px-4 py-2.5 text-sm font-semibold">Total Labor Cost</td>
+                          <td className="px-4 py-2.5 text-right font-mono font-bold text-orange-700">
+                            {formatTHB(timesheets.reduce((s,t) => s + (Number(t.total_cost)||0), 0))}
+                          </td>
+                          <td />
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                )}
               </Card>
             </TabsContent>
 

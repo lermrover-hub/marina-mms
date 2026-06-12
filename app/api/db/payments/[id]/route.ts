@@ -32,19 +32,25 @@ export async function GET(
     if (payment.invoice_id) {
       const { data: inv, error: invoiceError } = await supabase
         .from("mms_invoices")
-        .select("*, mms_invoice_items(*)")
+        .select("*")
         .eq("id", payment.invoice_id)
         .maybeSingle()
       if (invoiceError) throw invoiceError
       if (inv) {
-        const { mms_invoice_items, ...invData } = inv
-        invoice = invData
-        invoiceItems = Array.isArray(mms_invoice_items) ? mms_invoice_items : []
+        const { data: items, error: itemsError } = await supabase
+          .from("mms_invoice_items")
+          .select("*")
+          .eq("invoice_id", payment.invoice_id)
+          .order("sort_order")
+        if (itemsError) throw itemsError
+        invoice = inv
+        invoiceItems = items ?? []
       }
     }
 
     return NextResponse.json({ ...payment, invoice, invoice_items: invoiceItems })
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    const message = e instanceof Error ? e.message : (e as { message?: string })?.message ?? String(e)
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

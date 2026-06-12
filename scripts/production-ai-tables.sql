@@ -81,9 +81,10 @@ CREATE TABLE IF NOT EXISTS public.mms_agent_config (
 -- Seed default config (matches staging) — skip if already inserted
 INSERT INTO public.mms_agent_config (agent_id, label, config) VALUES
   ('comms',     'Comms Agent',     '{"tone":"warm, professional","phone":"+66 82 878 9149","language":"EN/TH bilingual-aware","max_words":150,"extra_instructions":""}'),
-  ('finance',   'Finance Agent',   '{"overdue_warn_days":7,"extra_instructions":"","escalation_amount_thb":50000}'),
-  ('marina',    'Marina Agent',    '{"contract_expiry_warn_days":30,"insurance_expiry_warn_days":30}'),
-  ('quotation', 'Quotation Agent', '{"vat_pct":7,"valid_days":7,"deposit_pct":50,"extra_instructions":""}'),
+  ('finance',   'Finance Agent',   '{"overdue_warn_days":7,"upcoming_due_days":3,"extra_instructions":"","escalation_amount_thb":50000}'),
+  ('hr',        'HR Agent',        '{"default_language":"EN","max_kpis":8,"onboarding_days":30,"extra_instructions":""}'),
+  ('marina',    'Marina Agent',    '{"contract_expiry_warn_days":30,"insurance_expiry_warn_days":30,"work_order_overdue_days":14}'),
+  ('quotation', 'Quotation Agent', '{"vat_pct":7,"valid_days":7,"deposit_pct":50,"max_discount_pct":15,"extra_instructions":""}'),
   ('tide',      'Tide Agent',      '{"ramp_offset_m":-1,"trailer_height_m":0.7,"safety_clearance_m":0.1}')
 ON CONFLICT (agent_id) DO NOTHING;
 

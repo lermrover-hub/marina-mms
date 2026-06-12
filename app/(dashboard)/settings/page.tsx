@@ -114,6 +114,13 @@ const AGENT_FIELDS: Record<string, FieldDef[]> = {
   marina: [
     { key: "contract_expiry_warn_days",  label: "Contract Expiry Warning (days)",  type: "number", description: "Send alert this many days before a berth/storage contract expires" },
     { key: "insurance_expiry_warn_days", label: "Insurance Expiry Warning (days)", type: "number", description: "Send alert this many days before a boat's insurance expires" },
+    { key: "work_order_overdue_days",     label: "Work Order Overdue (days)",       type: "number", description: "Flag active work orders older than this many days" },
+  ],
+  hr: [
+    { key: "default_language",   label: "Default Language",       type: "select", options: [{ value: "EN", label: "English" }, { value: "TH", label: "Thai" }, { value: "EN/TH", label: "Bilingual" }] },
+    { key: "max_kpis",           label: "Maximum KPI Count",      type: "number", description: "Maximum KPI rows generated in one framework" },
+    { key: "onboarding_days",    label: "Onboarding Period",      type: "number", description: "Default onboarding plan duration in days" },
+    { key: "extra_instructions", label: "Extra Instructions",     type: "textarea", description: "Additional management rules for HR drafts" },
   ],
 }
 
@@ -1277,6 +1284,7 @@ export default function SettingsPage() {
                       { agent: "Quotation Agent", reads: "VAT %, deposit %, valid days, extra instructions → injected into quotation system prompt" },
                       { agent: "Comms Agent",     reads: "Language mode, tone, max words, phone → shapes every customer message" },
                       { agent: "Finance Agent",   reads: "Overdue warning days, escalation threshold → controls when reminders and alerts fire" },
+                      { agent: "HR Agent",        reads: "Language, KPI count, onboarding duration, and instructions → controls management drafts" },
                       { agent: "Tide Agent",      reads: "Ramp offset, safety clearance, trailer height → used in launch/retrieval safety formula" },
                       { agent: "Marina Agent",    reads: "Contract & insurance expiry days → controls when renewal alerts are sent" },
                     ].map(({ agent, reads }) => (

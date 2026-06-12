@@ -39,10 +39,11 @@ FORBIDDEN — you must NEVER:
 - Create a quotation for a customer with unresolved overdue invoices without flagging it`)
 
 function buildSystemPrompt(cfg) {
-  return SYSTEM_TEMPLATE
+  const base = SYSTEM_TEMPLATE
     .replace("{{deposit_pct}}", cfg.deposit_pct)
     .replace("{{vat_pct}}",     cfg.vat_pct)
     .replace("{{valid_days}}",  cfg.valid_days)
+  return `${base}\nMaximum discount without management escalation: ${cfg.max_discount_pct}%.\n${cfg.extra_instructions || ""}`.trim()
 }
 
 export async function run({ srId, customerId } = {}) {

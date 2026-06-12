@@ -13,6 +13,7 @@ const DEFAULTS = {
     vat_pct: 7,
     deposit_pct: 50,
     valid_days: 7,
+    max_discount_pct: 15,
     extra_instructions: "",
   },
   comms: {
@@ -24,6 +25,7 @@ const DEFAULTS = {
   },
   finance: {
     overdue_warn_days: 7,
+    upcoming_due_days: 3,
     escalation_amount_thb: 50000,
     extra_instructions: "",
   },
@@ -35,6 +37,13 @@ const DEFAULTS = {
   marina: {
     contract_expiry_warn_days: 30,
     insurance_expiry_warn_days: 30,
+    work_order_overdue_days: 14,
+  },
+  hr: {
+    default_language: "EN",
+    max_kpis: 8,
+    onboarding_days: 30,
+    extra_instructions: "",
   },
 }
 

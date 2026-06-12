@@ -13,6 +13,7 @@
 import { getInvoices, createNotification } from "../lib/api-client.js"
 import { ask } from "../lib/claude-client.js"
 import { daysOverdue as calcDaysOverdue } from "../lib/date-utils.js"
+import { getAgentConfig } from "../lib/agent-config.js"
 
 // FORBIDDEN — this agent must NEVER:
 // - Mark any payment as received (accounting staff only)
@@ -38,6 +39,7 @@ function outstanding(inv) {
 }
 
 export async function run() {
+  const cfg = await getAgentConfig("finance")
   console.log("[FinanceAgent] Starting daily AR check…")
 
   const invoices = await getInvoices()
@@ -53,8 +55,8 @@ export async function run() {
   for (const inv of unpaid) {
     const days = daysOverdue(inv.due_date)
     if (days === null) continue
-    if (days > 0)  overdue.push({ ...inv, daysOverdue: days })
-    else if (days >= -3) upcoming.push({ ...inv, daysUntilDue: Math.abs(days) })
+    if (days > Number(cfg.overdue_warn_days)) overdue.push({ ...inv, daysOverdue: days })
+    else if (days <= 0 && days >= -Number(cfg.upcoming_due_days)) upcoming.push({ ...inv, daysUntilDue: Math.abs(days) })
   }
 
   console.log(`[FinanceAgent] ${overdue.length} overdue, ${upcoming.length} due within 3 days`)
@@ -62,7 +64,7 @@ export async function run() {
   // ── Post notifications for overdue invoices ────────────────────────────────
   for (const inv of overdue) {
     try {
-      const priority = inv.daysOverdue > 30 ? "HIGH" : inv.daysOverdue > 7 ? "MEDIUM" : "LOW"
+      const priority = outstanding(inv) >= Number(cfg.escalation_amount_thb) ? "HIGH" : inv.daysOverdue > Number(cfg.overdue_warn_days) ? "MEDIUM" : "LOW"
       await createNotification({
         type:         "invoice_overdue",
         title:        `Invoice overdue ${inv.daysOverdue}d — ${formatTHB(outstanding(inv))}`,
@@ -96,7 +98,7 @@ ${overdue
 Write a concise daily AR briefing (3–5 bullet points) for the Finance Manager. Include recommended follow-up actions.`
 
   const report = await ask(
-    "You are a finance assistant for a marina. Write clear, actionable daily AR briefings.",
+    `You are a finance assistant for a marina. Write clear, actionable daily AR briefings. ${cfg.extra_instructions || ""}`,
     summaryPrompt
   ).catch(() => `${overdue.length} overdue invoices totalling ${formatTHB(totalOverdue)}.`)
 

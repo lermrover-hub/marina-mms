@@ -10,6 +10,7 @@
 import { getCustomer, getBoats, getQuotations, getInvoices, getMessages, markMessageReplied, createMessageDraft } from "../lib/api-client.js"
 import { ask } from "../lib/claude-client.js"
 import { loadPrompt } from "../lib/load-prompt.js"
+import { getAgentConfig } from "../lib/agent-config.js"
 
 const SYSTEM = loadPrompt("comms-agent-system", `You are a professional customer service representative for Ocean Rover Marina, Ko Samui, Thailand.
 Tone: warm, professional, bilingual-aware (Thai/English). Address customer by name. Under 150 words unless essential.
@@ -28,10 +29,12 @@ All replies are DRAFT only. A staff member will review and approve before the me
 End every reply with the marina contact: +66 82 878 9149`)
 
 export async function run({ customerId, inquiry, source = "unknown" } = {}) {
+  const cfg = await getAgentConfig("comms")
+  const systemPrompt = `${SYSTEM}\nConfigured tone: ${cfg.tone}. Language: ${cfg.language}. Maximum ${cfg.max_words} words. End with: ${cfg.phone}.\n${cfg.extra_instructions || ""}`.trim()
   console.log(`[CommsAgent] source=${source} customer=${customerId ?? "unknown"}`)
 
   // No specific inquiry → process unreplied inbound messages
-  if (!inquiry) return processInboundMessages()
+  if (!inquiry) return processInboundMessages(systemPrompt)
 
   // Build customer context
   const [cust, boats, quots, invs] = await Promise.all([
@@ -55,7 +58,7 @@ export async function run({ customerId, inquiry, source = "unknown" } = {}) {
     `Inquiry: "${inquiry}"`,
   ].join("\n")
 
-  const reply = await ask(SYSTEM, context)
+  const reply = await ask(systemPrompt, context)
   console.log(`[CommsAgent] Draft reply for ${name}: "${reply.slice(0, 80)}…"`)
 
   // Save as PENDING_APPROVAL draft — do NOT send directly
@@ -79,7 +82,7 @@ export async function run({ customerId, inquiry, source = "unknown" } = {}) {
   return { customer: name, customerId, reply, source, draftId, status: "PENDING_APPROVAL" }
 }
 
-async function processInboundMessages() {
+async function processInboundMessages(systemPrompt) {
   let raw
   try { raw = await getMessages("replied=false&direction=INBOUND&limit=20") }
   catch (e) {
@@ -93,7 +96,7 @@ async function processInboundMessages() {
   for (const msg of messages) {
     try {
       const context = `Channel: ${msg.channel}\nMessage: "${msg.content}"`
-      const reply = await ask(SYSTEM, context)
+      const reply = await ask(systemPrompt, context)
 
       // Save as PENDING_APPROVAL draft — staff approves before send
       const draft = await createMessageDraft({

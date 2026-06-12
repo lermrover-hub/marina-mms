@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, Ship, Anchor, Navigation, Wrench,
   FileText, Receipt, BarChart3, Settings, ChevronDown,
   Waves, ClipboardList, ChevronRight, Package, UserCog,
-  ShieldAlert, CreditCard, FolderOpen, Globe, Bell, CalendarDays, Zap, Database, HelpCircle,
+  ShieldAlert, CreditCard, FolderOpen, Globe, Bell, CalendarDays, Zap, Database, HelpCircle, Bot,
 } from "lucide-react"
 
 interface NavItem {
@@ -73,6 +73,7 @@ const navItems: NavItem[] = [
   { label: "Reports",         href: "/reports",       icon: BarChart3  },
   { label: "Documents",       href: "/documents",    icon: FolderOpen },
   { label: "Notifications",   href: "/notifications",icon: Bell       },
+  { label: "AI Agents",       href: "/ai-agents",    icon: Bot        },
   { label: "Customer Portal", href: "/portal",       icon: Globe      },
   { label: "User Guide",      href: "/help",         icon: HelpCircle },
   { label: "Settings",        href: "/settings",     icon: Settings   },

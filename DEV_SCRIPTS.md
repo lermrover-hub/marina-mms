@@ -5,6 +5,8 @@
 - Found Finance preview did not apply `upcoming_due_days`; fixed upcoming invoice count/list/total output.
 - Found Marina preview silently ignored Supabase query errors; fixed it to fail explicitly.
 - Found Control Center error messages used success styling; added distinct error state.
+- Reviewed concurrent tide commit `2bee980`: fixed New Ramp Booking required-tide formula, which understated the threshold by 2.0 m, and fixed blank ramp-offset fallback in Tide Calculator.
+- New Ramp Booking no longer calculates a safe window from zero draft/trailer values; both dimensions are required for Launch/Retrieval.
 - Full findings and remaining verification are recorded in `CLAUDE_HANDOFF.md`.
 - Production writes/messages/bookings remain disabled. Do not change those flags for verification.
 

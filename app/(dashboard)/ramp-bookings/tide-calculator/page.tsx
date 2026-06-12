@@ -78,6 +78,7 @@ export default function TideCalculatorPage() {
     setResult(null)
     setCalcLoading(true)
     try {
+      const parsedRampOffset = parseFloat(rampDepthOffset)
       const res = await fetch("/api/tide/calculate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -85,7 +86,7 @@ export default function TideCalculatorPage() {
           boatDraft:       parseFloat(boatDraft) || 0,
           trailerHeight:   parseFloat(trailerHeight) || 0,
           safetyClearance: parseFloat(safetyClearance) || 0,
-          rampDepthOffset: parseFloat(rampDepthOffset) ?? -1.0,
+          rampDepthOffset: Number.isFinite(parsedRampOffset) ? parsedRampOffset : -1.0,
           tideData,
         }),
       })

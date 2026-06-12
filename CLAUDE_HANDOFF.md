@@ -78,3 +78,7 @@ Claude committed and pushed the feature as `9ce1389`. Codex review found and fix
 3. Control Center displayed API/validation failures using the same success styling as completed previews. Error messages now use a distinct red error state.
 
 Verification required after these fixes: typecheck, lint, web tests, agent tests, production build, local browser previews, then commit/push/deploy verification. Production write flags must remain disabled.
+
+Claude concurrently added tide commits `bb7c786` and `2bee980`. Codex found a critical regression in `2bee980`: New Ramp Booking displayed and persisted `draft + trailer + safety - 1.0`, while the approved formula is `requiredActualDepth - rampDepthOffset` with offset `-1.0`, therefore the correct result adds 1.0 m. This understated required tide by 2.0 m. The page now uses one `requiredTideHeight()` helper for the live request, fallback display, and persisted value. Tide Calculator also now falls back to `-1.0` when the ramp-offset input is blank/invalid instead of serializing `NaN` as `null` and calculating with zero offset.
+
+The same booking page also treated the default 0.3 m safety clearance as if vessel dimensions were complete, so it could display a tide window for zero draft and zero trailer height. Launch/Retrieval now require positive draft and trailer values, and formula/live results stay hidden until both are provided.

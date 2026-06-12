@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import {
   Anchor, Ship, User, Calendar, Clock, Waves, AlertTriangle,
-  Loader2, ChevronLeft, CheckCircle2, XCircle,
+  Loader2, ChevronLeft, CheckCircle2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -25,6 +25,11 @@ const OPERATION_TYPES = [
 
 const ftToM = (ft: number) => ft * 0.3048
 const mToFt = (m: number) => m / 0.3048
+const RAMP_DEPTH_OFFSET_M = -1.0
+
+function requiredTideHeight(draft: number, trailer: number, safety: number) {
+  return draft + trailer + safety - RAMP_DEPTH_OFFSET_M
+}
 
 interface TideSlot { hour: number; time: string; height: number; safe: boolean }
 interface SafeWindow { start: number; end: number; startTime: string; endTime: string }
@@ -51,7 +56,7 @@ function LiveTidePanel({
       const res = await fetch("/api/tide/calculate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date, boatDraft: draft, trailerHeight: trailer, safetyClearance: safety, rampDepthOffset: -1.0 }),
+        body: JSON.stringify({ date, boatDraft: draft, trailerHeight: trailer, safetyClearance: safety, rampDepthOffset: RAMP_DEPTH_OFFSET_M }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error ?? "Calculation failed")
@@ -239,7 +244,12 @@ export default function NewRampBookingPage() {
       const draft   = parseFloat(draftM)   || 0
       const trailer = parseFloat(trailerM) || 0
       const safety  = parseFloat(safetyM)  || 0.3
-      const reqTide = draft + trailer + safety + (-1.0)
+      if ((opType === "LAUNCH" || opType === "RETRIEVAL") && (draft <= 0 || trailer <= 0)) {
+        setFormError("Boat draft and trailer height are required for launch or retrieval")
+        setSubmitting(false)
+        return
+      }
+      const reqTide = requiredTideHeight(draft, trailer, safety)
 
       const body: Record<string, unknown> = {
         operation_type: opType,
@@ -278,10 +288,11 @@ export default function NewRampBookingPage() {
   const safety  = parseFloat(safetyM)  || 0.3
   const isTideOp = opType === "LAUNCH" || opType === "RETRIEVAL"
   const showDims = isTideOp
-  const showLiveTide = isTideOp && requestedDate && (draft + trailer + safety) > 0
+  const hasTideDimensions = draft > 0 && trailer > 0
+  const showLiveTide = isTideOp && requestedDate && hasTideDimensions
 
   // Fallback formula (when no live result yet)
-  const formulaReqTide = (draft + trailer + safety - 1.0)
+  const formulaReqTide = requiredTideHeight(draft, trailer, safety)
 
   return (
     <div className="space-y-6">
@@ -462,7 +473,7 @@ export default function NewRampBookingPage() {
                   </div>
 
                   {/* Static formula result (always shown when dims are set) */}
-                  {(draft + trailer + safety) > 0 && (
+                  {hasTideDimensions && (
                     <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 flex items-center justify-between text-sm">
                       <span className="text-blue-700 text-xs">Required tide ≥</span>
                       <span className="font-bold text-blue-900 text-base">{formulaReqTide.toFixed(2)} m</span>
@@ -480,7 +491,7 @@ export default function NewRampBookingPage() {
                   )}
 
                   {/* Nudge: date missing */}
-                  {isTideOp && !requestedDate && (draft + trailer + safety) > 0 && (
+                  {isTideOp && !requestedDate && hasTideDimensions && (
                     <p className="text-xs text-gray-400 flex items-center gap-1.5">
                       <Calendar className="h-3.5 w-3.5" />
                       Select a booking date above to see the live hourly tide safety grid.
@@ -488,7 +499,7 @@ export default function NewRampBookingPage() {
                   )}
 
                   {/* Nudge: dims missing */}
-                  {isTideOp && requestedDate && (draft + trailer + safety) === 0 && (
+                  {isTideOp && !hasTideDimensions && (
                     <p className="text-xs text-gray-400 flex items-center gap-1.5">
                       <Waves className="h-3.5 w-3.5" />
                       Enter boat draft and trailer height to calculate tide safety.
@@ -570,7 +581,7 @@ export default function NewRampBookingPage() {
                   <span className="text-gray-500">Customer</span>
                   <span className="font-medium text-gray-900 text-right max-w-[140px] truncate">{customerName || "—"}</span>
                 </div>
-                {isTideOp && (draft + trailer + safety) > 0 && (
+                {isTideOp && hasTideDimensions && (
                   <div className="flex justify-between pt-1 border-t">
                     <span className="text-gray-500">Required Tide</span>
                     <span className="font-semibold text-blue-700">≥ {formulaReqTide.toFixed(2)} m</span>

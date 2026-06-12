@@ -1,7 +1,7 @@
 import React from "react"
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { FileText, User, CalendarDays, Hash, ArrowLeft } from "lucide-react"
+import { FileText, User, CalendarDays, Hash, ArrowLeft, Printer } from "lucide-react"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -77,11 +77,18 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
           { label: payment.reference_no ?? payment.id },
         ]}
         actions={
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/payments">
-              <ArrowLeft className="h-4 w-4" /> Back
-            </Link>
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="teal" size="sm" asChild>
+              <Link href={`/print/receipts/${payment.id}`} target="_blank" rel="noopener noreferrer">
+                <Printer className="h-4 w-4 mr-1" /> Print Receipt
+              </Link>
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/payments">
+                <ArrowLeft className="h-4 w-4" /> Back
+              </Link>
+            </Button>
+          </div>
         }
       />
 

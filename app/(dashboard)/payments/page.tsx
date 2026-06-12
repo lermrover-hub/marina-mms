@@ -1,7 +1,7 @@
 "use client"
 import React, { useState, useMemo, useEffect } from "react"
 import Link from "next/link"
-import { Search, Filter, CreditCard, Loader2, Download } from "lucide-react"
+import { Search, Filter, CreditCard, Loader2, Download, Printer } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { PageHeader } from "@/components/shared/PageHeader"
@@ -364,14 +364,25 @@ export default function PaymentsPage() {
                           </span>
                         </td>
 
-                        {/* View */}
+                        {/* Actions */}
                         <td className="px-6 py-3.5">
-                          <Link
-                            href={`/payments/${p.id}`}
-                            className="text-xs text-teal-600 hover:underline opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            View
-                          </Link>
+                          <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Link
+                              href={`/payments/${p.id}`}
+                              className="text-xs text-teal-600 hover:underline"
+                            >
+                              View
+                            </Link>
+                            <Link
+                              href={`/print/receipts/${p.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-gray-500 hover:text-teal-700 flex items-center gap-1"
+                              title="Print Receipt"
+                            >
+                              <Printer className="h-3 w-3" /> Receipt
+                            </Link>
+                          </div>
                         </td>
                       </tr>
                     )

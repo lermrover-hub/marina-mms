@@ -8,6 +8,7 @@ import {
   FileText, Receipt, BarChart3, Settings, ChevronDown,
   Waves, ClipboardList, ChevronRight, Package, UserCog,
   ShieldAlert, CreditCard, FolderOpen, Globe, Bell, CalendarDays, Zap, Database, HelpCircle, Bot,
+  HardHat, Truck, ShoppingCart, ArrowLeftRight, Clock, Shield,
 } from "lucide-react"
 
 interface NavItem {
@@ -59,22 +60,36 @@ const navItems: NavItem[] = [
   {
     label: "Inventory", icon: Package,
     children: [
-      { label: "Stock Items",       href: "/inventory",           icon: Package },
-      { label: "Purchase Requests", href: "/purchase-requests",   icon: ClipboardList },
+      { label: "Stock Items",         href: "/inventory",             icon: Package },
+      { label: "Stock Movements",     href: "/inventory/movements",   icon: ArrowLeftRight },
+      { label: "Purchase Requests",   href: "/purchase-requests",     icon: ClipboardList },
+      { label: "Purchase Orders",     href: "/purchase-orders",       icon: ShoppingCart },
+      { label: "Suppliers",           href: "/suppliers",             icon: Truck },
     ],
   },
   {
     label: "People & Safety", icon: UserCog,
     children: [
-      { label: "Staff",      href: "/staff",     icon: UserCog },
-      { label: "Incidents",  href: "/incidents", icon: ShieldAlert },
+      { label: "Staff",         href: "/staff",       icon: UserCog },
+      { label: "Contractors",   href: "/contractors", icon: HardHat },
+      { label: "Timesheets",    href: "/timesheets",  icon: Clock },
+      { label: "Incidents",     href: "/incidents",   icon: ShieldAlert },
     ],
   },
-  { label: "Reports",         href: "/reports",       icon: BarChart3  },
+  {
+    label: "Reports", icon: BarChart3,
+    children: [
+      { label: "Reports Overview",   href: "/reports",            icon: BarChart3 },
+      { label: "Revenue Report",     href: "/reports/revenue",    icon: BarChart3 },
+      { label: "Occupancy Report",   href: "/reports/occupancy",  icon: Anchor },
+      { label: "Customer Aging",     href: "/reports/aging",      icon: Receipt },
+    ],
+  },
   { label: "Documents",       href: "/documents",    icon: FolderOpen },
   { label: "Notifications",   href: "/notifications",icon: Bell       },
   { label: "AI Agents",       href: "/ai-agents",    icon: Bot        },
   { label: "Customer Portal", href: "/portal",       icon: Globe      },
+  { label: "Audit Log",       href: "/audit-log",    icon: Shield     },
   { label: "User Guide",      href: "/help",         icon: HelpCircle },
   { label: "Settings",        href: "/settings",     icon: Settings   },
 ]

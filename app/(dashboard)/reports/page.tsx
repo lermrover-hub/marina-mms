@@ -91,35 +91,36 @@ const REPORT_GROUPS = [
   {
     title: "Financial Reports", icon: DollarSign, color: "bg-green-100 text-green-700",
     reports: [
-      { name: "Monthly Revenue Report",    description: "Revenue by month and business unit", available: true },
-      { name: "Outstanding Invoice Report",description: "Unpaid and overdue invoices",         available: true },
-      { name: "Customer Aging Report",     description: "Accounts receivable aging",           available: false },
-      { name: "Payment Summary",           description: "All payments by method and date",     available: true },
+      { name: "Monthly Revenue Report",    description: "Revenue by month and business unit", available: true,  href: "/reports/revenue" },
+      { name: "Outstanding Invoice Report",description: "Unpaid and overdue invoices",         available: true,  href: "/invoices" },
+      { name: "Customer Aging Report",     description: "Accounts receivable aging",           available: true,  href: "/reports/aging" },
+      { name: "Payment Summary",           description: "All payments by method and date",     available: true,  href: "/payments" },
     ],
   },
   {
     title: "Marina Operations", icon: Ship, color: "bg-blue-100 text-blue-700",
     reports: [
-      { name: "Wet Berth Occupancy",    description: "Daily/monthly berth utilization", available: true },
-      { name: "Dry Storage Occupancy",  description: "Storage slot fill rate",           available: true },
-      { name: "Boat Movement Report",   description: "All boat entries and exits",       available: true },
-      { name: "Contract Expiry",        description: "Contracts expiring within 90 days",available: false },
+      { name: "Berth Occupancy Report",  description: "Current berth and storage utilization", available: true,  href: "/reports/occupancy" },
+      { name: "Boat Movement Report",    description: "All boat entries and exits",             available: true,  href: "/movements" },
+      { name: "Ramp Booking Report",     description: "Launch and retrieval operations",        available: true,  href: "/ramp-bookings" },
+      { name: "Contract Expiry",         description: "Contracts expiring within 90 days",      available: true,  href: "/contracts" },
     ],
   },
   {
     title: "Boat Yard", icon: Wrench, color: "bg-orange-100 text-orange-700",
     reports: [
-      { name: "Job Profitability",     description: "Revenue, cost, margin per WO",  available: true },
-      { name: "Technician Productivity",description: "Hours and jobs per technician",available: false },
-      { name: "Contractor Cost",       description: "Subcontractor spend by job",    available: false },
+      { name: "Job Profitability",        description: "Revenue, cost, margin per WO",   available: true,  href: "/work-orders" },
+      { name: "Technician Timesheets",    description: "Hours and labor cost by staff",   available: true,  href: "/timesheets" },
+      { name: "Contractor Cost",          description: "Subcontractor spend by job",      available: true,  href: "/contractors" },
+      { name: "Stock Movements",          description: "Inventory in/out transactions",   available: true,  href: "/inventory/movements" },
     ],
   },
   {
     title: "Sales & CRM", icon: TrendingUp, color: "bg-purple-100 text-purple-700",
     reports: [
-      { name: "Quotation Conversion", description: "Quote-to-invoice rate",         available: true },
-      { name: "Revenue by Customer",  description: "Top customers by revenue",      available: false },
-      { name: "New Customers",        description: "New customer acquisition/month", available: false },
+      { name: "Quotation Conversion", description: "Quote-to-invoice rate",         available: true,  href: "/quotations" },
+      { name: "Revenue by Customer",  description: "Top customers by revenue",      available: false, href: null },
+      { name: "Audit Log",            description: "Security and sensitive action log", available: true, href: "/audit-log" },
     ],
   },
 ]
@@ -736,27 +737,30 @@ export default function ReportsPage() {
             </CardHeader>
             <CardContent className="p-0">
               <div className="divide-y divide-gray-100">
-                {reports.map(({ name, description, available }) => (
-                  <div
-                    key={name}
-                    className={`flex items-center justify-between px-5 py-3 group ${available ? "hover:bg-gray-50 cursor-pointer" : "opacity-50"}`}
-                  >
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{name}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">{description}</p>
-                    </div>
-                    {available ? (
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => window.print()}>
-                          <Download className="h-3 w-3" /> Export
-                        </Button>
-                        <ArrowRight className="h-4 w-4 text-gray-400" />
+                {reports.map(({ name, description, available, href }) => {
+                  const inner = (
+                    <>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{name}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{description}</p>
                       </div>
-                    ) : (
-                      <span className="text-[10px] text-gray-400 bg-gray-100 rounded-full px-2 py-0.5 shrink-0">Coming soon</span>
-                    )}
-                  </div>
-                ))}
+                      {available ? (
+                        <ArrowRight className="h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      ) : (
+                        <span className="text-[10px] text-gray-400 bg-gray-100 rounded-full px-2 py-0.5 shrink-0">Coming soon</span>
+                      )}
+                    </>
+                  )
+                  return available && href ? (
+                    <Link key={name} href={href} className="flex items-center justify-between px-5 py-3 group hover:bg-gray-50 cursor-pointer">
+                      {inner}
+                    </Link>
+                  ) : (
+                    <div key={name} className={`flex items-center justify-between px-5 py-3 group ${available ? "hover:bg-gray-50 cursor-pointer" : "opacity-50"}`}>
+                      {inner}
+                    </div>
+                  )
+                })}
               </div>
             </CardContent>
           </Card>

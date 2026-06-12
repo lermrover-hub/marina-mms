@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import {
   Anchor, Ship, User, Calendar, Clock, Waves, AlertTriangle,
-  Loader2, ChevronLeft, CheckCircle2,
+  Loader2, ChevronLeft, CheckCircle2, XCircle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -26,28 +26,134 @@ const OPERATION_TYPES = [
 const ftToM = (ft: number) => ft * 0.3048
 const mToFt = (m: number) => m / 0.3048
 
-function TideCalcPreview({ draft, trailer, safety }: { draft: number; trailer: number; safety: number }) {
-  const rampOffset = -1.0
-  const minDepthM  = draft + trailer + safety
-  const reqTideM   = minDepthM + rampOffset
+interface TideSlot { hour: number; time: string; height: number; safe: boolean }
+interface SafeWindow { start: number; end: number; startTime: string; endTime: string }
+interface TideResult {
+  requiredActualDepth: number
+  requiredTideHeight: number
+  slots: TideSlot[]
+  earliestSafeHour: number | null
+  safeWindows: SafeWindow[]
+}
+
+function LiveTidePanel({
+  date, draft, trailer, safety,
+}: { date: string; draft: number; trailer: number; safety: number }) {
+  const [loading, setLoading] = useState(false)
+  const [error,   setError]   = useState<string | null>(null)
+  const [result,  setResult]  = useState<TideResult | null>(null)
+
+  const run = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    setResult(null)
+    try {
+      const res = await fetch("/api/tide/calculate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date, boatDraft: draft, trailerHeight: trailer, safetyClearance: safety, rampDepthOffset: -1.0 }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error ?? "Calculation failed")
+      setResult(data as TideResult)
+    } catch (e) {
+      setError(String(e))
+    } finally {
+      setLoading(false)
+    }
+  }, [date, draft, trailer, safety])
+
+  useEffect(() => { void run() }, [run])
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 rounded-lg border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-700">
+        <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+        Checking tide safety for {date}…
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+        <strong>Tide data unavailable:</strong> {error}
+        <p className="text-xs mt-1 text-amber-600">Tide data covers 2026 only. Formula result shown above.</p>
+      </div>
+    )
+  }
+
+  if (!result) return null
+
+  const safeCount = result.slots.filter(s => s.safe).length
 
   return (
-    <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-1.5 text-sm">
-      <div className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-2">Tide Safety Preview</div>
-      <div className="flex justify-between">
-        <span className="text-blue-700">Min. required depth</span>
-        <span className="font-bold text-blue-900">{minDepthM.toFixed(2)} m</span>
+    <div className="space-y-3">
+      {/* Summary bar */}
+      <div className="grid grid-cols-3 gap-2">
+        <div className="rounded-lg bg-teal-50 border border-teal-200 px-3 py-2 text-center">
+          <p className="text-xs text-teal-600 font-medium">Min. Depth</p>
+          <p className="text-lg font-bold text-teal-800">{result.requiredActualDepth.toFixed(2)}<span className="text-xs font-normal ml-0.5">m</span></p>
+        </div>
+        <div className="rounded-lg bg-indigo-50 border border-indigo-200 px-3 py-2 text-center">
+          <p className="text-xs text-indigo-600 font-medium">Required Tide</p>
+          <p className="text-lg font-bold text-indigo-800">{result.requiredTideHeight.toFixed(2)}<span className="text-xs font-normal ml-0.5">m</span></p>
+        </div>
+        <div className={`rounded-lg border px-3 py-2 text-center ${result.earliestSafeHour !== null ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}`}>
+          <p className={`text-xs font-medium ${result.earliestSafeHour !== null ? "text-green-600" : "text-red-600"}`}>Earliest Safe</p>
+          {result.earliestSafeHour !== null ? (
+            <p className="text-lg font-bold text-green-800">{String(result.earliestSafeHour).padStart(2,"0")}:00</p>
+          ) : (
+            <p className="text-sm font-bold text-red-700 mt-0.5">No window</p>
+          )}
+        </div>
       </div>
-      <div className="flex justify-between">
-        <span className="text-blue-700">Required tide height</span>
-        <span className="font-bold text-blue-900">{reqTideM.toFixed(2)} m</span>
+
+      {/* Safe windows */}
+      {result.safeWindows.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-medium text-gray-500">Safe windows:</span>
+          {result.safeWindows.map((w, i) => (
+            <span key={i} className="text-xs rounded-full bg-green-100 text-green-700 px-2 py-0.5 font-medium">
+              {w.startTime}–{w.endTime}
+            </span>
+          ))}
+          <span className="text-xs text-gray-400">({safeCount}/24 hrs safe)</span>
+        </div>
+      )}
+
+      {/* Compact 24-hour tide bar */}
+      <div>
+        <p className="text-xs font-medium text-gray-500 mb-1">Hourly tide — {date}</p>
+        <div className="flex items-end gap-px h-10 bg-gray-50 rounded-lg px-1 py-1">
+          {result.slots.map(slot => {
+            const maxH = Math.max(...result.slots.map(s => s.height))
+            const pct  = Math.round((slot.height / maxH) * 100)
+            return (
+              <div
+                key={slot.hour}
+                className="flex-1 flex flex-col items-center"
+                title={`${slot.time}: ${slot.height}m — ${slot.safe ? "SAFE" : "NOT SAFE"}`}
+              >
+                <div
+                  className={`w-full rounded-sm ${slot.safe ? "bg-green-400" : "bg-red-300"}`}
+                  style={{ height: `${pct}%` }}
+                />
+              </div>
+            )
+          })}
+        </div>
+        <div className="flex justify-between text-[9px] text-gray-400 mt-0.5 px-0.5">
+          <span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>23:00</span>
+        </div>
       </div>
-      <p className="text-xs text-blue-600 pt-1">
-        Formula: (Draft + Trailer + Safety) + Ramp Offset ({rampOffset} m)
-      </p>
-      <div className="rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-700 flex items-start gap-1.5 mt-1">
-        <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" />
-        Tide predictions may differ from actual sea level. Final check required on operation day.
+
+      <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+        <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5" />
+        <p className="text-xs text-amber-700">
+          Tide predictions may differ from actual sea level due to weather, wind, and sea conditions.
+          Final check required on operation day.
+        </p>
       </div>
     </div>
   )
@@ -130,6 +236,11 @@ export default function NewRampBookingPage() {
     setFormError(null)
 
     try {
+      const draft   = parseFloat(draftM)   || 0
+      const trailer = parseFloat(trailerM) || 0
+      const safety  = parseFloat(safetyM)  || 0.3
+      const reqTide = draft + trailer + safety + (-1.0)
+
       const body: Record<string, unknown> = {
         operation_type: opType,
         requested_date: requestedDate,
@@ -138,20 +249,14 @@ export default function NewRampBookingPage() {
         customer_name:  customerName  || selectedBoat?.owner_name || null,
         boat_id:        selectedBoat?.id          ?? null,
         boat_name:      (selectedBoat?.name ?? boatQuery) || null,
-        boat_draft_ft:  draftM ? mToFt(parseFloat(draftM)) : null,
-        trailer_height_ft: trailerM ? mToFt(parseFloat(trailerM)) : null,
-        safety_clearance_ft: safetyM ? mToFt(parseFloat(safetyM)) : mToFt(0.3),
+        boat_draft_ft:  draftM ? mToFt(draft) : null,
+        trailer_height_ft: trailerM ? mToFt(trailer) : null,
+        safety_clearance_ft: mToFt(safety),
         assigned_staff: assignedStaff || null,
         notes:          notes || null,
         status: "REQUESTED",
+        required_tide_m: parseFloat(reqTide.toFixed(3)),
       }
-
-      // pre-calculate required tide
-      const draft   = parseFloat(draftM)   || 0
-      const trailer = parseFloat(trailerM) || 0
-      const safety  = parseFloat(safetyM)  || 0.3
-      const reqTide = draft + trailer + safety + (-1.0)
-      body.required_tide_m = parseFloat(reqTide.toFixed(3))
 
       const res = await fetch("/api/db/ramp-bookings", {
         method: "POST",
@@ -171,7 +276,12 @@ export default function NewRampBookingPage() {
   const draft   = parseFloat(draftM)   || 0
   const trailer = parseFloat(trailerM) || 0
   const safety  = parseFloat(safetyM)  || 0.3
-  const showTide = (opType === "LAUNCH" || opType === "RETRIEVAL") && (draft + trailer + safety) > 0
+  const isTideOp = opType === "LAUNCH" || opType === "RETRIEVAL"
+  const showDims = isTideOp
+  const showLiveTide = isTideOp && requestedDate && (draft + trailer + safety) > 0
+
+  // Fallback formula (when no live result yet)
+  const formulaReqTide = (draft + trailer + safety - 1.0)
 
   return (
     <div className="space-y-6">
@@ -305,8 +415,8 @@ export default function NewRampBookingPage() {
               </CardContent>
             </Card>
 
-            {/* Vessel Dimensions */}
-            {(opType === "LAUNCH" || opType === "RETRIEVAL") && (
+            {/* Vessel Dimensions + Live Tide */}
+            {showDims && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -351,8 +461,38 @@ export default function NewRampBookingPage() {
                     </div>
                   </div>
 
-                  {showTide && (
-                    <TideCalcPreview draft={draft} trailer={trailer} safety={safety} />
+                  {/* Static formula result (always shown when dims are set) */}
+                  {(draft + trailer + safety) > 0 && (
+                    <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 flex items-center justify-between text-sm">
+                      <span className="text-blue-700 text-xs">Required tide ≥</span>
+                      <span className="font-bold text-blue-900 text-base">{formulaReqTide.toFixed(2)} m</span>
+                    </div>
+                  )}
+
+                  {/* Live tide panel — appears when date + params are filled */}
+                  {showLiveTide && (
+                    <LiveTidePanel
+                      date={requestedDate}
+                      draft={draft}
+                      trailer={trailer}
+                      safety={safety}
+                    />
+                  )}
+
+                  {/* Nudge: date missing */}
+                  {isTideOp && !requestedDate && (draft + trailer + safety) > 0 && (
+                    <p className="text-xs text-gray-400 flex items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5" />
+                      Select a booking date above to see the live hourly tide safety grid.
+                    </p>
+                  )}
+
+                  {/* Nudge: dims missing */}
+                  {isTideOp && requestedDate && (draft + trailer + safety) === 0 && (
+                    <p className="text-xs text-gray-400 flex items-center gap-1.5">
+                      <Waves className="h-3.5 w-3.5" />
+                      Enter boat draft and trailer height to calculate tide safety.
+                    </p>
                   )}
                 </CardContent>
               </Card>
@@ -430,16 +570,31 @@ export default function NewRampBookingPage() {
                   <span className="text-gray-500">Customer</span>
                   <span className="font-medium text-gray-900 text-right max-w-[140px] truncate">{customerName || "—"}</span>
                 </div>
-                {showTide && (
+                {isTideOp && (draft + trailer + safety) > 0 && (
                   <div className="flex justify-between pt-1 border-t">
                     <span className="text-gray-500">Required Tide</span>
-                    <span className="font-semibold text-blue-700">
-                      {(ftToM(draft + trailer + safety) - 1.0).toFixed(2)} m
-                    </span>
+                    <span className="font-semibold text-blue-700">≥ {formulaReqTide.toFixed(2)} m</span>
                   </div>
                 )}
               </CardContent>
             </Card>
+
+            {/* Tide check link */}
+            {isTideOp && (
+              <Card className="border-teal-200 bg-teal-50/40">
+                <CardContent className="pt-4 pb-3">
+                  <p className="text-xs font-medium text-teal-700 mb-2 flex items-center gap-1.5">
+                    <Waves className="h-3.5 w-3.5" /> Full Tide Calculator
+                  </p>
+                  <p className="text-xs text-teal-600 mb-3">
+                    Open the dedicated calculator for a full 24-hour analysis and printable safe window report.
+                  </p>
+                  <Button variant="outline" size="sm" className="w-full border-teal-300 text-teal-700 hover:bg-teal-100" asChild>
+                    <Link href="/ramp-bookings/tide-calculator">Open Calculator →</Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Guidelines */}
             <Card>

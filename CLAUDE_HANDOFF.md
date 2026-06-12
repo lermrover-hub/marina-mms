@@ -97,6 +97,18 @@ Production smoke testing then exposed that Supabase could not resolve the embedd
 - Keep all production writes, real messages, and production bookings disabled. Do not create test financial records.
 - User preference going forward: Claude Code implements new functions; Codex performs review, debugging, and tests afterward.
 
+## Codex Verification - 2026-06-13
+
+- Reviewed Claude fix commit `2c7e284`; working tree was clean and `main` matched `origin/main` before this verification note.
+- PASS: `npx tsc --noEmit`.
+- PASS: `npm run lint -- --quiet`.
+- PASS: web tests `34/34`.
+- PASS: AI-agent tests `124 passed / 20 skipped / 0 failed`.
+- PASS: Next.js production build, `77/77` static pages generated. Remaining lint output is warning-only technical debt outside the reviewed aging fix.
+- PASS production authenticated read-only smoke test: Contractors, Suppliers, Purchase Orders, Timesheets, Audit Log, Recurring Billing, Aging, Occupancy, Revenue, Inventory Usage, and Quotation Conversion pages all returned HTTP 200 without login redirects or application errors.
+- PASS production receipt/invoice regression test: payments list returned HTTP 200 with 12 rows; a confirmed payment detail/receipt API returned HTTP 200 with 5 invoice items; linked invoice detail returned HTTP 200 with the same 5 items.
+- No production writes, messages, bookings, or financial records were created during verification.
+
 ## Claude QA Pass - 2026-06-13
 
 **Fixed:** `no-unused-expressions` ESLint warning in `app/(dashboard)/reports/aging/page.tsx`.

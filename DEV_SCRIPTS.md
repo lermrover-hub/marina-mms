@@ -1144,3 +1144,24 @@ npx.cmd prisma db execute --file prisma\migrations\20260613_add_operations_table
 The operations API routes use server-only `DATABASE_URL` via `lib/postgres.ts`.
 Do not expose this value to client components. The migration intentionally keeps
 RLS enabled and revokes direct `anon` and `authenticated` table privileges.
+
+## WhatsApp Cloud API Setup
+
+Production webhook URL:
+
+```text
+https://marina-mms.vercel.app/api/webhooks/whatsapp
+```
+
+Required Vercel variables:
+
+- `WHATSAPP_WEBHOOK_VERIFY_TOKEN` - generated secret shared with Meta webhook setup.
+- `WHATSAPP_APP_SECRET` - Meta app secret used to validate `x-hub-signature-256`.
+- `WHATSAPP_PHONE_NUMBER_ID` - WhatsApp Cloud API phone number ID.
+- `WHATSAPP_ACCESS_TOKEN` - permanent system-user token.
+- `WHATSAPP_API_VERSION=v25.0`.
+
+Keep both `ENABLE_AUTOMATION_WRITES=false` and
+`ENABLE_REAL_CUSTOMER_MESSAGES=false` during setup. Webhook verification works
+while these flags are disabled. A valid signed POST is acknowledged without
+database writes, replies, or read receipts until the relevant flag is enabled.

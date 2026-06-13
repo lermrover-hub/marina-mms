@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { createServerClient } from "@/lib/supabase-server"
+import { apiErrorMessage, dbTransaction } from "@/lib/postgres"
 
 export const dynamic = "force-dynamic"
 
@@ -9,36 +9,22 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params
-    const body     = await req.json()
-    const supabase = createServerClient()
+    const body = await req.json()
 
     const qty        = Number(body.qty)        || 0
     const unit_price = Number(body.unit_price) || 0
     const line_total = parseFloat((qty * unit_price).toFixed(2))
 
-    const { data: item, error } = await supabase
-      .from("mms_purchase_order_items")
-      .update({ ...body, qty, unit_price, line_total })
-      .eq("id", id)
-      .select()
-      .single()
-    if (error) throw error
-
-    // Recalculate PO totals
-    const { data: items } = await supabase
-      .from("mms_purchase_order_items")
-      .select("line_total")
-      .eq("po_id", item.po_id)
-
-    const subtotal   = (items ?? []).reduce((s, i) => s + Number(i.line_total), 0)
-    const vat_amount = parseFloat((subtotal * 0.07).toFixed(2))
-    await supabase.from("mms_purchase_orders")
-      .update({ subtotal, vat_amount, total_amount: subtotal + vat_amount, updated_at: new Date().toISOString() })
-      .eq("id", item.po_id)
-
+    const item = await dbTransaction(async (client) => {
+      const updated = await client.query(`UPDATE mms_purchase_order_items SET item_code=$1, description=$2, qty=$3, unit=$4, unit_price=$5, line_total=$6, updated_at=now() WHERE id=$7 RETURNING *`, [body.item_code || null, body.description, qty, body.unit || null, unit_price, line_total, id])
+      if (!updated.rows[0]) return null
+      await client.query(`UPDATE mms_purchase_orders SET subtotal = totals.subtotal, vat_amount = round(totals.subtotal * 0.07, 2), total_amount = totals.subtotal + round(totals.subtotal * 0.07, 2), updated_at = now() FROM (SELECT COALESCE(sum(line_total),0) AS subtotal FROM mms_purchase_order_items WHERE po_id = $1) totals WHERE id = $1`, [updated.rows[0].po_id])
+      return updated.rows[0]
+    })
+    if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 })
     return NextResponse.json(item)
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: apiErrorMessage(e) }, { status: 500 })
   }
 }
 
@@ -48,25 +34,15 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
-    const supabase = createServerClient()
-
-    const { data: item } = await supabase
-      .from("mms_purchase_order_items").select("po_id").eq("id", id).maybeSingle()
-
-    await supabase.from("mms_purchase_order_items").delete().eq("id", id)
-
-    if (item?.po_id) {
-      const { data: items } = await supabase
-        .from("mms_purchase_order_items").select("line_total").eq("po_id", item.po_id)
-      const subtotal   = (items ?? []).reduce((s, i) => s + Number(i.line_total), 0)
-      const vat_amount = parseFloat((subtotal * 0.07).toFixed(2))
-      await supabase.from("mms_purchase_orders")
-        .update({ subtotal, vat_amount, total_amount: subtotal + vat_amount, updated_at: new Date().toISOString() })
-        .eq("id", item.po_id)
-    }
-
+    const deleted = await dbTransaction(async (client) => {
+      const result = await client.query("DELETE FROM mms_purchase_order_items WHERE id=$1 RETURNING po_id", [id])
+      if (!result.rows[0]) return false
+      await client.query(`UPDATE mms_purchase_orders SET subtotal = totals.subtotal, vat_amount = round(totals.subtotal * 0.07, 2), total_amount = totals.subtotal + round(totals.subtotal * 0.07, 2), updated_at = now() FROM (SELECT COALESCE(sum(line_total),0) AS subtotal FROM mms_purchase_order_items WHERE po_id = $1) totals WHERE id = $1`, [result.rows[0].po_id])
+      return true
+    })
+    if (!deleted) return NextResponse.json({ error: "Not found" }, { status: 404 })
     return NextResponse.json({ ok: true })
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: apiErrorMessage(e) }, { status: 500 })
   }
 }

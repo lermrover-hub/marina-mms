@@ -130,3 +130,15 @@ Remaining non-blocking build warnings (pre-existing, unchanged):
 **Next required step for Codex:** run `npm.cmd test` (web 34/34) and `npm.cmd --prefix ai-agents test` (124/20 skip), then browser/API smoke tests for receipt, invoice detail, and all new modules from `611bc28`/`5096e75`. Production write flags must remain disabled.
 
 **Commit to be created:** `fix: resolve no-unused-expressions warning in aging report toggle`
+
+## Codex Operations Module Production Fix - 2026-06-13
+
+- Root cause: the operations tables already existed in production with text IDs and restrictive RLS, while the new routes expected Supabase REST access and a partially different schema. The affected APIs returned HTTP 500.
+- Added an idempotent compatibility migration for contractors, suppliers, purchase orders/items, stock movements, timesheets, audit log, and material usage. Existing rows are preserved; no tables or customer data are deleted.
+- Operations routes now use parameterized server-side PostgreSQL queries through `DATABASE_URL`. Browser clients do not receive database credentials, and RLS remains enabled with anon/authenticated access revoked for these tables.
+- Fixed supplier payment-term compatibility, contractor defaults, PO-item timestamps/totals, material-usage work-order ID type, audit-log changes, stock issue inventory updates, and timesheet total recalculation/default date.
+- Production schema migration was applied successfully and reapplied successfully to verify idempotence.
+- Rollback-only database contract test passed for all operations modules; no test records remain.
+- PASS: TypeScript, ESLint quiet, web tests 34/34, agent tests 124 passed / 20 skipped, production build 77/77 pages.
+- PASS local production smoke: all seven operations APIs returned HTTP 200 arrays; Contractors, Suppliers, Purchase Orders, Stock Movements, Timesheets, Audit Log, and Inventory Usage pages returned HTTP 200 without application errors.
+- Safety flags remain unchanged and disabled. No customer messages, bookings, pricing rows, financial documents, or pilot quotation were modified.

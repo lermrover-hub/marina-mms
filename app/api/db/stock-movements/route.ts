@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { createServerClient } from "@/lib/supabase-server"
+import { apiErrorMessage, dbQuery, dbTransaction } from "@/lib/postgres"
 
 export const dynamic = "force-dynamic"
 
@@ -9,24 +9,21 @@ export async function GET(req: Request) {
     const itemId   = searchParams.get("item_id")
     const type     = searchParams.get("movement_type")
     const limit    = parseInt(searchParams.get("limit") ?? "200")
-    const supabase = createServerClient()
-
-    let q = supabase.from("mms_stock_movements").select("*").order("created_at", { ascending: false }).limit(limit)
-    if (itemId) q = q.eq("item_id", itemId)
-    if (type)   q = q.eq("movement_type", type)
-
-    const { data, error } = await q
-    if (error) throw error
-    return NextResponse.json(data)
+    const where: string[] = []
+    const values: unknown[] = []
+    if (itemId) { values.push(itemId); where.push(`item_id = $${values.length}`) }
+    if (type) { values.push(type); where.push(`movement_type = $${values.length}`) }
+    values.push(Math.min(Math.max(limit, 1), 500))
+    const result = await dbQuery(`SELECT * FROM mms_stock_movements${where.length ? ` WHERE ${where.join(" AND ")}` : ""} ORDER BY created_at DESC LIMIT $${values.length}`, values)
+    return NextResponse.json(result.rows)
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: apiErrorMessage(e) }, { status: 500 })
   }
 }
 
 export async function POST(req: Request) {
   try {
-    const body     = await req.json()
-    const supabase = createServerClient()
+    const body = await req.json()
 
     // Validate required fields
     if (!body.item_id || !body.movement_type || body.quantity == null) {
@@ -35,35 +32,23 @@ export async function POST(req: Request) {
 
     const qty = Number(body.quantity)
 
-    // Insert movement record
-    const { data: movement, error: mvErr } = await supabase
-      .from("mms_stock_movements")
-      .insert(body)
-      .select()
-      .single()
-    if (mvErr) throw mvErr
+    if (!Number.isFinite(qty) || qty < 0) return NextResponse.json({ error: "quantity must be a non-negative number" }, { status: 400 })
+    const movement = await dbTransaction(async (client) => {
+      const inventory = await client.query("SELECT item_code, name, on_hand FROM mms_inventory_items WHERE id=$1 FOR UPDATE", [body.item_id])
+      if (!inventory.rows[0]) throw new Error("Inventory item not found")
+      const current = Number(inventory.rows[0].on_hand)
+      let next = current
+      if (body.movement_type === "stock_in") next += qty
+      else if (["stock_out", "issue"].includes(body.movement_type)) next = Math.max(0, current - qty)
+      else if (body.movement_type === "adjustment") next = qty
+      else throw new Error("Unsupported movement_type")
 
-    // Update inventory on_hand
-    const { data: item, error: itemErr } = await supabase
-      .from("mms_inventory_items")
-      .select("on_hand")
-      .eq("id", body.item_id)
-      .maybeSingle()
-    if (itemErr) throw itemErr
-
-    if (item) {
-      let newOnHand = Number(item.on_hand)
-      if (body.movement_type === "stock_in")     newOnHand += qty
-      else if (body.movement_type === "stock_out") newOnHand = Math.max(0, newOnHand - qty)
-      else if (body.movement_type === "adjustment") newOnHand = qty
-
-      await supabase.from("mms_inventory_items")
-        .update({ on_hand: newOnHand, updated_at: new Date().toISOString() })
-        .eq("id", body.item_id)
-    }
-
+      const inserted = await client.query(`INSERT INTO mms_stock_movements (item_id,item_code,item_name,movement_type,quantity,unit_cost,reference_type,reference_id,notes,created_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`, [body.item_id, body.item_code || inventory.rows[0].item_code, body.item_name || inventory.rows[0].name, body.movement_type, qty, body.unit_cost ?? null, body.reference_type || null, body.reference_id || null, body.notes || null, body.created_by || null])
+      await client.query("UPDATE mms_inventory_items SET on_hand=$1, updated_at=now() WHERE id=$2", [next, body.item_id])
+      return inserted.rows[0]
+    })
     return NextResponse.json(movement, { status: 201 })
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: apiErrorMessage(e) }, { status: 500 })
   }
 }

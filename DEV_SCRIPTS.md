@@ -1131,3 +1131,16 @@ git push origin main
 ```
 
 Do not manually deploy or enable production writes without explicit approval. GitHub pushes may trigger the configured Vercel deployment automatically.
+
+## Operations Tables Migration - 2026-06-13
+
+Apply the idempotent operations compatibility migration:
+
+```powershell
+cd C:\marina-mms
+npx.cmd prisma db execute --file prisma\migrations\20260613_add_operations_tables\migration.sql
+```
+
+The operations API routes use server-only `DATABASE_URL` via `lib/postgres.ts`.
+Do not expose this value to client components. The migration intentionally keeps
+RLS enabled and revokes direct `anon` and `authenticated` table privileges.

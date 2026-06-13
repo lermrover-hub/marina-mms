@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { createServerClient } from "@/lib/supabase-server"
+import { apiErrorMessage, dbQuery } from "@/lib/postgres"
 
 export const dynamic = "force-dynamic"
 
@@ -9,33 +9,25 @@ export async function GET(req: Request) {
     const entityType = searchParams.get("entity_type")
     const userName   = searchParams.get("user_name")
     const action     = searchParams.get("action")
-    const supabase   = createServerClient()
-
-    let q = supabase.from("mms_audit_log").select("*").order("created_at", { ascending: false }).limit(300)
-    if (entityType) q = q.eq("entity_type", entityType)
-    if (userName)   q = q.ilike("user_name", `%${userName}%`)
-    if (action)     q = q.eq("action", action)
-
-    const { data, error } = await q
-    if (error) throw error
-    return NextResponse.json(data)
+    const where: string[] = []
+    const values: unknown[] = []
+    if (entityType) { values.push(entityType); where.push(`entity_type = $${values.length}`) }
+    if (userName) { values.push(`%${userName}%`); where.push(`user_name ILIKE $${values.length}`) }
+    if (action) { values.push(action); where.push(`action = $${values.length}`) }
+    const result = await dbQuery(`SELECT * FROM mms_audit_log${where.length ? ` WHERE ${where.join(" AND ")}` : ""} ORDER BY created_at DESC LIMIT 300`, values)
+    return NextResponse.json(result.rows)
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: apiErrorMessage(e) }, { status: 500 })
   }
 }
 
 export async function POST(req: Request) {
   try {
-    const body     = await req.json()
-    const supabase = createServerClient()
-    const { data, error } = await supabase
-      .from("mms_audit_log")
-      .insert(body)
-      .select()
-      .single()
-    if (error) throw error
-    return NextResponse.json(data, { status: 201 })
+    const body = await req.json()
+    if (!body.action) return NextResponse.json({ error: "action is required" }, { status: 400 })
+    const result = await dbQuery(`INSERT INTO mms_audit_log (action,entity_type,entity_id,entity_ref,user_name,user_role,notes,changes,ip_address) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`, [body.action, body.entity_type || "system", body.entity_id || null, body.entity_ref || null, body.user_name || null, body.user_role || null, body.notes || null, body.changes ?? null, body.ip_address || null])
+    return NextResponse.json(result.rows[0], { status: 201 })
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: apiErrorMessage(e) }, { status: 500 })
   }
 }

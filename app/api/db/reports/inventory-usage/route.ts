@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { createServerClient } from "@/lib/supabase-server"
+import { apiErrorMessage, dbQuery } from "@/lib/postgres"
 
 export const dynamic = "force-dynamic"
 
@@ -7,20 +7,11 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url)
     const workOrderId = searchParams.get("work_order_id")
-    const supabase = createServerClient()
-
-    let q = supabase
-      .from("mms_material_usage")
-      .select("*, mms_work_orders(reference, title, customer_name)")
-      .order("created_at", { ascending: false })
-      .limit(300)
-
-    if (workOrderId) q = q.eq("work_order_id", workOrderId)
-
-    const { data, error } = await q
-    if (error) throw error
-    return NextResponse.json(data ?? [])
+    const values: unknown[] = []
+    const where = workOrderId ? (values.push(workOrderId), "WHERE mu.work_order_id = $1") : ""
+    const result = await dbQuery(`SELECT mu.*, CASE WHEN wo.id IS NULL THEN NULL ELSE json_build_object('id',wo.id,'reference',wo.reference,'title',wo.title,'customer_name',wo.customer_name) END AS mms_work_orders FROM mms_material_usage mu LEFT JOIN mms_work_orders wo ON wo.id = mu.work_order_id ${where} ORDER BY mu.created_at DESC LIMIT 300`, values)
+    return NextResponse.json(result.rows)
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: apiErrorMessage(e) }, { status: 500 })
   }
 }

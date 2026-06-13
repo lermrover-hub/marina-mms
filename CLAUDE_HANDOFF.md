@@ -142,3 +142,35 @@ Remaining non-blocking build warnings (pre-existing, unchanged):
 - PASS: TypeScript, ESLint quiet, web tests 34/34, agent tests 124 passed / 20 skipped, production build 77/77 pages.
 - PASS local production smoke: all seven operations APIs returned HTTP 200 arrays; Contractors, Suppliers, Purchase Orders, Stock Movements, Timesheets, Audit Log, and Inventory Usage pages returned HTTP 200 without application errors.
 - Safety flags remain unchanged and disabled. No customer messages, bookings, pricing rows, financial documents, or pilot quotation were modified.
+
+## Digital Signature Feature — 2026-06-13 (commit 228f622)
+
+Feature: Upload company authorized signature → auto-stamp on all printed official documents.
+
+### What was built
+
+- **`app/api/settings/signature/route.ts`** — GET/POST/DELETE backed by `mms_system_settings` key-value table (key = `signature_url`).
+- **`components/print/OfficialDocumentShell.tsx`** — `ESignBlock` now self-fetches the uploaded signature URL via `/api/settings/signature` when `companyDetails={true}`; falls back to the static `/document-assets/e-sign.png` if not uploaded yet. No changes needed to any print page.
+- **`app/(dashboard)/settings/page.tsx`** — Settings > Company section has a new "Authorized Digital Signature" card. Upload/replace (PNG, JPG, WebP) goes to `mms-templates` Supabase Storage at path `signatures/company-esign.<ext>` (upsert), stores the public URL via the API. Remove clears it from the DB.
+- **`scripts/create-system-settings.sql`** — Idempotent migration to create `mms_system_settings` table.
+
+### Required production step
+
+Run `scripts/create-system-settings.sql` in the Supabase SQL editor ONCE before using the signature feature. Without it, `/api/settings/signature` will return a 500 error because the table doesn't exist yet.
+
+### Print pages that auto-use the signature (via ESignBlock companyDetails)
+
+- `/print/quotations/[id]` — Marina Authorized Signature
+- `/print/invoices/[id]` — Marina Authorized Signature
+- `/print/contracts/[id]` — both contract parties block
+- `/print/work-orders/[id]` — Boat Yard Manager block
+- `/print/receipts/[id]` — ลายเซ็นผู้รับเงิน / Authorized Signature block
+- `/print/ramp-bookings/[id]` — Marina Manager block
+
+### Verification results (pre-push)
+
+| Check | Result |
+|---|---|
+| `tsc --noEmit` | ✅ PASS |
+| `npm run lint -- --quiet` | ✅ PASS — 0 new warnings |
+| `npm run build` | ✅ PASS — 77/77 pages, `/api/settings/signature` in manifest |

@@ -168,11 +168,20 @@ export default function SettingsPage() {
   const [agentSaveMsg,     setAgentSaveMsg]      = useState<Record<string, "ok" | "error">>({})
   const [activeAgentTab,   setActiveAgentTab]    = useState("quotation")
 
+  // Digital signature state
+  const [signatureUrl,       setSignatureUrl]       = useState<string | null>(null)
+  const [signatureLoading,   setSignatureLoading]   = useState(false)
+  const [signatureUploading, setSignatureUploading] = useState(false)
+  const [signatureError,     setSignatureError]     = useState<string | null>(null)
+
   function showSettingsNotice(feature: string) {
     alert(`${feature} is not connected to a save API yet.`)
   }
 
   useEffect(() => {
+    if (activeGroup === "company") {
+      loadSignature()
+    }
     if (activeGroup === "users") {
       setStaffLoading(true)
       fetch("/api/db/staff")
@@ -306,6 +315,63 @@ export default function SettingsPage() {
     }
   }
 
+  function loadSignature() {
+    setSignatureLoading(true)
+    setSignatureError(null)
+    fetch("/api/settings/signature")
+      .then(r => r.json())
+      .then(d => { setSignatureUrl(d?.url ?? null) })
+      .catch(() => setSignatureError("Failed to load signature"))
+      .finally(() => setSignatureLoading(false))
+  }
+
+  async function handleSignatureUpload(file: File) {
+    setSignatureUploading(true)
+    setSignatureError(null)
+    try {
+      const ext = file.name.split(".").pop() ?? "png"
+      const storagePath = `signatures/company-esign.${ext}`
+      const { data: storageData, error: storageErr } = await supabase.storage
+        .from("mms-templates")
+        .upload(storagePath, file, { upsert: true, contentType: file.type })
+      if (storageErr) throw new Error(storageErr.message)
+
+      const { data: urlData } = supabase.storage
+        .from("mms-templates")
+        .getPublicUrl(storageData.path)
+      const publicUrl = urlData?.publicUrl ?? ""
+
+      const res = await fetch("/api/settings/signature", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: publicUrl }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err?.error ?? "Save failed")
+      }
+      setSignatureUrl(publicUrl)
+    } catch (e) {
+      setSignatureError(String(e))
+    } finally {
+      setSignatureUploading(false)
+    }
+  }
+
+  async function handleSignatureRemove() {
+    setSignatureUploading(true)
+    setSignatureError(null)
+    try {
+      const res = await fetch("/api/settings/signature", { method: "DELETE" })
+      if (!res.ok) throw new Error("Remove failed")
+      setSignatureUrl(null)
+    } catch (e) {
+      setSignatureError(String(e))
+    } finally {
+      setSignatureUploading(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -344,6 +410,7 @@ export default function SettingsPage() {
         {/* Settings content */}
         <div className="lg:col-span-3 space-y-4">
           {activeGroup === "company" && (
+            <>
             <Card>
               <CardHeader><CardTitle>Company Profile</CardTitle></CardHeader>
               <CardContent className="space-y-4">
@@ -403,6 +470,93 @@ export default function SettingsPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Digital Signature card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <span>Authorized Digital Signature</span>
+                  <span className="rounded-full bg-teal-100 px-2.5 py-0.5 text-xs font-medium text-teal-700">Auto-stamped on documents</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-gray-500">
+                  This signature image is embedded automatically on printed Quotations, Invoices, Contracts, Work Orders, and Receipts in the &ldquo;Marina Authorized Signature&rdquo; block.
+                  Upload a PNG or JPG of your authorized signatory&apos;s signature on a white or transparent background.
+                </p>
+
+                {signatureError && (
+                  <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">{signatureError}</div>
+                )}
+
+                {signatureLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-gray-400">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+                  </div>
+                ) : signatureUrl ? (
+                  <div className="flex items-center gap-4 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={signatureUrl}
+                      alt="Company signature"
+                      className="h-16 max-w-[240px] object-contain rounded border border-gray-100 bg-white p-1"
+                    />
+                    <div className="flex flex-col gap-2">
+                      <span className="text-xs text-gray-500">Current signature — shown on all official documents</span>
+                      <div className="flex gap-2">
+                        <label className="cursor-pointer">
+                          <input
+                            type="file"
+                            accept="image/png,image/jpeg,image/webp"
+                            className="hidden"
+                            onChange={e => { const f = e.target.files?.[0]; if (f) handleSignatureUpload(f) }}
+                            disabled={signatureUploading}
+                          />
+                          <span className="inline-flex items-center gap-1.5 rounded-md bg-white border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 cursor-pointer">
+                            {signatureUploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+                            Replace
+                          </span>
+                        </label>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 px-3 text-xs text-red-600 border-red-200 hover:bg-red-50"
+                          onClick={handleSignatureRemove}
+                          disabled={signatureUploading}
+                        >
+                          <Trash2 className="h-3 w-3 mr-1" /> Remove
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <label className="block cursor-pointer">
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      className="hidden"
+                      onChange={e => { const f = e.target.files?.[0]; if (f) handleSignatureUpload(f) }}
+                      disabled={signatureUploading}
+                    />
+                    <div className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-200 py-8 hover:border-teal-400 hover:bg-teal-50/30 transition-colors">
+                      {signatureUploading ? (
+                        <>
+                          <Loader2 className="h-6 w-6 animate-spin text-teal-500" />
+                          <span className="text-sm text-gray-500">Uploading…</span>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="h-6 w-6 text-gray-300" />
+                          <span className="text-sm font-medium text-gray-500">Click to upload signature image</span>
+                          <span className="text-xs text-gray-400">PNG, JPG, or WebP — recommended: transparent background</span>
+                        </>
+                      )}
+                    </div>
+                  </label>
+                )}
+              </CardContent>
+            </Card>
+            </>
           )}
 
           {activeGroup === "system" && (

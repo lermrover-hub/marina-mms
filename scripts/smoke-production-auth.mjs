@@ -13,6 +13,12 @@ for (const file of [".env.local", ".env"]) {
   }
 }
 
+const smokeEmail = process.env.SMOKE_AUTH_EMAIL
+const smokePassword = process.env.SMOKE_AUTH_PASSWORD
+if (!smokeEmail || !smokePassword) {
+  throw new Error("Set SMOKE_AUTH_EMAIL and SMOKE_AUTH_PASSWORD before running this script.")
+}
+
 function mergeCookies(existing, response) {
   const setCookie = response.headers.getSetCookie?.() ?? []
   const jar = new Map(existing.split(";").filter(Boolean).map((part) => {
@@ -34,8 +40,8 @@ const { csrfToken } = await csrfResponse.json()
 
 const form = new URLSearchParams({
   csrfToken,
-  email: "admin@marina.com",
-  password: "admin123",
+  email: smokeEmail,
+  password: smokePassword,
   redirect: "false",
   callbackUrl: `${baseUrl}/dashboard`,
   json: "true",
@@ -65,37 +71,40 @@ for (const path of [
   checks.push({ path, status: response.status, location: response.headers.get("location") })
 }
 
-const customersResponse = await fetch(`${baseUrl}/api/db/customers`, { headers: { cookie: cookies } })
-const boatsResponse = await fetch(`${baseUrl}/api/db/boats`, { headers: { cookie: cookies } })
-const customers = await customersResponse.json()
-const boats = await boatsResponse.json()
-const customer = customers.find((item) => item.company_name === "Happy Samui company") ?? customers[0]
-const boat = boats.find((item) => item.owner_id === customer?.id) ?? boats[0]
-const reference = `SR-SMOKE-${Date.now()}`
-const createResponse = await fetch(`${baseUrl}/api/db/service-requests`, {
-  method: "POST",
-  headers: {
-    "content-type": "application/json",
-    cookie: cookies,
-  },
-  body: JSON.stringify({
-    reference,
-    customer_id: customer?.id ?? null,
-    customer_name: customer?.company_name ?? null,
-    boat_id: boat?.id ?? null,
-    boat_name: boat?.name ?? null,
-    category: "Engine",
-    title: "Smoke test service request",
-    description: "Smoke test verifies service request creation path.",
-    priority: "MEDIUM",
-    status: "NEW_REQUEST",
-    location: "On Hard - Repair Yard",
-    requires_inspection: true,
-    estimated_budget: 1000,
-    notes: "Created by smoke-production-auth.mjs and deleted after verification.",
-  }),
-})
-const created = await createResponse.json().catch(() => null)
+let created = null
+let createStatus = null
+let reference = null
+if (process.env.ENABLE_PRODUCTION_SMOKE_WRITES === "true") {
+  const customersResponse = await fetch(`${baseUrl}/api/db/customers`, { headers: { cookie: cookies } })
+  const boatsResponse = await fetch(`${baseUrl}/api/db/boats`, { headers: { cookie: cookies } })
+  const customers = await customersResponse.json()
+  const boats = await boatsResponse.json()
+  const customer = customers.find((item) => item.company_name === "Happy Samui company") ?? customers[0]
+  const boat = boats.find((item) => item.owner_id === customer?.id) ?? boats[0]
+  reference = `SR-SMOKE-${Date.now()}`
+  const createResponse = await fetch(`${baseUrl}/api/db/service-requests`, {
+    method: "POST",
+    headers: { "content-type": "application/json", cookie: cookies },
+    body: JSON.stringify({
+      reference,
+      customer_id: customer?.id ?? null,
+      customer_name: customer?.company_name ?? null,
+      boat_id: boat?.id ?? null,
+      boat_name: boat?.name ?? null,
+      category: "Engine",
+      title: "Smoke test service request",
+      description: "Smoke test verifies service request creation path.",
+      priority: "MEDIUM",
+      status: "NEW_REQUEST",
+      location: "On Hard - Repair Yard",
+      requires_inspection: true,
+      estimated_budget: 1000,
+      notes: "Created by smoke-production-auth.mjs and deleted after verification.",
+    }),
+  })
+  createStatus = createResponse.status
+  created = await createResponse.json().catch(() => null)
+}
 
 let cleanup = null
 if (created?.id && process.env.NEXT_PUBLIC_SUPABASE_URL && (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)) {
@@ -111,6 +120,6 @@ if (created?.id && process.env.NEXT_PUBLIC_SUPABASE_URL && (process.env.SUPABASE
 console.log(JSON.stringify({
   loginStatus: loginResponse.status,
   checks,
-  createServiceRequest: { status: createResponse.status, id: created?.id ?? null, reference, error: created?.error ?? null },
+  createServiceRequest: { enabled: process.env.ENABLE_PRODUCTION_SMOKE_WRITES === "true", status: createStatus, id: created?.id ?? null, reference, error: created?.error ?? null },
   cleanup,
 }, null, 2))

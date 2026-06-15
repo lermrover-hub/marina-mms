@@ -20,6 +20,7 @@ interface TopBarProps {
 
 export function TopBar({ title, sidebarOpen = false, onSidebarToggle }: TopBarProps) {
   const { data: session } = useSession()
+  const [signingOut, setSigningOut] = React.useState(false)
   const userName = session?.user?.name ?? "User"
   const userRole = (session?.user as { role?: string })?.role ?? ""
 
@@ -99,10 +100,17 @@ export function TopBar({ title, sidebarOpen = false, onSidebarToggle }: TopBarPr
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="gap-2 text-red-600 focus:text-red-600 focus:bg-red-50"
-              onClick={() => signOut({ callbackUrl: "/login" })}
+              disabled={signingOut}
+              onSelect={async (event) => {
+                event.preventDefault()
+                if (signingOut) return
+                setSigningOut(true)
+                await signOut({ redirect: false })
+                window.location.replace("/login")
+              }}
             >
               <LogOut className="h-4 w-4" />
-              Sign Out
+              {signingOut ? "Signing Out..." : "Sign Out"}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

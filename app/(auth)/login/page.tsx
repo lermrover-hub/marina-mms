@@ -104,15 +104,6 @@ export default function LoginPage() {
         </Button>
       </form>
 
-      {/* Dev hint */}
-      <div className="mt-6 rounded-lg border border-gray-200 bg-gray-50 p-3">
-        <p className="text-xs font-semibold text-gray-500 mb-1.5">Development accounts</p>
-        <div className="space-y-1 text-xs text-gray-600">
-          <p><span className="font-medium">Admin:</span> admin@marina.com / admin123</p>
-          <p><span className="font-medium">Marina:</span> marina@marina.com / marina123</p>
-          <p><span className="font-medium">Finance:</span> finance@marina.com / finance123</p>
-        </div>
-      </div>
     </div>
   )
 }

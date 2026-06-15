@@ -73,14 +73,15 @@ function middlewareWriteAllowed(pathname, method, agentWritesEnabled) {
     pathname.startsWith("/api/db/") ||
     pathname.startsWith("/api/pricing-master") ||
     pathname.startsWith("/api/tide/") ||
+    pathname === "/api/ai/control" ||
     pathname === "/api/ai/orders" ||
     /^\/api\/ai\/orders\/[^/]+$/.test(pathname)
 
   if (!isAgentApiRoute) return true  // falls through to session auth
 
   // POST /api/tide/calculate is pure computation — no DB write, exempt from guard
-  const isTideCalculation = pathname === "/api/tide/calculate"
-  const isReadOnly = method === "GET" || method === "HEAD" || isTideCalculation
+  const isPreviewCalculation = pathname === "/api/tide/calculate" || pathname === "/api/ai/control"
+  const isReadOnly = method === "GET" || method === "HEAD" || isPreviewCalculation
 
   if (!isReadOnly && agentWritesEnabled !== "true") return false
   return true
@@ -92,6 +93,9 @@ test("middleware: POST /api/tide/calculate allowed when writes disabled",
 
 test("middleware: POST /api/tide/calculate allowed when writes enabled",
   () => assert.equal(middlewareWriteAllowed("/api/tide/calculate", "POST", "true"),  true))
+
+test("middleware: POST /api/ai/control preview allowed when writes disabled",
+  () => assert.equal(middlewareWriteAllowed("/api/ai/control", "POST", "false"), true))
 
 // Write routes still blocked in safe mode
 test("middleware: POST /api/db/messages blocked when writes disabled",

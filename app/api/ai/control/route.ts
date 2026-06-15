@@ -26,8 +26,8 @@ async function getConfigs() {
   }))
 }
 
-export async function GET() {
-  if (!await canManageAgents()) return NextResponse.json({ error: "Agent management access required" }, { status: 403 })
+export async function GET(req: NextRequest) {
+  if (!await canManageAgents(req)) return NextResponse.json({ error: "Agent management access required" }, { status: 403 })
   const configs = await getConfigs()
   return NextResponse.json({
     agents: AGENT_CONFIG_DEFINITIONS.map((agent) => ({
@@ -49,7 +49,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    if (!await canManageAgents()) return NextResponse.json({ error: "Agent management access required" }, { status: 403 })
+    if (!await canManageAgents(req)) return NextResponse.json({ error: "Agent management access required" }, { status: 403 })
     const body = await req.json()
     const agentId = String(body.agent_id ?? "")
     const definition = getAgentDefinition(agentId)

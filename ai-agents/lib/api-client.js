@@ -11,7 +11,7 @@ import { appendFileSync } from "fs"
 import { resolve }    from "path"
 
 const BASE          = process.env.MARINA_API_BASE ?? "http://localhost:3000"
-const DRY_RUN       = process.env.AI_AGENT_DRY_RUN === "true"
+const DRY_RUN       = process.env.AI_AGENT_DRY_RUN !== "false"
 const AUDIT_LOG_PATH = resolve(process.env.AI_AUDIT_LOG_PATH ?? ".ai-audit-log.jsonl")
 
 function nodeRequest(url, options = {}, redirects = 0) {
@@ -77,6 +77,8 @@ function dryRunResult(kind, body) {
   return { id: `dry-run-${kind}`, ...body }
 }
 
+export const isDryRun = () => DRY_RUN
+
 export const getCustomers = () => apiFetch("/api/db/customers")
 export const getCustomer = (id) => apiFetch(`/api/db/customers/${id}`)
 export const getBoats = () => apiFetch("/api/db/boats")
@@ -137,6 +139,15 @@ export const createMessageDraft = (body) =>
   DRY_RUN
     ? Promise.resolve(dryRunResult("message-draft", body))
     : apiFetch("/api/db/messages", { method: "POST", body: JSON.stringify(body) })
+
+export const createAiOrder = (body) =>
+  DRY_RUN
+    ? Promise.resolve(dryRunResult("ai-order", {
+        status: "dry_run",
+        approval_required: true,
+        ...body,
+      }))
+    : apiFetch("/api/ai/orders", { method: "POST", body: JSON.stringify(body) })
 
 // ─── Agent audit log ──────────────────────────────────────────────────────────
 export const createAuditLog = (body) => {

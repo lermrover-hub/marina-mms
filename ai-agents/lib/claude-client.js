@@ -28,11 +28,13 @@ export async function askJson(systemPrompt, userMessage, opts = {}) {
       notes: "Generated during workflow verification. No data was written.",
       items: [
         {
+          pricingCode: "CUSTOM",
           description: "Dry-run service item",
           category: "Test",
           unit: "item",
           qty: 1,
           unitPrice: 1,
+          requiresApproval: true,
         },
       ],
     }

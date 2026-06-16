@@ -49,6 +49,11 @@ const DEFAULTS = {
 
 // In-process cache — one fetch per agent process run
 let _cache = null
+let _loadedFromApi = false
+
+function pilotModeRequiresDbConfig() {
+  return process.env.AI_AGENT_PILOT_MODE === "true"
+}
 
 async function loadAll() {
   if (_cache) return _cache
@@ -59,9 +64,14 @@ async function loadAll() {
       rows.forEach((row) => {
         _cache[row.agent_id] = { ...DEFAULTS[row.agent_id], ...row.config }
       })
+      _loadedFromApi = true
     }
   } catch (e) {
     console.warn("[agent-config] Could not load from API, using defaults:", e.message)
+    _loadedFromApi = false
+    if (pilotModeRequiresDbConfig()) {
+      throw new Error(`Agent config unavailable in pilot mode: ${e.message}`)
+    }
     _cache = { ...DEFAULTS }
   }
   return _cache ?? DEFAULTS
@@ -76,10 +86,14 @@ async function loadAll() {
  */
 export async function getAgentConfig(agentId) {
   const all = await loadAll()
+  if (pilotModeRequiresDbConfig() && (!_loadedFromApi || !all[agentId])) {
+    throw new Error(`Agent config for ${agentId} is required in pilot mode`)
+  }
   return { ...(DEFAULTS[agentId] ?? {}), ...(all[agentId] ?? {}) }
 }
 
 /** Reset the in-process cache (useful for tests). */
 export function resetConfigCache() {
   _cache = null
+  _loadedFromApi = false
 }

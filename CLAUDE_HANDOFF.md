@@ -174,3 +174,40 @@ Run `scripts/create-system-settings.sql` in the Supabase SQL editor ONCE before 
 | `tsc --noEmit` | ✅ PASS |
 | `npm run lint -- --quiet` | ✅ PASS — 0 new warnings |
 | `npm run build` | ✅ PASS — 77/77 pages, `/api/settings/signature` in manifest |
+
+## Claude Verification of Codex Quotation Agent Hardening — 2026-06-16
+
+**Request to Codex: please re-check the items under "Open question for Codex" below — flag if any of these are bugs rather than expected behavior.**
+
+Verifying commits `69b1d41` (harden quotation dry-run safety), `93f006f` (allow dry-run replay for scoped requests), `72fdbf0` (allow approved zero-rate pricing policies). All 4 phases requested in the handoff were run.
+
+### Phase 1 — Confirm deploy
+PASS. Vercel deployment `dpl_5LKe43pmZWsQZjjrzjrGkNaWF7zW` (aliased to `marina-mms.vercel.app`) was created at `2026-06-16 14:38:23 +0700`, 6 seconds after commit `72fdbf0` (`14:38:17 +0700`) — confirms the live alias is serving this exact commit. Status: Ready. No Vercel env changes made.
+
+### Phase 2 — Full live read smoke
+PASS. Ran with `AI_AGENT_DRY_RUN=true AI_AGENT_SKIP_CLAUDE=true AI_AGENT_PILOT_MODE=true ENABLE_AI_AGENT_WRITES=false ENABLE_REAL_CUSTOMER_MESSAGES=false ENABLE_PRODUCTION_BOOKINGS=false ENABLE_LIVE_AGENT_API_TESTS=true npm --prefix ai-agents test`.
+Result: `tests 150 / pass 150 / fail 0 / skipped 0`. Live endpoint tests (contracts, work-orders, service-requests, pricing-master) executed against production and returned real data — confirmed they ran rather than were skipped.
+
+### Phase 3 — Production dry-run replay
+PASS for both target service requests:
+- `60b7a44e-35ca-4bcf-be36-d82534f18398` ("UAT Engine Service Request") → `processed:1`, `orderId:"dry-run-ai-order"`
+- `57e96f05-d698-4ffa-9c71-d0bc808324ec` ("1 year in the water, need antifauling paint") → `processed:1`, `orderId:"dry-run-ai-order"`
+
+Both runs logged the full required audit sequence (`AGENT_START`, `REQUEST_SELECTED`, `PRICING_MATCH_RESULT`, `DRAFT_GENERATED`, `APPROVAL_ORDER_RESULT`) to `.ai-audit-log.jsonl`, all with `dry_run:true`. `[ApiClient] DRY RUN: skipped ai-order write` confirmed in console output for both — no `POST /api/ai/orders` reached production.
+
+### Phase 4 — Anthropic real AI dry-run
+Ran with `AI_AGENT_SKIP_CLAUDE=false AI_AGENT_DRY_RUN=true` against `60b7a44e-35ca-4bcf-be36-d82534f18398` only (per instruction to test one request first).
+
+Result: Claude produced a complete, well-reasoned 9-item draft quotation ("Full Engine Service – UAT TestVessel", labour + materials breakdown, professional payment-terms notes). The deterministic validator then caught that 8 of 9 generated `pricingCode` values (`LABOUR_ENGINE_SERVICE`, `LABOUR_IMPELLER_REPLACE`, `MAT_ENGINE_OIL`, `MAT_OIL_FILTER`, `MAT_FUEL_FILTER`, `MAT_IMPELLER`, `MAT_IMPELLER_GASKET`, `MAT_CONSUMABLES`) don't exist in `pricing_master` — only `RAMP_2OB` matched. Sequence logged: `VALIDATION_ERROR` (risk_level HIGH, full draft + error list in payload) → `REQUEST_FAILED`. No `PRICING_MATCH_RESULT`/`DRAFT_GENERATED`/`APPROVAL_ORDER_RESULT` events fired for this run since validation failed before reaching those steps. No production write attempted at any point.
+
+**This was treated as expected fail-closed behavior, not a bug** — pricing_master genuinely has no rate codes for engine-service labour/materials yet, so blocking is correct. `pricing_master` was NOT modified per instructions.
+
+### Open question for Codex
+1. Confirm whether blocking all 8 unmatched items (rather than partially accepting `RAMP_2OB` and flagging only the rest for approval) is the intended validator behavior for mixed match/no-match drafts, or whether partial acceptance should be supported.
+2. Confirm whether `PRICING_MATCH_RESULT`/`DRAFT_GENERATED` are expected to be skipped entirely on the real-AI path when validation fails immediately after `REQUEST_SELECTED` — Claude's session observed no audit gap/bug here, but flagging for your review since the dry-run-stub path (Phase 3) logs these same events even when nothing is being matched against a real Claude draft.
+3. No bugs found requiring a fix in this session. Recommend Codex spot-check the validator's per-item rejection logic in `lib/validate-quotation-draft.js` (or equivalent) against the mixed-match scenario above to confirm intended design.
+
+### Outcome
+- Controlled Quotation Agent dry-run pilot: **may continue.**
+- Production write pilot: **NOT started, NOT approved.** Requires explicit separate approval.
+- No Vercel env vars changed. No pricing_master rows changed. No production service requests created. No real customer messages sent. No invoices/bookings created. HR/Communications/Operations agents were not enabled.

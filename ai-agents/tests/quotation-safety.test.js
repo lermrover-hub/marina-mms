@@ -62,6 +62,8 @@ test("validateRuntimeContext allows quotation-only zero rates but blocks normal 
     boat: { id: "boat-1" },
     pricing: [
       { code: "RAMP_SB_SPECIAL", unit: "Quotation", rateThb: 0 },
+      { code: "RAMP_FISHING", unit: "trip", rateThb: 0, notes: "Complimentary" },
+      { code: "SURCHARGE_HI", unit: "%", rateThb: 0, notes: "No surcharge currently" },
       { code: "STORE_SB_S_M", unit: "month", rateThb: 0 },
     ],
     cfg: defaultCfg,
@@ -69,6 +71,8 @@ test("validateRuntimeContext allows quotation-only zero rates but blocks normal 
 
   assert.ok(errors.some((e) => e.includes("STORE_SB_S_M")))
   assert.ok(!errors.some((e) => e.includes("RAMP_SB_SPECIAL")))
+  assert.ok(!errors.some((e) => e.includes("RAMP_FISHING")))
+  assert.ok(!errors.some((e) => e.includes("SURCHARGE_HI")))
 })
 
 test("validateQuotationDraft requires positive totals and pricing match or explicit approval", async () => {

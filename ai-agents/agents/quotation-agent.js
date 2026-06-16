@@ -72,6 +72,17 @@ function isQuotationOnlyRate(row) {
   return unit.includes("quotation") || code.includes("SPECIAL") || code.includes("CUSTOM")
 }
 
+function isAllowedZeroRate(row) {
+  const notes = String(row?.notes ?? "").toLowerCase()
+  const code = String(row?.code ?? "").toUpperCase()
+  return (
+    isQuotationOnlyRate(row) ||
+    notes.includes("complimentary") ||
+    notes.includes("no surcharge") ||
+    code === "SURCHARGE_HI"
+  )
+}
+
 function validateConfig(cfg) {
   const errors = []
   for (const key of ["vat_pct", "deposit_pct", "valid_days", "max_discount_pct"]) {
@@ -94,7 +105,7 @@ export function validateRuntimeContext({ req, customer, boat, pricing, cfg }) {
   if (!Array.isArray(pricing) || pricing.length === 0) errors.push("Active pricing master is empty or unavailable")
 
   const badRates = (Array.isArray(pricing) ? pricing : [])
-    .filter((row) => !isQuotationOnlyRate(row) && (!Number.isFinite(effectivePrice(row)) || effectivePrice(row) <= 0))
+    .filter((row) => !isAllowedZeroRate(row) && (!Number.isFinite(effectivePrice(row)) || effectivePrice(row) <= 0))
     .map((row) => row?.code ?? "unknown")
 
   if (badRates.length) {

@@ -180,6 +180,23 @@ function buildCustomerSummary(customer) {
   return `Customer: ${customer.company_name ?? [customer.first_name, customer.last_name].filter(Boolean).join(" ")}, Payment terms: ${customer.payment_terms ?? 30} days`
 }
 
+export function selectPendingRequests({ requests, quotedRequestIds, srId = null, customerId = null, dryRun = false }) {
+  let pending = (Array.isArray(requests) ? requests : []).filter((request) => {
+    const statusIsPending = PENDING_STATUSES.includes(request.status)
+    const alreadyQuoted = quotedRequestIds.has(request.id)
+    const explicitDryRunReplay = dryRun && srId && request.id === srId
+    return statusIsPending && (!alreadyQuoted || explicitDryRunReplay)
+  })
+
+  if (srId) {
+    pending = pending.filter((request) => request.id === srId)
+  } else if (customerId) {
+    pending = pending.filter((request) => request.customer_id === customerId)
+  }
+
+  return pending
+}
+
 export async function run({ srId, customerId } = {}) {
   const cfg = await getAgentConfig("quotation")
   const systemPrompt = buildSystemPrompt(cfg)
@@ -215,12 +232,16 @@ export async function run({ srId, customerId } = {}) {
       .filter(Boolean)
   )
 
-  let pending = requests.filter((r) => PENDING_STATUSES.includes(r.status) && !quotedRequestIds.has(r.id))
+  let pending = selectPendingRequests({
+    requests,
+    quotedRequestIds,
+    srId,
+    customerId,
+    dryRun: isDryRun(),
+  })
   if (srId) {
-    pending = pending.filter((r) => r.id === srId)
     console.log(`[QuotationAgent] Pilot scope: sr=${srId} -> ${pending.length} request(s)`)
   } else if (customerId) {
-    pending = pending.filter((r) => r.customer_id === customerId)
     console.log(`[QuotationAgent] Pilot scope: customer=${customerId} -> ${pending.length} request(s)`)
   }
 

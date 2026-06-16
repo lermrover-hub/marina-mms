@@ -114,3 +114,37 @@ test("validateQuotationDraft allows custom line items only when approval is expl
 
   assert.deepEqual(errors, [])
 })
+
+test("selectPendingRequests allows explicit dry-run replay but blocks quoted writes", async () => {
+  const { selectPendingRequests } = await import("../agents/quotation-agent.js")
+  const requests = [
+    { id: "sr-quoted", status: "new", customer_id: "cust-1" },
+    { id: "sr-open", status: "NEW_REQUEST", customer_id: "cust-1" },
+  ]
+  const quotedRequestIds = new Set(["sr-quoted"])
+
+  const writeMode = selectPendingRequests({
+    requests,
+    quotedRequestIds,
+    srId: "sr-quoted",
+    dryRun: false,
+  })
+  assert.deepEqual(writeMode, [])
+
+  const dryRunReplay = selectPendingRequests({
+    requests,
+    quotedRequestIds,
+    srId: "sr-quoted",
+    dryRun: true,
+  })
+  assert.equal(dryRunReplay.length, 1)
+  assert.equal(dryRunReplay[0].id, "sr-quoted")
+
+  const customerDryRun = selectPendingRequests({
+    requests,
+    quotedRequestIds,
+    customerId: "cust-1",
+    dryRun: true,
+  })
+  assert.deepEqual(customerDryRun.map((request) => request.id), ["sr-open"])
+})

@@ -120,10 +120,42 @@ function pricingCodeSet(pricing) {
   return new Set((pricing ?? []).map((row) => String(row.code ?? "").toUpperCase()).filter(Boolean))
 }
 
+export function summarizeDraftPricingMatch({ draft, pricing }) {
+  const items = Array.isArray(draft?.items) ? draft.items : []
+  const knownCodes = pricingCodeSet(pricing)
+
+  const itemResults = items.map((item, index) => {
+    const pricingCode = String(item?.pricingCode ?? item?.pricing_code ?? "").toUpperCase()
+    const description = String(item?.description ?? "").toUpperCase()
+    const requiresApproval = item?.requiresApproval === true || item?.requires_approval === true
+    const codeInDescription = [...knownCodes].find((code) => description.includes(code)) ?? null
+    const customQuoted = ["CUSTOM", "QUOTE", "QUOTATION"].includes(pricingCode) && requiresApproval
+    const matchedCode = knownCodes.has(pricingCode) || Boolean(codeInDescription) || customQuoted
+
+    return {
+      index: index + 1,
+      pricingCode: pricingCode || null,
+      matched: matchedCode,
+      matchType: knownCodes.has(pricingCode) ? "pricing_code" : (codeInDescription ? "description" : (customQuoted ? "custom_approval" : "unmatched")),
+      matchedCode: knownCodes.has(pricingCode) ? pricingCode : codeInDescription,
+      requiresApproval,
+    }
+  })
+
+  return {
+    matched: itemResults.length > 0 && itemResults.every((item) => item.matched),
+    item_count: itemResults.length,
+    matched_count: itemResults.filter((item) => item.matched).length,
+    unmatched_count: itemResults.filter((item) => !item.matched).length,
+    pricing_codes: itemResults.map((item) => item.pricingCode),
+    items: itemResults,
+  }
+}
+
 export function validateQuotationDraft({ draft, pricing, cfg }) {
   const errors = validateConfig(cfg)
   const items = Array.isArray(draft?.items) ? draft.items : []
-  const knownCodes = pricingCodeSet(pricing)
+  const pricingMatch = summarizeDraftPricingMatch({ draft, pricing })
 
   if (!items.length) errors.push("Draft quotation has no line items")
 
@@ -131,18 +163,11 @@ export function validateQuotationDraft({ draft, pricing, cfg }) {
     const label = `Item ${index + 1}`
     const qty = Number(item?.qty ?? 1)
     const unitPrice = Number(item?.unitPrice ?? item?.unit_price ?? 0)
-    const pricingCode = String(item?.pricingCode ?? item?.pricing_code ?? "").toUpperCase()
-    const description = String(item?.description ?? "").toUpperCase()
-    const requiresApproval = item?.requiresApproval === true || item?.requires_approval === true
 
     if (!Number.isFinite(qty) || qty <= 0) errors.push(`${label} has invalid quantity`)
     if (!Number.isFinite(unitPrice) || unitPrice <= 0) errors.push(`${label} has zero or invalid unitPrice`)
 
-    const codeInDescription = [...knownCodes].some((code) => description.includes(code))
-    const customQuoted = ["CUSTOM", "QUOTE", "QUOTATION"].includes(pricingCode) && requiresApproval
-    const matchedCode = knownCodes.has(pricingCode) || codeInDescription || customQuoted
-
-    if (!matchedCode) {
+    if (!pricingMatch.items[index]?.matched) {
       errors.push(`${label} is not matched to pricing_master and is not explicitly flagged for approval`)
     }
   }
@@ -331,8 +356,28 @@ Return a JSON object with this exact structure:
 }`
 
       const draft = await askJson(systemPrompt, prompt)
+      const pricingMatch = summarizeDraftPricingMatch({ draft, pricing })
+
+      await auditQuotation("PRICING_MATCH_RESULT", {
+        requestId: req.id,
+        payload: pricingMatch,
+        result: { matched: pricingMatch.matched },
+        riskLevel: pricingMatch.matched ? "LOW" : "HIGH",
+      })
+
       const draftErrors = validateQuotationDraft({ draft, pricing, cfg })
       if (draftErrors.length) {
+        await auditQuotation("DRAFT_GENERATED", {
+          requestId: req.id,
+          payload: { service_request_id: req.id, validation_status: "failed", draft },
+          result: {
+            item_count: pricingMatch.item_count,
+            matched_count: pricingMatch.matched_count,
+            unmatched_count: pricingMatch.unmatched_count,
+            dry_run: isDryRun(),
+          },
+          riskLevel: "HIGH",
+        })
         await auditQuotation("VALIDATION_ERROR", {
           requestId: req.id,
           payload: { stage: "draft_output", errors: draftErrors, draft },
@@ -341,15 +386,6 @@ Return a JSON object with this exact structure:
         })
         throw new Error(`Draft validation failed: ${draftErrors.join("; ")}`)
       }
-
-      await auditQuotation("PRICING_MATCH_RESULT", {
-        requestId: req.id,
-        payload: {
-          item_count: draft.items.length,
-          pricing_codes: draft.items.map((item) => item.pricingCode ?? item.pricing_code ?? null),
-        },
-        result: { matched: true },
-      })
 
       const vatRate = cfg.vat_pct / 100
       const items = draft.items ?? []

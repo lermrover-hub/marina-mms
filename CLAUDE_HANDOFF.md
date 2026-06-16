@@ -211,3 +211,25 @@ Result: Claude produced a complete, well-reasoned 9-item draft quotation ("Full 
 - Controlled Quotation Agent dry-run pilot: **may continue.**
 - Production write pilot: **NOT started, NOT approved.** Requires explicit separate approval.
 - No Vercel env vars changed. No pricing_master rows changed. No production service requests created. No real customer messages sent. No invoices/bookings created. HR/Communications/Operations agents were not enabled.
+
+## Codex Follow-up on Claude Open Questions - 2026-06-16
+
+Codex reviewed Claude's two open questions from commit `589fb7e`.
+
+Decision:
+- Mixed matched/unmatched quotation drafts must remain fail-closed during the controlled pilot. Partial acceptance of matched items such as `RAMP_2OB` is useful for review/audit only, but must not create an approval order while any non-custom item is unmatched against `pricing_master`.
+- The skipped audit events on real-AI validation failure were treated as an observability gap and fixed. The agent now records `PRICING_MATCH_RESULT` for both pass and fail cases, and records `DRAFT_GENERATED` with `validation_status:"failed"` before `VALIDATION_ERROR` when Claude generates a draft that fails deterministic validation.
+
+Files changed:
+- `ai-agents/agents/quotation-agent.js`
+- `ai-agents/tests/quotation-safety.test.js`
+
+Verification:
+- `npm.cmd --prefix ai-agents test` PASS: `tests 151 / pass 131 / fail 0 / skipped 20`
+- `npm.cmd test` PASS: `tests 43 / pass 43 / fail 0 / skipped 0`
+- `npm.cmd run build` PASS: Next.js production build completed. Existing unrelated lint warnings remain.
+
+Safety:
+- No Vercel env vars changed.
+- No pricing rows changed.
+- No production writes, messages, bookings, invoices, or customer-facing actions were enabled.

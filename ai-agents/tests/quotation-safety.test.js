@@ -119,6 +119,29 @@ test("validateQuotationDraft allows custom line items only when approval is expl
   assert.deepEqual(errors, [])
 })
 
+test("mixed pricing match is summarized but still blocks draft approval", async () => {
+  const { summarizeDraftPricingMatch, validateQuotationDraft } = await import("../agents/quotation-agent.js")
+  const pricing = [{ code: "RAMP_2OB", rateThb: 1200 }]
+  const draft = {
+    title: "Mixed quote",
+    items: [
+      { pricingCode: "RAMP_2OB", description: "Two outboard ramp launch", qty: 1, unitPrice: 1200 },
+      { pricingCode: "LABOUR_ENGINE_SERVICE", description: "Engine service labour", qty: 1, unitPrice: 4500 },
+    ],
+  }
+
+  const summary = summarizeDraftPricingMatch({ draft, pricing })
+  assert.equal(summary.matched, false)
+  assert.equal(summary.item_count, 2)
+  assert.equal(summary.matched_count, 1)
+  assert.equal(summary.unmatched_count, 1)
+  assert.equal(summary.items[0].matchedCode, "RAMP_2OB")
+  assert.equal(summary.items[1].matchType, "unmatched")
+
+  const errors = validateQuotationDraft({ draft, pricing, cfg: defaultCfg })
+  assert.ok(errors.some((e) => e.includes("Item 2 is not matched")))
+})
+
 test("selectPendingRequests allows explicit dry-run replay but blocks quoted writes", async () => {
   const { selectPendingRequests } = await import("../agents/quotation-agent.js")
   const requests = [

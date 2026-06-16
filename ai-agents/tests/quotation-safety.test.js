@@ -142,6 +142,20 @@ test("mixed pricing match is summarized but still blocks draft approval", async 
   assert.ok(errors.some((e) => e.includes("Item 2 is not matched")))
 })
 
+test("manager escalation policy catches outsourced engine and subcontractor paint work", async () => {
+  const { classifyManagerEscalation } = await import("../agents/quotation-agent.js")
+
+  const engine = classifyManagerEscalation("UAT engine service with oil filter and impeller replacement")
+  assert.equal(engine.type, "outsourced_engine")
+  assert.match(engine.message, /Manager must contact the customer/)
+
+  const paint = classifyManagerEscalation("Need antifouling paint and gelcoat repair")
+  assert.equal(paint.type, "subcontractor_paint")
+  assert.match(paint.message, /subcontractor pricing/)
+
+  assert.equal(classifyManagerEscalation("monthly passive hardstand storage"), null)
+})
+
 test("selectPendingRequests allows explicit dry-run replay but blocks quoted writes", async () => {
   const { selectPendingRequests } = await import("../agents/quotation-agent.js")
   const requests = [

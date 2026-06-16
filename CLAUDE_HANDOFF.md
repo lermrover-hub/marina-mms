@@ -233,3 +233,26 @@ Safety:
 - No Vercel env vars changed.
 - No pricing rows changed.
 - No production writes, messages, bookings, invoices, or customer-facing actions were enabled.
+
+## Codex Follow-up: Manager Escalation Pricing Policy - 2026-06-16
+
+User confirmed:
+- Engine/mechanic repair is outsourced. Manager must contact the customer and specialist directly.
+- Paint, polishing, antifouling, and gelcoat prices may change later and must wait for subcontractor/painting team pricing.
+- Anything missing from the rate card, unclear, out-of-policy, contact-only, or manual-quote must be escalated to manager review. AI must not contact customers directly.
+
+Implementation:
+- Added quotation agent runtime escalation policy for engine/mechanic keywords and paint/polish/antifouling/gelcoat keywords.
+- When matched, Quotation Agent logs `MANAGER_ESCALATION_REQUIRED`, creates a manager escalation notification through the existing escalation agent path, skips Claude draft generation, and does not create an approval order.
+- Draft validation failures still create manager escalation notifications before failing closed.
+- Updated quotation system prompt and `PRICING_RULES.md` to document that AI must not invent outsourced/subcontractor prices.
+
+Verification:
+- `npm.cmd --prefix ai-agents test` PASS: `tests 152 / pass 132 / fail 0 / skipped 20`
+- `npm.cmd test` PASS: `tests 43 / pass 43 / fail 0 / skipped 0`
+- `npm.cmd run build` PASS: Next.js production build completed. Existing unrelated lint warnings remain.
+
+Safety:
+- No Vercel env vars changed.
+- No pricing rows imported or modified.
+- No production customer messages sent.

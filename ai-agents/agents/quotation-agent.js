@@ -20,6 +20,7 @@ import { askJson } from "../lib/claude-client.js"
 import { classifySpeedboat, isSpeedboatType } from "../lib/speedboat-classification.js"
 import { getAgentConfig } from "../lib/agent-config.js"
 import { loadPrompt } from "../lib/load-prompt.js"
+import { escalate } from "./escalation-agent.js"
 
 const PENDING_STATUSES = ["NEW", "new", "NEW_REQUEST", "new_request", "INSPECTION_REQUIRED", "inspection_required"]
 
@@ -31,8 +32,10 @@ Your job is to create accurate, professional quotations based on:
 
 Business rules you must follow:
 - Always price from the rate card when a matching service exists
-- For labour, estimate hours realistically (engine service = 4-8h, antifouling = LOA x 0.5h, etc.)
-- Add materials as separate line items with realistic cost estimates
+- Do not estimate or invent prices for services that are not in the rate card
+- Engine/mechanic work is outsourced. Use manager escalation only; the manager contacts the customer directly.
+- Paint, polishing, antifouling, and gelcoat work wait for subcontractor pricing. Use manager escalation only.
+- Any missing, unclear, out-of-policy, contact-only, or manual-quote item must be escalated to the manager instead of priced by AI.
 - Deposit default: {{deposit_pct}}%
 - VAT: {{vat_pct}}%
 - Valid days: {{valid_days}}
@@ -44,6 +47,7 @@ FORBIDDEN - you must NEVER:
 - Set a grand_total of zero or negative
 - Confirm a booking or start date
 - Send a quotation to a customer (drafts only - staff reviews before sending)
+- Contact a customer directly. Manager is the direct customer contact for exceptions and manual quotes.
 - Create a quotation for a customer with unresolved overdue invoices without flagging it`)
 
 function buildSystemPrompt(cfg) {
@@ -52,6 +56,24 @@ function buildSystemPrompt(cfg) {
     .replace("{{vat_pct}}", cfg.vat_pct)
     .replace("{{valid_days}}", cfg.valid_days)
   return `${base}\nMaximum discount without management escalation: ${cfg.max_discount_pct}%.\n${cfg.extra_instructions || ""}`.trim()
+}
+
+export function classifyManagerEscalation(text = "") {
+  const value = String(text).toLowerCase()
+  const policies = [
+    {
+      type: "outsourced_engine",
+      keywords: ["engine", "impeller", "oil filter", "fuel filter", "gasket", "consumable", "mechanic"],
+      message: "Engine/mechanic service is outsourced. Manager must contact the customer and specialist before pricing.",
+    },
+    {
+      type: "subcontractor_paint",
+      keywords: ["paint", "painting", "antifoul", "antifouling", "polish", "compound", "gelcoat", "gel coat", "topside", "primer"],
+      message: "Paint/polish/antifouling/gelcoat pricing must wait for subcontractor pricing. Manager must contact the customer directly.",
+    },
+  ]
+
+  return policies.find((policy) => policy.keywords.some((keyword) => value.includes(keyword))) ?? null
 }
 
 function normalizeId(entity) {
@@ -318,6 +340,36 @@ export async function run({ srId, customerId } = {}) {
         throw new Error(`Runtime validation failed: ${contextErrors.join("; ")}`)
       }
 
+      const escalationPolicy = classifyManagerEscalation(`${req.title ?? ""} ${req.description ?? ""}`)
+      if (escalationPolicy) {
+        await auditQuotation("MANAGER_ESCALATION_REQUIRED", {
+          requestId: req.id,
+          payload: {
+            service_request_id: req.id,
+            customer_id: req.customer_id ?? null,
+            boat_id: req.boat_id ?? null,
+            escalation_type: escalationPolicy.type,
+            policy: escalationPolicy.message,
+          },
+          result: { quoted_by_ai: false, manager_contact_required: true },
+          riskLevel: "HIGH",
+        })
+        await escalate({
+          route: "quotation",
+          source: "manager-escalation-policy",
+          content: `${req.title ?? ""} ${req.description ?? ""}`.trim(),
+          error: escalationPolicy.message,
+          customerId: req.customer_id ?? null,
+        })
+        results.push({
+          requestId: req.id,
+          status: "manager_escalation_required",
+          reason: escalationPolicy.type,
+          managerContactRequired: true,
+        })
+        continue
+      }
+
       const rateCardSummary = pricing
         .map((p) => {
           const effective = p.effectiveRate ?? p.pilotRateThb ?? p.rateThb
@@ -383,6 +435,13 @@ Return a JSON object with this exact structure:
           payload: { stage: "draft_output", errors: draftErrors, draft },
           error: draftErrors.join("; "),
           riskLevel: "HIGH",
+        })
+        await escalate({
+          route: "quotation",
+          source: "draft-validation",
+          content: `${req.title ?? ""} ${req.description ?? ""}`.trim(),
+          error: `Draft needs manager review before customer contact: ${draftErrors.join("; ")}`,
+          customerId: req.customer_id ?? null,
         })
         throw new Error(`Draft validation failed: ${draftErrors.join("; ")}`)
       }

@@ -20,6 +20,15 @@ test("middleware validates an Auth.js session rather than trusting cookie presen
   assert.doesNotMatch(middleware, /authjs\.session-token|next-auth\.session-token/)
 })
 
+test("middleware applies staff RBAC to admin, finance, pricing, and report APIs", () => {
+  const middleware = read("../middleware.ts")
+  assert.match(middleware, /function staffApiAllowed/)
+  assert.match(middleware, /ADMIN_ROLES\.has\(role\)/)
+  assert.match(middleware, /FINANCE_ROLES\.has\(role\)/)
+  assert.match(middleware, /QUOTATION_ROLES\.has\(role\)/)
+  assert.match(middleware, /REPORT_ROLES\.has\(role\)/)
+})
+
 test("production data-api hardening revokes anonymous table access", () => {
   const migration = read("../supabase/migrations/20260909150000_harden_public_data_api.sql")
   assert.match(migration, /ENABLE ROW LEVEL SECURITY/)

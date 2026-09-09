@@ -12,6 +12,16 @@ export const STAFF_ROLES = [
 
 export const PORTAL_READ_ROLES = [...STAFF_ROLES, "CUSTOMER"] as const
 
+export const ADMIN_ROLES = ["SUPER_ADMIN", "MANAGING_DIRECTOR"] as const
+export const FINANCE_WRITE_ROLES = ["SUPER_ADMIN", "MANAGING_DIRECTOR", "FINANCE"] as const
+export const QUOTATION_WRITE_ROLES = [...FINANCE_WRITE_ROLES, "MARINA_MANAGER"] as const
+export const OPERATIONS_WRITE_ROLES = [
+  "SUPER_ADMIN",
+  "MANAGING_DIRECTOR",
+  "MARINA_MANAGER",
+  "BOAT_YARD_MANAGER",
+] as const
+
 export type ApiActor = {
   userId: string
   role: string

@@ -174,11 +174,11 @@ Verified fixes:
 
 Final clean-worktree gates after the fixes:
 
-- `npm.cmd test`: 53/53 passed.
+- `npm.cmd test`: 59/59 passed after production-readiness security hardening.
 - `npx.cmd tsc --noEmit`: passed.
 - `npm.cmd run lint`: passed.
 - `git diff --check`: passed; only existing LF-to-CRLF conversion warnings were printed.
-- staging-configured `npm.cmd run build`: passed, 64 static pages generated; 15 non-blocking pre-existing warnings were printed during build. Full lint reports 18 warnings because it also checks `auth.ts`; there are no lint errors.
+- staging-configured `npm.cmd run build`: passed, 65 static pages generated; 15 non-blocking pre-existing warnings remain and there are no lint errors. The Auth.js middleware bundle is edge-safe and no longer imports bcrypt into the Edge runtime.
 
 The reviewed workflow is isolated on local branch `codex/connected-workflow-v1` in clean worktree `C:\Users\asus\.codex\worktrees\mms-connected-v1\marina-mms`. The user's original index and unrelated dirty files remain untouched. No push has been made.
 

@@ -3,7 +3,7 @@ import { isRealCustomerMessagesEnabled } from "@/lib/safe-mode"
 import { createServerClient } from "@/lib/supabase-server"
 import { sendEmail } from "@/lib/email"
 import { invoiceIssued } from "@/lib/email-templates"
-import { customerScope, PORTAL_READ_ROLES, requireApiActor, STAFF_ROLES } from "@/lib/api-auth"
+import { customerScope, FINANCE_WRITE_ROLES, PORTAL_READ_ROLES, requireApiActor } from "@/lib/api-auth"
 
 export const dynamic = "force-dynamic"
 
@@ -33,7 +33,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const access = await requireApiActor(STAFF_ROLES)
+    const access = await requireApiActor(FINANCE_WRITE_ROLES)
     if ("error" in access) return access.error
     const body = await req.json()
     const supabase = createServerClient()

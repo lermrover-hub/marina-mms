@@ -30,15 +30,17 @@
 7. Source migration `20260909150000_harden_public_data_api.sql` เปิด/force RLS และ revoke `anon`/`authenticated` สำหรับ application tables โดยยกเว้น public `inquiries` ที่มี policy เฉพาะ
 8. File upload/delete ถูกย้ายไป authenticated `/api/storage`, ตรวจ MIME/10 MB limit, สร้าง server-side UUID filename และใช้ service role
 9. Source migration `20260909153000_harden_storage_writes.sql` ถอด `marina_files_all_access` และยืนยัน bucket เป็น private
+10. Middleware role matrix จำกัด staff-management/agent-control ให้ Admin, จำกัด pricing และ financial writes ให้ Finance roles และจำกัด report access ให้ Finance/management
+11. ตรวจ source แล้ว LINE และ WhatsApp POST webhooks มี signature verification และยังถูกปิด write ด้วย `ENABLE_AUTOMATION_WRITES=false`
 
 ยังไม่มี migration หรือ source remediation ใดในเอกสารนี้ถูก apply/deploy ไป production
 
 ## Remaining blockers
 
-- ทำ RBAC allowlist ให้ครบทุก staff API route; ตอนนี้ customer portal routes สำคัญถูก scope แล้ว แต่ staff roles ยังใช้ middleware access กว้างใน route ที่ยังไม่มี `requireApiActor`
+- เพิ่ม route-level `requireApiActor` ให้ครบทุก sensitive route เพื่อเป็น defense-in-depth; middleware role matrix ครอบคลุม admin, agent-control, pricing, reports และ financial writes แล้ว
 - เปลี่ยน invoice และ legacy routes ที่ยังรับ raw request body เป็น explicit field allowlists
 - ตัดสินใจเรื่อง `mms-templates`: คง public-read สำหรับ template ที่ไม่ลับ หรือ migrate เป็น private bucket พร้อม signed-download endpoint
-- ตรวจ webhook signature/replay protection ของ LINE และ WhatsApp
+- เพิ่ม webhook event/message idempotency เพื่อป้องกัน retry สร้างข้อความซ้ำ; signature verification มีอยู่แล้ว
 - ยืนยันว่า production deployment มี `SUPABASE_SERVICE_ROLE_KEY`, `AUTH_SECRET` และ URL ที่ถูกต้องก่อนเปิด RLS; ห้ามพิมพ์ค่าลง log/report
 - Apply และทดสอบ migration ทุกตัวใน staging ก่อน production
 

@@ -4,6 +4,27 @@ import authConfig from "@/auth.config"
 
 const { auth } = NextAuth(authConfig)
 
+const ADMIN_ROLES = new Set(["SUPER_ADMIN", "MANAGING_DIRECTOR"])
+const FINANCE_ROLES = new Set(["SUPER_ADMIN", "MANAGING_DIRECTOR", "FINANCE"])
+const QUOTATION_ROLES = new Set(["SUPER_ADMIN", "MANAGING_DIRECTOR", "FINANCE", "MARINA_MANAGER"])
+const REPORT_ROLES = new Set(["SUPER_ADMIN", "MANAGING_DIRECTOR", "FINANCE", "MARINA_MANAGER"])
+
+function staffApiAllowed(pathname: string, method: string, role: string): boolean {
+  const isRead = method === "GET" || method === "HEAD"
+  if (/^\/api\/(ai\/control|db\/(staff|agent-config|agent-audit-log))/.test(pathname)) {
+    return ADMIN_ROLES.has(role)
+  }
+  if (pathname.startsWith("/api/pricing-master")) return FINANCE_ROLES.has(role)
+  if (pathname.startsWith("/api/db/reports")) return REPORT_ROLES.has(role)
+  if (/^\/api\/db\/(invoices|invoice-items|payments)(\/|$)/.test(pathname)) {
+    return isRead || FINANCE_ROLES.has(role)
+  }
+  if (/^\/api\/db\/(quotations|quotation-items)(\/|$)/.test(pathname)) {
+    return isRead || QUOTATION_ROLES.has(role)
+  }
+  return true
+}
+
 function customerApiAllowed(pathname: string, method: string): boolean {
   if (pathname === "/api/portal/session" && method === "GET") return true
   if (/^\/api\/db\/(boats|invoices|service-requests|ramp-bookings|quotations)$/.test(pathname) && method === "GET") return true
@@ -65,6 +86,10 @@ export default auth((req) => {
   }
 
   if (user?.role === "CUSTOMER" && pathname.startsWith("/api/") && !customerApiAllowed(pathname, req.method)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
+
+  if (user?.role && user.role !== "CUSTOMER" && pathname.startsWith("/api/") && !staffApiAllowed(pathname, req.method, user.role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 

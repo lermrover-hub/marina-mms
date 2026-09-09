@@ -1,6 +1,6 @@
 # Marina MMS Web App Development Handoff
 
-**Updated:** 2026-09-08
+**Updated:** 2026-09-09
 **Workspace:** `C:\marina-mms`
 **Primary environment:** staging Supabase project `zanlunbgupdtqznruzok`
 **Production project:** `csltloqbjupxqwbkunsd` — do not modify until staging sign-off
@@ -172,16 +172,22 @@ Verified fixes:
 6. Rate-card import now defaults to staging, exposes a connection-free `--help` path, requires an exact project confirmation for writes, and blocks production/deactivation unless their separate confirmation flags are supplied. Its default output is a compact count summary; `--verbose` prints individual codes only when needed.
 7. Rate Card artifacts were regenerated from `ORM_Quote_Tidal_v3_5_Updated.xlsx`, with cost metadata supplemented by matching v3.4 codes. The result contains 127 unique codes, zero operational discount on every row, 127/127 Revenue GL and P&L mappings, and 99/127 Cost GL and Cost P&L mappings. The remaining 28 new-code cost mappings require Accounting confirmation rather than guessed values.
 
-Final gates after the fixes:
+Final clean-worktree gates after the fixes:
 
-- `npm.cmd test`: 54/54 passed.
+- `npm.cmd test`: 53/53 passed.
 - `npx.cmd tsc --noEmit`: passed.
 - `npm.cmd run lint`: passed.
 - `git diff --check`: passed; only existing LF-to-CRLF conversion warnings were printed.
-- staging-configured `npm.cmd run build`: passed, 65 static pages generated; 15 non-blocking pre-existing warnings were printed during build. Full lint reports 18 warnings because it also checks `auth.ts`; there are no lint errors.
+- staging-configured `npm.cmd run build`: passed, 64 static pages generated; 15 non-blocking pre-existing warnings were printed during build. Full lint reports 18 warnings because it also checks `auth.ts`; there are no lint errors.
 
-Commit preparation on 2026-09-09 identified a 61-file workflow candidate using an alternate Git index, without changing the user's existing staging area. The candidate includes the Accounting-ready Supabase migration and Rate Card import artifacts and passes `git diff --cached --check`. The real index remains intentionally untouched because it contains a separate, pre-existing staged work set.
+The reviewed workflow is isolated on local branch `codex/connected-workflow-v1` in clean worktree `C:\Users\asus\.codex\worktrees\mms-connected-v1\marina-mms`. The user's original index and unrelated dirty files remain untouched. No push has been made.
 
 The refreshed staging Rate Card preview is read-only and reports 10 additions, 117 changes, 0 unchanged, and 0 missing codes. No import was applied.
+
+Read-only staging verification on 2026-09-09 confirmed migration `20260908110824 accounting_ready_pricing`, 117 existing pricing rows, 117 rows at operational discount `0%`, and one pricing-history row. Security advisors report 39 informational `RLS enabled, no policy` notices across service-role-only tables; performance advisors report two `auth_rls_initplan` warnings on `inquiries`, one unindexed `inquiries.assigned_to` foreign key, and unused-index informational notices. These are recorded for production review and were not changed in staging.
+
+Pricing-history review found that staging's `service_role` could update/delete/truncate history and its foreign key used `ON DELETE CASCADE`. Source-only migration `20260909143000_harden_pricing_history.sql` now changes the relationship to `ON DELETE RESTRICT` and grants `service_role` only `SELECT, INSERT`. It has not been applied to staging or production.
+
+Accounting review worksheet `docs/2026-09-09-accounting-cost-mapping-review.md` lists all 28 unresolved Cost GL/P&L mappings. Those mappings and the source-only history hardening are the remaining approval gates before applying the refreshed Rate Card to staging.
 
 Remaining completion work is outside this technical staging run: controlled real-use pilot, Accounting review from pilot data, separate production approval/deployment, and any later Accounting V2 scope.

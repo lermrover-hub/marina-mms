@@ -59,6 +59,13 @@ test("migration backfills zero discount and quotation snapshots", () => {
   assert.match(migration, /pricing_master_history/)
 })
 
+test("pricing history hardening keeps the accounting audit append-only", () => {
+  const migration = readFileSync(new URL("../supabase/migrations/20260909143000_harden_pricing_history.sql", import.meta.url), "utf8")
+  assert.match(migration, /ON DELETE RESTRICT/)
+  assert.match(migration, /REVOKE ALL ON TABLE public\.pricing_master_history FROM service_role/)
+  assert.match(migration, /GRANT SELECT, INSERT ON TABLE public\.pricing_master_history TO service_role/)
+})
+
 test("rate-card importer help exits without selecting a Supabase target", () => {
   const importer = fileURLToPath(new URL("../scripts/import-rate-card-to-supabase.mjs", import.meta.url))
   const output = execFileSync(process.execPath, [importer, "--help"], { encoding: "utf8" })

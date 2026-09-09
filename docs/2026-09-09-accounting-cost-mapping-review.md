@@ -1,7 +1,9 @@
 # Accounting review: missing cost mappings
 
-วันที่ตรวจ: 2026-09-09  
-แหล่งราคา: `ORM_Quote_Tidal_v3_5_Updated.xlsx`  
+วันที่ตรวจ: 2026-09-09
+
+แหล่งราคา: `ORM_Quote_Tidal_v3_5_Updated.xlsx`
+
 สถานะ: รอ Accounting ยืนยันก่อนนำ Rate Card ไปใช้จริง
 
 ## สรุป

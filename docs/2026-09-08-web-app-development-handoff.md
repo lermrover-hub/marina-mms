@@ -191,3 +191,9 @@ Pricing-history review found that staging's `service_role` could update/delete/t
 Accounting review worksheet `docs/2026-09-09-accounting-cost-mapping-review.md` lists all 28 unresolved Cost GL/P&L mappings. Those mappings and the source-only history hardening are the remaining approval gates before applying the refreshed Rate Card to staging.
 
 Remaining completion work is outside this technical staging run: controlled real-use pilot, Accounting review from pilot data, separate production approval/deployment, and any later Accounting V2 scope.
+
+## Production read-only audit — 2026-09-09
+
+The production project is healthy but is **not deployment-ready**. Supabase reports 55 public-schema tables with RLS disabled, and direct grant inspection shows `anon`/`authenticated` retain broad privileges on sensitive business tables. A role-simulated read confirmed anonymous visibility of row counts in users, boats, and quotations. Storage also has a public `ALL` policy on the private `marina-files` bucket. No production data values were retrieved, and no production write was performed.
+
+Two local source-only security commits replace mock-password authentication with active database users and bcrypt verification, validate Auth.js sessions instead of cookie presence, scope portal customer reads, move storage writes behind an authenticated server API, and add staged RLS/storage hardening migrations. Full details and the required deploy-before-migrate sequence are in `docs/2026-09-09-production-security-readiness.md`. These remediations have not been deployed or applied to any database.

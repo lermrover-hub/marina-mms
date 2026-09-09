@@ -1,15 +1,24 @@
 import { NextResponse } from "next/server"
-import { getServiceRequests } from "@/lib/db"
 import { createServerClient } from "@/lib/supabase-server"
+import { customerScope, PORTAL_READ_ROLES, requireApiActor, STAFF_ROLES } from "@/lib/api-auth"
 
 const supabase = createServerClient()
 
 export const dynamic = "force-dynamic"
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const data = await getServiceRequests()
-    return NextResponse.json(data)
+    const access = await requireApiActor(PORTAL_READ_ROLES)
+    if ("error" in access) return access.error
+    const { searchParams } = new URL(req.url)
+    const scope = customerScope(access.actor, searchParams.get("customer_id"))
+    if ("error" in scope) return scope.error
+
+    let query = supabase.from("mms_service_requests").select("*").order("created_at", { ascending: false })
+    if (scope.customerId) query = query.eq("customer_id", scope.customerId)
+    const { data, error } = await query
+    if (error) throw error
+    return NextResponse.json(data ?? [])
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 })
   }
@@ -17,6 +26,8 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    const access = await requireApiActor(STAFF_ROLES)
+    if ("error" in access) return access.error
     const body = await req.json()
     const now = new Date().toISOString()
     const { data, error } = await supabase

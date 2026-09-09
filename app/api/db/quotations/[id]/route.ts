@@ -5,6 +5,7 @@ import { sendEmail } from "@/lib/email"
 import { quotationSent } from "@/lib/email-templates"
 import { pushMessage, quotationFlexMessage } from "@/lib/line"
 import { sendQuotationNotification } from "@/lib/whatsapp"
+import { concealOtherCustomer, PORTAL_READ_ROLES, requireApiActor } from "@/lib/api-auth"
 
 const supabase = createServerClient()
 
@@ -12,6 +13,8 @@ export const dynamic = "force-dynamic"
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const access = await requireApiActor(PORTAL_READ_ROLES)
+    if ("error" in access) return access.error
     const { id } = await params
     const { data: quotation, error: quotationError } = await supabase
       .from("mms_quotations")
@@ -19,6 +22,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       .eq("id", id)
       .single()
     if (quotationError) throw quotationError
+    const concealed = concealOtherCustomer(access.actor, quotation.customer_id)
+    if (concealed) return concealed
 
     const { data: items, error: itemsError } = await supabase
       .from("mms_quotation_items")
@@ -38,8 +43,23 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const access = await requireApiActor(PORTAL_READ_ROLES)
+    if ("error" in access) return access.error
     const { id } = await params
     const body = await req.json()
+
+    const { data: ownedQuotation, error: ownedQuotationError } = await supabase
+      .from("mms_quotations")
+      .select("id,customer_id")
+      .eq("id", id)
+      .single()
+    if (ownedQuotationError) throw ownedQuotationError
+    const concealed = concealOtherCustomer(access.actor, ownedQuotation.customer_id)
+    if (concealed) return concealed
+
+    if (access.actor.role === "CUSTOMER" && body.action !== "approve" && body.status !== "REJECTED") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
 
     // ── Handle digital signature approval ──────────────────────────────────
     if (body.action === "approve") {

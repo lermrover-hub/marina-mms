@@ -1,0 +1,49 @@
+import { test } from "node:test"
+import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
+
+const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8")
+
+test("authentication uses database password hashes and contains no committed mock passwords", () => {
+  const auth = read("../auth.ts")
+  assert.match(auth, /findActiveAuthUser/)
+  assert.match(auth, /compare\(password, user\.passwordHash\)/)
+  assert.doesNotMatch(auth, /MOCK_USERS|admin123|marina123|finance123|customer123/)
+})
+
+test("middleware validates an Auth.js session rather than trusting cookie presence", () => {
+  const middleware = read("../middleware.ts")
+  assert.match(middleware, /export default auth\(/)
+  assert.match(middleware, /req\.auth\?\.user/)
+  assert.match(middleware, /auth\.config/)
+  assert.doesNotMatch(middleware, /from ["']@\/auth["']/)
+  assert.doesNotMatch(middleware, /authjs\.session-token|next-auth\.session-token/)
+})
+
+test("production data-api hardening revokes anonymous table access", () => {
+  const migration = read("../supabase/migrations/20260909150000_harden_public_data_api.sql")
+  assert.match(migration, /ENABLE ROW LEVEL SECURITY/)
+  assert.match(migration, /FORCE ROW LEVEL SECURITY/)
+  assert.match(migration, /REVOKE ALL ON TABLE %I\.%I FROM anon, authenticated/)
+  assert.match(migration, /tablename <> 'inquiries'/)
+})
+
+test("portal-facing APIs derive customer scope from the verified session", () => {
+  const helper = read("../lib/api-auth.ts")
+  assert.match(helper, /actor\.role !== "CUSTOMER"/)
+  assert.match(helper, /customerId: actor\.customerId/)
+
+  for (const route of [
+    "../app/api/db/boats/route.ts",
+    "../app/api/db/invoices/route.ts",
+    "../app/api/db/service-requests/route.ts",
+    "../app/api/db/ramp-bookings/route.ts",
+    "../app/api/db/quotations/route.ts",
+  ]) {
+    assert.match(read(route), /customerScope\(access\.actor/)
+  }
+
+  const quotationDetail = read("../app/api/db/quotations/[id]/route.ts")
+  assert.match(quotationDetail, /concealOtherCustomer\(access\.actor/)
+  assert.match(quotationDetail, /body\.action !== "approve" && body\.status !== "REJECTED"/)
+})

@@ -1,7 +1,18 @@
 import { NextResponse } from "next/server"
-import type { NextRequest } from "next/server"
+import NextAuth from "next-auth"
+import authConfig from "@/auth.config"
 
-export function middleware(req: NextRequest) {
+const { auth } = NextAuth(authConfig)
+
+function customerApiAllowed(pathname: string, method: string): boolean {
+  if (pathname === "/api/portal/session" && method === "GET") return true
+  if (/^\/api\/db\/(boats|invoices|service-requests|ramp-bookings|quotations)$/.test(pathname) && method === "GET") return true
+  if (pathname === "/api/db/ramp-bookings" && method === "POST") return true
+  if (/^\/api\/db\/quotations\/[^/]+$/.test(pathname) && (method === "GET" || method === "PATCH")) return true
+  return false
+}
+
+export default auth((req) => {
   const { pathname } = req.nextUrl
 
   // Always allow auth API, webhooks, and static assets
@@ -42,14 +53,8 @@ export function middleware(req: NextRequest) {
 
   const isAuthRoute = pathname.startsWith("/login")
 
-  // NextAuth v5 (auth.js) session cookie names
-  const sessionToken =
-    req.cookies.get("authjs.session-token") ||
-    req.cookies.get("__Secure-authjs.session-token") ||
-    req.cookies.get("next-auth.session-token") ||
-    req.cookies.get("__Secure-next-auth.session-token")
-
-  const isLoggedIn = !!sessionToken
+  const user = req.auth?.user as { role?: string } | undefined
+  const isLoggedIn = !!user
 
   if (!isLoggedIn && !isAuthRoute) {
     return NextResponse.redirect(new URL("/login", req.url))
@@ -59,8 +64,12 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL("/dashboard", req.url))
   }
 
+  if (user?.role === "CUSTOMER" && pathname.startsWith("/api/") && !customerApiAllowed(pathname, req.method)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
+
   return NextResponse.next()
-}
+})
 
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico|public).*)"],

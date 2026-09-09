@@ -12,11 +12,17 @@ function clean(s: string | undefined): string {
  * - With SUPABASE_SERVICE_ROLE_KEY set (Vercel production) → bypasses RLS, full access
  * - Without service role key → falls back to anon key (dev / no regression)
  */
-export function createServerClient() {
+export function createServerClient(options: { requireServiceRole?: boolean } = {}) {
   const url = clean(process.env.NEXT_PUBLIC_SUPABASE_URL)
-  const key =
-    clean(process.env.SUPABASE_SERVICE_ROLE_KEY) ||
-    clean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+  const serviceRoleKey = clean(process.env.SUPABASE_SERVICE_ROLE_KEY)
+  const key = serviceRoleKey || clean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+
+  if (!url) throw new Error("Supabase URL is not configured")
+  if (options.requireServiceRole && !serviceRoleKey) {
+    throw new Error("Supabase service role key is required for this server operation")
+  }
+  if (!key) throw new Error("Supabase server key is not configured")
+
   return createClient(url, key, {
     auth: { persistSession: false },
   })

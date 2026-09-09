@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS public.mms_berth_assignments (
   boat_name text,
   customer_name text,
   start_date date NOT NULL,
-  end_date date NOT NULL,
+  end_date date,
   status text DEFAULT 'ACTIVE'::text NOT NULL,
   notes text,
   created_at timestamptz DEFAULT now(),
@@ -229,6 +229,7 @@ CREATE TABLE IF NOT EXISTS public.mms_invoices (
   boat_name text,
   quotation_id text,
   work_order_id text,
+  ramp_booking_id text,
   invoice_date date DEFAULT CURRENT_DATE NOT NULL,
   due_date date,
   status text DEFAULT 'DRAFT'::text NOT NULL,
@@ -348,6 +349,49 @@ CREATE TABLE IF NOT EXISTS public.mms_quotation_items (
   sort_order integer DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS public.mms_subcontractors (
+  id text DEFAULT (gen_random_uuid())::text NOT NULL,
+  name text NOT NULL,
+  tax_id text,
+  specialties text,
+  contact_name text,
+  phone text,
+  email text,
+  payment_terms text,
+  rating numeric(3,2),
+  status text DEFAULT 'ACTIVE'::text NOT NULL,
+  notes text,
+  created_at timestamptz DEFAULT now() NOT NULL,
+  updated_at timestamptz DEFAULT now() NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS public.mms_subcontractor_quotes (
+  id text DEFAULT (gen_random_uuid())::text NOT NULL,
+  quote_reference text NOT NULL,
+  service_request_id text NOT NULL,
+  work_order_id text,
+  subcontractor_id text,
+  subcontractor_name text NOT NULL,
+  scope text NOT NULL,
+  quoted_amount numeric(14,2) DEFAULT 0 NOT NULL,
+  vat_amount numeric(14,2) DEFAULT 0 NOT NULL,
+  total_amount numeric(14,2) DEFAULT 0 NOT NULL,
+  lead_time_days integer,
+  warranty_months integer,
+  payment_terms text,
+  valid_until date,
+  status text DEFAULT 'RECEIVED'::text NOT NULL,
+  cost_approved_by text,
+  cost_approved_at timestamptz,
+  contractor_po_number text,
+  contractor_po_issued_at timestamptz,
+  notes text,
+  received_at timestamptz DEFAULT now() NOT NULL,
+  selected_at timestamptz,
+  created_at timestamptz DEFAULT now() NOT NULL,
+  updated_at timestamptz DEFAULT now() NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS public.mms_quotations (
   id text DEFAULT (gen_random_uuid())::text NOT NULL,
   quote_number text NOT NULL,
@@ -356,7 +400,11 @@ CREATE TABLE IF NOT EXISTS public.mms_quotations (
   boat_id text,
   boat_name text,
   sr_id text,
+  work_order_id text,
   title text,
+  execution_type text DEFAULT 'INTERNAL'::text NOT NULL,
+  contractor_cost_estimate numeric(14,2) DEFAULT 0 NOT NULL,
+  contractor_markup_pct numeric(6,2) DEFAULT 0 NOT NULL,
   status text DEFAULT 'DRAFT'::text NOT NULL,
   subtotal numeric DEFAULT 0,
   discount numeric DEFAULT 0,
@@ -376,6 +424,9 @@ CREATE TABLE IF NOT EXISTS public.mms_ramp_bookings (
   customer_name text,
   boat_id text,
   boat_name text,
+  service_request_id text,
+  work_order_id text,
+  quotation_id text,
   operation_type text DEFAULT 'LAUNCH'::text NOT NULL,
   requested_date date NOT NULL,
   requested_time time without time zone,
@@ -386,6 +437,12 @@ CREATE TABLE IF NOT EXISTS public.mms_ramp_bookings (
   required_tide_m numeric,
   assigned_staff text,
   status text DEFAULT 'REQUESTED'::text NOT NULL,
+  revenue_amount numeric(14,2) DEFAULT 0 NOT NULL,
+  estimated_cost_amount numeric(14,2) DEFAULT 0 NOT NULL,
+  revenue_account_code text DEFAULT '4100-RAMP'::text,
+  cost_account_code text DEFAULT '5100-RAMP'::text,
+  financial_status text DEFAULT 'ESTIMATED'::text NOT NULL,
+  invoice_id text,
   notes text,
   created_at timestamptz DEFAULT now() NOT NULL,
   updated_at timestamptz DEFAULT now() NOT NULL
@@ -408,6 +465,11 @@ CREATE TABLE IF NOT EXISTS public.mms_service_requests (
   scheduled_date timestamptz,
   completed_date timestamptz,
   notes text,
+  execution_type text DEFAULT 'INTERNAL'::text NOT NULL,
+  subcontractor_required boolean DEFAULT false NOT NULL,
+  budget_min numeric(14,2),
+  budget_max numeric(14,2),
+  procurement_status text DEFAULT 'NOT_REQUIRED'::text NOT NULL,
   created_at timestamptz DEFAULT now() NOT NULL,
   updated_at timestamptz DEFAULT now() NOT NULL
 );
@@ -475,6 +537,7 @@ CREATE TABLE IF NOT EXISTS public.mms_work_orders (
   id text DEFAULT (gen_random_uuid())::text NOT NULL,
   reference text NOT NULL,
   sr_id text,
+  service_request_id text,
   quotation_id text,
   customer_id text,
   customer_name text,
@@ -489,6 +552,9 @@ CREATE TABLE IF NOT EXISTS public.mms_work_orders (
   actual_end_date date,
   assigned_to text,
   contractor_name text,
+  execution_type text DEFAULT 'INTERNAL'::text NOT NULL,
+  subcontractor_id text,
+  subcontractor_quote_id text,
   total_revenue numeric DEFAULT 0,
   total_labor_cost numeric DEFAULT 0,
   total_material_cost numeric DEFAULT 0,
@@ -513,4 +579,3 @@ CREATE TABLE IF NOT EXISTS public.pricing_master (
   created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
   updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
-

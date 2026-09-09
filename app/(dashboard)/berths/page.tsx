@@ -417,7 +417,7 @@ function AssignBoatDialog({
         boat_name:     selectedBoat.name,
         customer_name: customerName,
         start_date:    startDate,
-        end_date:      endDate || startDate,
+        end_date:      endDate || null,
         status:        asgnStatus,
         notes:         notes.trim() || null,
       }

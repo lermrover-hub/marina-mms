@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createPricingMaster, getPricingMaster } from "@/lib/pricing-master"
+import { getPricingWriteAccess } from "@/lib/pricing-access"
+import { pricingCreateSchema, pricingValidationMessage } from "@/lib/pricing-validation"
 
 export const dynamic = "force-dynamic"
 
@@ -22,25 +24,22 @@ export async function GET(req: NextRequest) {
 // POST /api/pricing-master - Create new pricing
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json()
-    const { code, serviceNameEn, serviceNameTh, category, unit, rateThb, description, notes } = body
-
-    if (!code || !serviceNameEn || !category || !unit || rateThb === undefined) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      )
+    const access = await getPricingWriteAccess()
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.error }, { status: access.status })
     }
 
+    const parsed = pricingCreateSchema.safeParse(await req.json())
+    if (!parsed.success) {
+      return NextResponse.json({ error: pricingValidationMessage(parsed.error) }, { status: 400 })
+    }
+
+    const input = parsed.data
     const pricing = await createPricingMaster({
-      code,
-      serviceNameEn,
-      serviceNameTh,
-      category,
-      unit,
-      rateThb,
-      description,
-      notes,
+      ...input,
+      discountPct: input.discountPct ?? 0,
+      updatedBy: access.actorId,
+      approvedBy: access.actorId,
     })
 
     return NextResponse.json({ data: pricing }, { status: 201 })

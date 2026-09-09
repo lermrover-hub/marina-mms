@@ -36,6 +36,11 @@ export async function POST(req: Request) {
         requested_date: body.requested_date ?? null,
         scheduled_date: body.scheduled_date ?? null,
         completed_date: body.completed_date ?? null,
+        execution_type: body.execution_type ?? "INTERNAL",
+        subcontractor_required: body.subcontractor_required ?? (body.execution_type === "SUBCONTRACTOR" || body.execution_type === "MIXED"),
+        budget_min: body.budget_min ?? null,
+        budget_max: body.budget_max ?? null,
+        procurement_status: body.procurement_status ?? (body.execution_type && body.execution_type !== "INTERNAL" ? "NEEDS_SOURCING" : "NOT_REQUIRED"),
         notes: [
           body.location ? `Location: ${body.location}` : null,
           body.requires_inspection != null ? `Requires inspection: ${body.requires_inspection ? "yes" : "no"}` : null,

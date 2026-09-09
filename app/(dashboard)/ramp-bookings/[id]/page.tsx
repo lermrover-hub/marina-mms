@@ -10,12 +10,12 @@ import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { StatusBadge } from "@/components/shared/StatusBadge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { formatDate, formatDateLong } from "@/lib/utils"
+import { formatDate, formatDateLong, formatTHB } from "@/lib/utils"
 import { cn } from "@/lib/utils"
 import type { RampBooking } from "@/lib/supabase"
 
 const OP_LABELS: Record<string, string> = {
-  LAUNCH:"Launch", RETRIEVAL:"Retrieval", MOVE_BOAT:"Move Boat",
+  LAUNCH:"Launch", HAUL_OUT:"Haul-out", MOVE_BOAT:"Move Boat",
   WASH:"Wash", FUEL:"Fuel", INSPECTION:"Inspection",
 }
 
@@ -249,6 +249,19 @@ export default function RampBookingDetailPage() {
               </div>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader><CardTitle>Accounting</CardTitle></CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <div className="flex justify-between"><span className="text-gray-500">Customer charge</span><span className="font-semibold text-gray-900">{formatTHB(booking.revenue_amount ?? 0)}</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">Estimated direct cost</span><span className="font-semibold text-gray-900">{formatTHB(booking.estimated_cost_amount ?? 0)}</span></div>
+              <div className="flex justify-between border-t pt-2"><span className="text-gray-500">Estimated margin</span><span className={cn("font-semibold", (booking.revenue_amount ?? 0) - (booking.estimated_cost_amount ?? 0) >= 0 ? "text-green-700" : "text-red-600")}>{formatTHB((booking.revenue_amount ?? 0) - (booking.estimated_cost_amount ?? 0))}</span></div>
+              <div className="flex justify-between text-xs"><span className="text-gray-400">Revenue account</span><span className="font-mono text-gray-600">{booking.revenue_account_code ?? "4100-RAMP"}</span></div>
+              <div className="flex justify-between text-xs"><span className="text-gray-400">Cost account</span><span className="font-mono text-gray-600">{booking.cost_account_code ?? "5100-RAMP"}</span></div>
+              <div className="flex justify-between text-xs"><span className="text-gray-400">Financial status</span><span className="font-medium text-gray-700">{booking.financial_status ?? "ESTIMATED"}</span></div>
+              {booking.invoice_id && <Link href={`/invoices/${booking.invoice_id}`} className="block pt-1 text-xs text-teal-700 hover:underline">View linked invoice →</Link>}
+            </CardContent>
+          </Card>
         </div>
 
         {/* Right: tide calculation + notes */}
@@ -291,7 +304,7 @@ export default function RampBookingDetailPage() {
             <CardHeader><CardTitle className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-gray-400" />Operation Checklist</CardTitle></CardHeader>
             <CardContent>
               <div className="space-y-1.5 text-sm text-gray-600">
-                {(booking.operation_type === "LAUNCH" || booking.operation_type === "RETRIEVAL"
+                {(booking.operation_type === "LAUNCH" || booking.operation_type === "HAUL_OUT"
                   ? [
                     "Confirm boat details and dimensions match booking",
                     "Verify tide height meets minimum requirement",

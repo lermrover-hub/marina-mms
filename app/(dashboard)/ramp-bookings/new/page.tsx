@@ -16,7 +16,7 @@ import type { Boat } from "@/lib/supabase"
 
 const OPERATION_TYPES = [
   { value: "LAUNCH",    label: "Launch",    icon: "🚀", desc: "Launch vessel into water" },
-  { value: "RETRIEVAL", label: "Retrieval", icon: "⬆️", desc: "Retrieve vessel from water" },
+  { value: "HAUL_OUT",  label: "Haul-out",  icon: "⬆️", desc: "Haul vessel out of water" },
   { value: "MOVE_BOAT", label: "Move Boat", icon: "🔄", desc: "Move boat between locations" },
   { value: "WASH",      label: "Wash",      icon: "🧽", desc: "Wash & clean vessel" },
   { value: "FUEL",      label: "Fuel",      icon: "⛽", desc: "Refuel vessel" },
@@ -69,6 +69,8 @@ export default function NewRampBookingPage() {
   const [trailerM,       setTrailerM]       = useState<string>("")
   const [safetyM,        setSafetyM]        = useState<string>("0.3")
   const [assignedStaff,  setAssignedStaff]  = useState("")
+  const [revenueAmount,  setRevenueAmount]  = useState("")
+  const [estimatedCost,  setEstimatedCost]  = useState("")
   const [notes,          setNotes]          = useState("")
 
   // boats search
@@ -142,6 +144,11 @@ export default function NewRampBookingPage() {
         trailer_height_ft: trailerM ? mToFt(parseFloat(trailerM)) : null,
         safety_clearance_ft: safetyM ? mToFt(parseFloat(safetyM)) : mToFt(0.3),
         assigned_staff: assignedStaff || null,
+        revenue_amount: Number(revenueAmount) || 0,
+        estimated_cost_amount: Number(estimatedCost) || 0,
+        revenue_account_code: "4100-RAMP",
+        cost_account_code: "5100-RAMP",
+        financial_status: "ESTIMATED",
         notes:          notes || null,
         status: "REQUESTED",
       }
@@ -171,13 +178,13 @@ export default function NewRampBookingPage() {
   const draft   = parseFloat(draftM)   || 0
   const trailer = parseFloat(trailerM) || 0
   const safety  = parseFloat(safetyM)  || 0.3
-  const showTide = (opType === "LAUNCH" || opType === "RETRIEVAL") && (draft + trailer + safety) > 0
+  const showTide = (opType === "LAUNCH" || opType === "HAUL_OUT") && (draft + trailer + safety) > 0
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="New Ramp Booking"
-        description="Create a launch, retrieval, or ramp operation booking"
+        description="Create a launch, haul-out, or ramp operation booking"
         breadcrumb={[
           { label: "Ramp Bookings", href: "/ramp-bookings" },
           { label: "New Booking" },
@@ -306,7 +313,7 @@ export default function NewRampBookingPage() {
             </Card>
 
             {/* Vessel Dimensions */}
-            {(opType === "LAUNCH" || opType === "RETRIEVAL") && (
+            {(opType === "LAUNCH" || opType === "HAUL_OUT") && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -357,6 +364,30 @@ export default function NewRampBookingPage() {
                 </CardContent>
               </Card>
             )}
+
+            {/* Revenue & Cost */}
+            <Card>
+              <CardHeader><CardTitle>Revenue &amp; Cost</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-xs text-gray-500">
+                  Record the customer charge and estimated direct cost so this ramp operation appears in the accounting ledger.
+                </p>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-gray-700">Customer Charge (THB)</label>
+                    <Input type="number" min="0" step="0.01" value={revenueAmount} onChange={e => setRevenueAmount(e.target.value)} placeholder="0" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-gray-700">Estimated Direct Cost (THB)</label>
+                    <Input type="number" min="0" step="0.01" value={estimatedCost} onChange={e => setEstimatedCost(e.target.value)} placeholder="0" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-2 text-xs text-gray-500 sm:grid-cols-2">
+                  <div>Revenue account: <span className="font-mono text-gray-700">4100-RAMP</span></div>
+                  <div>Cost account: <span className="font-mono text-gray-700">5100-RAMP</span></div>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Staff & Notes */}
             <Card>
@@ -438,6 +469,14 @@ export default function NewRampBookingPage() {
                     </span>
                   </div>
                 )}
+                <div className="flex justify-between border-t pt-1">
+                  <span className="text-gray-500">Customer charge</span>
+                  <span className="font-semibold text-gray-900">฿{(Number(revenueAmount) || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Estimated cost</span>
+                  <span className="font-semibold text-gray-900">฿{(Number(estimatedCost) || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                </div>
               </CardContent>
             </Card>
 
@@ -446,7 +485,7 @@ export default function NewRampBookingPage() {
               <CardHeader><CardTitle className="text-sm text-amber-700 flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5" />Booking Guidelines</CardTitle></CardHeader>
               <CardContent className="text-xs text-gray-600 space-y-2">
                 <p>• Bookings are subject to tide window and ramp availability.</p>
-                <p>• Launch / Retrieval requires tide safety verification before confirmation.</p>
+                <p>• Launch / Haul-out requires tide safety verification before confirmation.</p>
                 <p>• Provide accurate boat draft and trailer dimensions for safe operation.</p>
                 <p>• Final time confirmation will be made after tide check on operation day.</p>
                 <p>• Cancellations must be made at least 24 hours in advance.</p>

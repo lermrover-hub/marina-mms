@@ -71,6 +71,7 @@ export default function NewWorkOrderPage() {
   const [customerId, setCustomerId]  = useState("")
   const [boatId, setBoatId]          = useState("")
   const [srRef, setSrRef]            = useState("")
+  const [executionType, setExecutionType] = useState<"INTERNAL" | "SUBCONTRACTOR" | "MIXED">("INTERNAL")
   const [category, setCategory]      = useState("")
   const [startDate, setStartDate]    = useState("")
   const [endDate, setEndDate]        = useState("")
@@ -162,6 +163,8 @@ export default function NewWorkOrderPage() {
         boat_id:           boatId || null,
         boat_name:         selectedB?.name ?? null,
         service_request_ref: srRef || null,
+        service_request_id: null,
+        execution_type: executionType,
         category,
         start_date:        startDate || null,
         estimated_end_date: endDate || null,
@@ -259,7 +262,7 @@ export default function NewWorkOrderPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
               {/* SR Reference */}
               <div className="space-y-1.5">
                 <Label>Service Request Ref.</Label>
@@ -283,6 +286,20 @@ export default function NewWorkOrderPage() {
                   {JOB_CATEGORIES.map((c) => (
                     <option key={c} value={c}>{c}</option>
                   ))}
+                </select>
+              </div>
+
+              {/* Delivery model */}
+              <div className="space-y-1.5">
+                <Label>Delivery Model</Label>
+                <select
+                  value={executionType}
+                  onChange={(e) => setExecutionType(e.target.value as typeof executionType)}
+                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                >
+                  <option value="INTERNAL">Internal team</option>
+                  <option value="SUBCONTRACTOR">External subcontractor</option>
+                  <option value="MIXED">Mixed delivery</option>
                 </select>
               </div>
 

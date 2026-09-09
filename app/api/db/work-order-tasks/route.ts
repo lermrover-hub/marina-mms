@@ -5,6 +5,10 @@ const supabase = createServerClient()
 
 export const dynamic = "force-dynamic"
 
+// PostgreSQL undefined_column error code. Staging can lag the optional
+// sort_order migration, so keep task reads compatible until it is applied.
+const MISSING_COLUMN = "42703"
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url)
@@ -12,7 +16,15 @@ export async function GET(req: Request) {
     let query = supabase.from("mms_work_order_tasks").select("*").order("sort_order").order("created_at")
     if (workOrderId) query = query.eq("work_order_id", workOrderId)
     const { data, error } = await query
-    if (error) throw error
+    if (error) {
+      if (error.code !== MISSING_COLUMN) throw error
+
+      let fallback = supabase.from("mms_work_order_tasks").select("*").order("created_at")
+      if (workOrderId) fallback = fallback.eq("work_order_id", workOrderId)
+      const { data: fallbackData, error: fallbackError } = await fallback
+      if (fallbackError) throw fallbackError
+      return NextResponse.json(fallbackData ?? [])
+    }
     return NextResponse.json(data ?? [])
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 })

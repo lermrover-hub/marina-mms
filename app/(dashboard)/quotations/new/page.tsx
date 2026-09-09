@@ -20,6 +20,8 @@ interface LineItem {
   unit: string
   qty: number
   unitPrice: number
+  pricingMasterId?: string
+  pricingCode?: string
 }
 
 interface PricingOption {
@@ -30,6 +32,15 @@ interface PricingOption {
   category: string
   unit: string
   rateThb: number
+  fullRateThb: number
+  directCostThb: number | null
+  revenueGlCode: string | null
+  costGlCode: string | null
+  pnlCategory: string | null
+  costPnlCategory: string | null
+  sourceVersion: string | null
+  effectiveDate: string | null
+  updatedAt: string
 }
 
 const CATEGORIES = [
@@ -395,6 +406,8 @@ export default function NewQuotationPage() {
         unit:        pricing.unit,
         qty:         1,
         unitPrice:   Number(pricing.rateThb),
+        pricingMasterId: pricing.id,
+        pricingCode: pricing.code,
       },
     ])
   }, [])

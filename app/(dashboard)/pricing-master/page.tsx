@@ -12,6 +12,17 @@ interface PricingItem {
   category: string
   unit: string
   rateThb: number
+  fullRateThb: number
+  discountPct: number
+  sourceDiscountPct: number
+  directCostThb: number | null
+  grossProfitThb: number | null
+  grossMarginPct: number | null
+  revenueGlCode: string | null
+  costGlCode: string | null
+  pnlCategory: string | null
+  priceStatus: string
+  sourceVersion: string | null
   pilotRateThb: number | null
   pilotNotes: string | null
   effectiveRate: number
@@ -163,7 +174,7 @@ export default function PricingMasterPage() {
     }
   }, [])
 
-  // ── bulk: apply % discount to filtered rows ──────────────────────────────
+  // ── bulk: apply a temporary pilot reduction to filtered rows ────────────
   const [bulkPct, setBulkPct] = useState("")
   const applyBulkDiscount = async () => {
     const pct = Number(bulkPct)
@@ -189,7 +200,7 @@ export default function PricingMasterPage() {
   // ── export CSV ───────────────────────────────────────────────────────────
   const exportCsv = () => {
     const BOM = "﻿"
-    const headers = ["code","category","serviceNameEn","unit","rate_thb","pilot_rate_thb","pct_of_standard","pilot_notes"]
+    const headers = ["code","category","serviceNameEn","unit","full_rate_thb","current_rate_thb","default_discount_pct","source_discount_pct","direct_cost_thb","gross_profit_thb","gross_margin_pct","revenue_gl_code","cost_gl_code","pnl_category","price_status","source_version","pilot_rate_thb","pct_of_current","pilot_notes"]
     const rows = filtered.map(p => {
       const pct = p.pilotRateThb != null && p.rateThb > 0
         ? Math.round((p.pilotRateThb / p.rateThb) * 100)
@@ -197,7 +208,9 @@ export default function PricingMasterPage() {
       return [
         p.code, p.category,
         `"${p.serviceNameEn.replace(/"/g,'""')}"`,
-        p.unit, p.rateThb,
+        p.unit, p.fullRateThb, p.rateThb, p.discountPct, p.sourceDiscountPct,
+        p.directCostThb ?? "", p.grossProfitThb ?? "", p.grossMarginPct ?? "",
+        p.revenueGlCode ?? "", p.costGlCode ?? "", p.pnlCategory ?? "", p.priceStatus, p.sourceVersion ?? "",
         p.pilotRateThb ?? "", pct,
         `"${(p.pilotNotes ?? "").replace(/"/g,'""')}"`,
       ].join(",")
@@ -216,7 +229,7 @@ export default function PricingMasterPage() {
     <div className="space-y-6">
       <PageHeader
         title="Pricing Master"
-        description="Standard rate card with pilot / trial pricing overlay. Pilot rates are used by the AI quotation agent."
+        description="Accounting-ready rate card. Default customer discount is 0%; pilot rates remain an explicit temporary override."
       />
 
       {/* ── Stats bar ──────────────────────────────────────────────────── */}
@@ -266,7 +279,7 @@ export default function PricingMasterPage() {
         {/* bulk tools */}
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2 py-1">
-            <span className="text-xs text-amber-700 whitespace-nowrap">Discount %</span>
+            <span className="text-xs text-amber-700 whitespace-nowrap">Pilot reduction %</span>
             <input
               type="number" min="1" max="99" placeholder="e.g. 30"
               value={bulkPct} onChange={e => setBulkPct(e.target.value)}
@@ -304,7 +317,11 @@ export default function PricingMasterPage() {
                 <th className="px-4 py-3 text-left font-semibold text-[#1f2933]">Service</th>
                 <th className="px-4 py-3 text-left font-semibold text-[#1f2933]">Category</th>
                 <th className="px-4 py-3 text-left font-semibold text-[#1f2933]">Unit</th>
-                <th className="px-4 py-3 text-right font-semibold text-[#1f2933]">Standard Rate</th>
+                <th className="px-4 py-3 text-right font-semibold text-[#1f2933]">Full Rate</th>
+                <th className="px-4 py-3 text-right font-semibold text-[#1f2933]">Current Rate</th>
+                <th className="px-4 py-3 text-right font-semibold text-[#1f2933]">Default Disc.</th>
+                <th className="px-4 py-3 text-right font-semibold text-[#1f2933]">Direct Cost</th>
+                <th className="px-4 py-3 text-right font-semibold text-[#1f2933]">GP / GM</th>
                 <th className="px-4 py-3 text-right font-semibold text-amber-700">
                   Pilot Rate
                   <span className="ml-1 text-xs font-normal text-[#8b969a]">(click to edit)</span>
@@ -320,13 +337,32 @@ export default function PricingMasterPage() {
                   <td className="px-4 py-2.5 text-[#1f2933]">
                     <div>{row.serviceNameEn}</div>
                     {row.serviceNameTh && <div className="text-xs text-[#8b969a]">{row.serviceNameTh}</div>}
+                    {(row.revenueGlCode || row.costGlCode || row.pnlCategory) && (
+                      <div className="mt-1 text-[11px] text-[#8b969a]">
+                        GL {row.revenueGlCode ?? "—"} / Cost {row.costGlCode ?? "—"} · {row.pnlCategory ?? "Unmapped P&L"}
+                      </div>
+                    )}
                   </td>
                   <td className="px-4 py-2.5">
                     <span className="inline-block rounded-full bg-[#e8fbf9] px-2 py-0.5 text-xs font-medium text-[#126c66]">{row.category}</span>
                   </td>
                   <td className="px-4 py-2.5 text-[#647076] text-xs whitespace-nowrap">{row.unit}</td>
                   <td className="px-4 py-2.5 text-right font-semibold text-[#1f2933] whitespace-nowrap">
+                    ฿{row.fullRateThb.toLocaleString()}
+                  </td>
+                  <td className="px-4 py-2.5 text-right font-semibold text-[#1f2933] whitespace-nowrap">
                     ฿{row.rateThb.toLocaleString()}
+                  </td>
+                  <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                    <span className={row.discountPct === 0 ? "text-green-700" : "font-semibold text-amber-700"}>{row.discountPct.toLocaleString()}%</span>
+                  </td>
+                  <td className="px-4 py-2.5 text-right whitespace-nowrap text-[#647076]">
+                    {row.directCostThb == null ? "Unknown" : `฿${row.directCostThb.toLocaleString()}`}
+                  </td>
+                  <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                    {row.grossProfitThb == null ? "—" : (
+                      <><div>฿{row.grossProfitThb.toLocaleString()}</div><div className="text-xs text-[#8b969a]">{row.grossMarginPct?.toFixed(1)}%</div></>
+                    )}
                   </td>
                   <td className="px-4 py-2.5 text-right whitespace-nowrap">
                     <div className="flex items-center justify-end gap-1">
@@ -362,7 +398,8 @@ export default function PricingMasterPage() {
         <ul className="list-disc list-inside space-y-0.5 text-xs text-[#647076]">
           <li>Click any cell in the <span className="font-semibold text-amber-700">Pilot Rate</span> column to set an effective rate for trial operations.</li>
           <li>The AI quotation agent will use the pilot rate automatically when set; otherwise it falls back to the standard rate.</li>
-          <li>Use <span className="font-semibold">Discount %</span> to apply a bulk reduction (e.g. 30% off) to all currently filtered rows at once.</li>
+          <li>Default customer discount is <span className="font-semibold">0%</span>. Any quotation discount still requires the configured approval flow.</li>
+          <li>Use <span className="font-semibold">Pilot reduction %</span> only for an explicit temporary trial price.</li>
           <li>Badge colour: <span className="text-green-700 font-semibold">green ≥90%</span> · <span className="text-amber-700 font-semibold">amber 70–89%</span> · <span className="text-red-700 font-semibold">red &lt;70%</span> of standard rate.</li>
           <li>Showing <span className="font-semibold">{filtered.length}</span> of <span className="font-semibold">{list.length}</span> active pricing records.</li>
         </ul>

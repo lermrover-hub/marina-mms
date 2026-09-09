@@ -28,6 +28,8 @@ DECLARE
     'mms_quotations',
     'mms_ramp_bookings',
     'mms_service_requests',
+    'mms_subcontractors',
+    'mms_subcontractor_quotes',
     'mms_staff',
     'mms_utility_readings',
     'mms_work_order_tasks',
@@ -75,6 +77,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS mms_ramp_bookings_reference_key
 CREATE UNIQUE INDEX IF NOT EXISTS mms_service_requests_reference_key
   ON public.mms_service_requests (reference);
 
+CREATE UNIQUE INDEX IF NOT EXISTS mms_subcontractors_name_key
+  ON public.mms_subcontractors (lower(name));
+
+CREATE UNIQUE INDEX IF NOT EXISTS mms_subcontractor_quotes_reference_key
+  ON public.mms_subcontractor_quotes (quote_reference);
+
 CREATE UNIQUE INDEX IF NOT EXISTS mms_work_orders_reference_key
   ON public.mms_work_orders (reference);
 
@@ -83,6 +91,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS pricing_master_code_key
 
 CREATE INDEX IF NOT EXISTS mms_service_requests_status_idx
   ON public.mms_service_requests (status);
+
+CREATE INDEX IF NOT EXISTS mms_subcontractor_quotes_service_request_idx
+  ON public.mms_subcontractor_quotes (service_request_id, status);
 
 CREATE INDEX IF NOT EXISTS mms_quotations_customer_id_idx
   ON public.mms_quotations (customer_id);

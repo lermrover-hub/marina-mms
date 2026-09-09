@@ -12,7 +12,7 @@ import type { Boat } from "@/lib/supabase"
 
 const MOVEMENT_TYPES = [
   { value: "LAUNCH",     label: "Launch",          color: "bg-teal-50 border-teal-300 text-teal-700",    description: "Put boat into water via ramp" },
-  { value: "RETRIEVAL",  label: "Retrieval",        color: "bg-blue-50 border-blue-300 text-blue-700",    description: "Pull boat out of water via ramp" },
+  { value: "HAUL_OUT",   label: "Haul-out",         color: "bg-blue-50 border-blue-300 text-blue-700",    description: "Pull boat out of water via ramp" },
   { value: "TO_STORAGE", label: "To Storage",       color: "bg-orange-50 border-orange-300 text-orange-700", description: "Move boat to dry storage" },
   { value: "TO_REPAIR",  label: "To Repair Area",   color: "bg-red-50 border-red-300 text-red-700",       description: "Move boat to repair yard / workshop" },
   { value: "ARRIVAL",    label: "Marina Arrival",   color: "bg-purple-50 border-purple-300 text-purple-700", description: "Boat arrives at marina" },

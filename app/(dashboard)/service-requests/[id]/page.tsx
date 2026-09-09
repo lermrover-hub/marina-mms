@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import {
   AlertCircle, ArrowRight, Calendar, CheckCircle2, Clock,
-  ClipboardList, Edit, Ship, User, Wrench, XCircle, Loader2,
+  ClipboardList, Edit, Ship, User, Wrench, XCircle, Loader2, Building2, GitBranch,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/shared/PageHeader"
@@ -62,6 +62,7 @@ export default function ServiceRequestDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState<string | null>(null)
   const [saving,  setSaving]  = useState(false)
+  const [creatingWorkOrder, setCreatingWorkOrder] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -92,6 +93,39 @@ export default function ServiceRequestDetailPage() {
       alert("Failed to update: " + String(e))
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleCreatePlanningWorkOrder() {
+    if (!sr) return
+    setCreatingWorkOrder(true)
+    try {
+      const res = await fetch("/api/db/work-orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reference: `WO-${Date.now().toString().slice(-6)}`,
+          sr_id: sr.id,
+          service_request_id: sr.id,
+          customer_id: sr.customer_id,
+          customer_name: sr.customer_name,
+          boat_id: sr.boat_id,
+          boat_name: sr.boat_name,
+          title: `Planning: ${sr.title}`,
+          category: sr.category,
+          priority: sr.priority,
+          execution_type: sr.execution_type ?? "INTERNAL",
+          status: "NEW_REQUEST",
+          notes: "Planning work order created from Service Request. Do not start execution until scope, cost, and approval are confirmed.",
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error ?? "Failed to create work order")
+      router.push(`/work-orders/${data.id}`)
+    } catch (e) {
+      alert("Failed to create work order: " + String(e))
+    } finally {
+      setCreatingWorkOrder(false)
     }
   }
 
@@ -197,6 +231,10 @@ export default function ServiceRequestDetailPage() {
                     <p className="font-medium text-green-700">{formatDate(sr.completed_date)}</p>
                   </div>
                 )}
+                <div>
+                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Delivery Model</p>
+                  <p className="font-medium text-gray-800">{sr.execution_type ?? "INTERNAL"}</p>
+                </div>
               </div>
               {sr.notes && (
                 <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
@@ -207,21 +245,53 @@ export default function ServiceRequestDetailPage() {
             </CardContent>
           </Card>
 
-          {/* Work Order placeholder */}
+          {/* Work Order and sourcing */}
           <Card>
             <CardHeader><CardTitle>Work Order</CardTitle></CardHeader>
             <CardContent>
               <div className="text-center py-8 text-gray-400">
                 <Wrench className="h-8 w-8 mx-auto mb-2 opacity-40" />
                 <p className="text-sm">No work order linked to this request.</p>
-                {["APPROVED", "IN_PROGRESS"].includes(sr.status) && (
-                  <Button size="sm" variant="teal" className="mt-3 gap-2" onClick={() => router.push("/work-orders")}>
-                    <Wrench className="h-4 w-4" /> View Work Orders
+                {!["CANCELLED"].includes(sr.status) && (
+                  <Button
+                    size="sm"
+                    variant="teal"
+                    className="mt-3 gap-2"
+                    onClick={handleCreatePlanningWorkOrder}
+                    disabled={creatingWorkOrder}
+                  >
+                    {creatingWorkOrder ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wrench className="h-4 w-4" />}
+                    {creatingWorkOrder ? "Creating..." : "Create Planning Work Order"}
                   </Button>
                 )}
               </div>
             </CardContent>
           </Card>
+
+          {sr.execution_type !== "INTERNAL" && (
+            <Card className="border-purple-200 bg-purple-50/30">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-purple-700" /> Subcontractor Sourcing
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center gap-2 text-sm text-gray-700">
+                  <GitBranch className="h-4 w-4 text-purple-600" />
+                  <span>Status:</span>
+                  <span className="font-semibold">{sr.procurement_status ?? "NEEDS_SOURCING"}</span>
+                </div>
+                <p className="text-sm text-gray-600">
+                  Collect supplier quotes, compare scope and cost, then approve the internal contractor cost before finalizing the customer quotation.
+                </p>
+                <Button variant="outline" className="gap-2" asChild>
+                  <Link href={`/subcontractor-sourcing/new?service_request_id=${sr.id}`}>
+                    <Building2 className="h-4 w-4" /> Open Sourcing Workspace
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* ── Right sidebar ── */}
@@ -281,7 +351,7 @@ export default function ServiceRequestDetailPage() {
             <CardHeader><CardTitle className="text-sm">Quick Actions</CardTitle></CardHeader>
             <CardContent className="space-y-2">
               <Button variant="outline" className="w-full justify-start gap-2 text-sm" asChild>
-                <Link href="/quotations/new">
+                <Link href={`/quotations/new?service_request_id=${sr.id}`}>
                   <ClipboardList className="h-4 w-4 text-gray-400" /> Create Quotation
                 </Link>
               </Button>

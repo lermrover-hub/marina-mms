@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation"
 import {
   Download, Send, CheckCircle, XCircle,
   AlertCircle, User, Ship, ChevronRight, FileText,
-  ArrowRight, Edit, Copy, Loader2, PenLine, Wrench, Receipt,
+  Edit, Copy, Loader2, PenLine, Wrench, Receipt,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/shared/PageHeader"
@@ -103,6 +103,7 @@ export default function QuotationDetailPage() {
         customer_id:    quotation.customer_id ?? null,
         boat_id:        quotation.boat_id ?? null,
         quotation_id:   quotation.id,
+        work_order_id:  quotation.work_order_id ?? null,
         status:         "DRAFT",
         subtotal:       quotation.subtotal,
         discount:       quotation.discount ?? 0,

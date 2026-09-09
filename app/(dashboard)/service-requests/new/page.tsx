@@ -69,6 +69,7 @@ export default function NewServiceRequestPage() {
   const [symptomDetail, setSymptom]     = useState("")
   const [requestedDate, setReqDate]     = useState("")
   const [requiresInspection, setInsp]   = useState(true)
+  const [executionType, setExecutionType] = useState("INTERNAL")
   const [estimatedBudget, setBudget]    = useState("")
   const [depositPct, setDepositPct]     = useState("50")
   const [laborRate, setLaborRate]       = useState("450")
@@ -112,6 +113,9 @@ export default function NewServiceRequestPage() {
         deposit_pct:         depositPct ? parseFloat(depositPct) : null,
         labor_rate:          laborRate ? parseFloat(laborRate) : null,
         contractor_markup:   contractorMarkup ? parseFloat(contractorMarkup) : null,
+        execution_type:      executionType,
+        subcontractor_required: executionType !== "INTERNAL",
+        procurement_status:   executionType === "INTERNAL" ? "NOT_REQUIRED" : "NEEDS_SOURCING",
         notes:               [attachNote, internalNote].filter(Boolean).join("\n") || null,
         status:              "NEW_REQUEST",
         reference:           `SR-${Date.now().toString().slice(-6)}`,
@@ -336,6 +340,27 @@ export default function NewServiceRequestPage() {
               </div>
             </div>
 
+          </CardContent>
+        </Card>
+
+        {/* ── Delivery Model ────────────────────────────────────────────── */}
+        <Card>
+          <CardHeader><CardTitle className="text-base">Delivery Model</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            <Label htmlFor="executionType">Who will perform the work?</Label>
+            <select
+              id="executionType"
+              value={executionType}
+              onChange={(e) => setExecutionType(e.target.value)}
+              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+            >
+              <option value="INTERNAL">Internal marina / boat yard team</option>
+              <option value="SUBCONTRACTOR">External subcontractor / mechanic</option>
+              <option value="MIXED">Mixed: internal team + subcontractor</option>
+            </select>
+            <p className="text-xs text-gray-500">
+              External or mixed work creates a sourcing step for supplier quotes and cost approval before the customer quotation is finalized.
+            </p>
           </CardContent>
         </Card>
 

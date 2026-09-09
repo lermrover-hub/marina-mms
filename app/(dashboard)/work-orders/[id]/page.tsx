@@ -49,6 +49,7 @@ export default function WorkOrderDetailPage() {
   const [loading,   setLoading]   = useState(true)
   const [error,     setError]     = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState("tasks")
+  const serviceRequestId = wo?.service_request_id ?? wo?.sr_id ?? null
 
   // Tasks (live)
   const [tasks,         setTasks]         = useState<WorkOrderTask[]>([])
@@ -64,6 +65,17 @@ export default function WorkOrderDetailPage() {
   const [addForm,          setAddForm]          = useState(EMPTY_FORM)
   const [adding,           setAdding]           = useState(false)
   const [deletingId,       setDeletingId]       = useState<string | null>(null)
+  const [laborCostInput,   setLaborCostInput]   = useState("0")
+  const [savingLaborCost,  setSavingLaborCost]  = useState(false)
+  const [costingError,     setCostingError]      = useState<string | null>(null)
+
+  async function refreshWorkOrder() {
+    const res = await fetch(`/api/db/work-orders/${id}`)
+    const data = await res.json()
+    if (!res.ok || data?.error) throw new Error(data?.error ?? "Failed to refresh work order")
+    setWo(data)
+    setLaborCostInput(String(Number(data.total_labor_cost ?? 0)))
+  }
 
   // Fetch WO
   useEffect(() => {
@@ -73,7 +85,10 @@ export default function WorkOrderDetailPage() {
       .then(r => r.json())
       .then(d => {
         if (d?.error) setError("Work order not found")
-        else setWo(d)
+        else {
+          setWo(d)
+          setLaborCostInput(String(Number(d.total_labor_cost ?? 0)))
+        }
       })
       .catch(() => setError("Network error"))
       .finally(() => setLoading(false))
@@ -152,6 +167,7 @@ export default function WorkOrderDetailPage() {
         body: JSON.stringify({
           status: newStatus,
           ...(progressPercent !== undefined ? { progress_percent: progressPercent } : {}),
+          ...(newStatus === "IN_PROGRESS" && !wo?.start_date ? { start_date: new Date().toISOString().slice(0, 10) } : {}),
           ...(newStatus === "COMPLETED" ? { actual_end_date: new Date().toISOString().slice(0, 10) } : {}),
         }),
       })
@@ -183,7 +199,7 @@ export default function WorkOrderDetailPage() {
       })
       if (!res.ok) throw new Error(await res.text())
       setAddForm(EMPTY_FORM)
-      await fetchMaterials()
+      await Promise.all([fetchMaterials(), refreshWorkOrder()])
     } catch (e) {
       alert("Failed to add material: " + String(e))
     } finally {
@@ -197,11 +213,38 @@ export default function WorkOrderDetailPage() {
     try {
       const res = await fetch(`/api/db/material-usage?id=${materialId}`, { method: "DELETE" })
       if (!res.ok) throw new Error(await res.text())
-      await fetchMaterials()
+      await Promise.all([fetchMaterials(), refreshWorkOrder()])
     } catch (e) {
       alert("Failed to delete: " + String(e))
     } finally {
       setDeletingId(null)
+    }
+  }
+
+  async function handleSaveLaborCost(e: React.FormEvent) {
+    e.preventDefault()
+    const totalLaborCost = Number(laborCostInput)
+    if (!Number.isFinite(totalLaborCost) || totalLaborCost < 0) {
+      setCostingError("Labor cost must be a non-negative number.")
+      return
+    }
+
+    setSavingLaborCost(true)
+    setCostingError(null)
+    try {
+      const res = await fetch(`/api/db/work-orders/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ total_labor_cost: totalLaborCost }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok || data?.error) throw new Error(data?.error ?? "Failed to save labor cost")
+      setWo(data)
+      setLaborCostInput(String(Number(data.total_labor_cost ?? 0)))
+    } catch (e) {
+      setCostingError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setSavingLaborCost(false)
     }
   }
 
@@ -242,6 +285,11 @@ export default function WorkOrderDetailPage() {
         breadcrumb={[{ label: "Work Orders", href: "/work-orders" }, { label: wo.reference }]}
         actions={
           <div className="flex gap-2">
+            {wo.status === "APPROVED" && (
+              <Button size="sm" variant="teal" className="gap-2" onClick={() => handleWorkOrderStatus("IN_PROGRESS", 10)}>
+                <Wrench className="h-4 w-4" /> Start Work
+              </Button>
+            )}
             {wo.status === "IN_PROGRESS" && (
               <Button size="sm" variant="teal" className="gap-2" onClick={() => handleWorkOrderStatus("COMPLETED", 100)}>
                 <CheckCircle2 className="h-4 w-4" /> Mark Completed
@@ -620,6 +668,26 @@ export default function WorkOrderDetailPage() {
               <Card>
                 <CardHeader><CardTitle>Job Cost Breakdown</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
+                  <form onSubmit={handleSaveLaborCost} className="rounded-md border border-blue-100 bg-blue-50/50 p-3">
+                    <label htmlFor="labor-cost" className="mb-1 block text-xs font-semibold text-blue-800">
+                      Actual Labor Cost (THB)
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        id="labor-cost"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={laborCostInput}
+                        onChange={(event) => setLaborCostInput(event.target.value)}
+                        className="min-w-0 flex-1 rounded-md border border-blue-200 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                      />
+                      <Button type="submit" size="sm" variant="outline" disabled={savingLaborCost}>
+                        {savingLaborCost ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Labor Cost"}
+                      </Button>
+                    </div>
+                    {costingError && <p className="mt-2 text-xs text-red-600">{costingError}</p>}
+                  </form>
                   {[
                     { label: "Labor",      cost: wo.total_labor_cost,      color: "bg-blue-500" },
                     { label: "Materials",  cost: wo.total_material_cost,   color: "bg-teal-500" },
@@ -725,6 +793,29 @@ export default function WorkOrderDetailPage() {
               <p className="text-sm text-gray-800 font-medium">{wo.title}</p>
               {wo.notes && (
                 <p className="text-sm text-gray-500 italic border-l-2 border-gray-200 pl-3">{wo.notes}</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Workflow links */}
+          <Card>
+            <CardHeader><CardTitle className="text-sm">Workflow Links</CardTitle></CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <div className="flex justify-between gap-3">
+                <span className="text-gray-400">Execution model</span>
+                <span className="font-medium text-gray-700">{wo.execution_type ?? "INTERNAL"}</span>
+              </div>
+              {serviceRequestId ? (
+                <Link href={`/service-requests/${serviceRequestId}`} className="block text-teal-700 hover:text-teal-900">
+                  View linked Service Request
+                </Link>
+              ) : (
+                <p className="text-gray-400">No Service Request linked</p>
+              )}
+              {wo.subcontractor_quote_id && serviceRequestId && (
+                <Link href={`/subcontractor-sourcing/new?service_request_id=${serviceRequestId}`} className="block text-purple-700 hover:text-purple-900">
+                  View supplier sourcing and quote comparison
+                </Link>
               )}
             </CardContent>
           </Card>

@@ -12,7 +12,7 @@ import type { RampBooking } from "@/lib/supabase"
 
 const OP_LABELS: Record<string, { label: string; color: string }> = {
   LAUNCH:     { label: "Launch",     color: "bg-teal-100 text-teal-700" },
-  RETRIEVAL:  { label: "Retrieval",  color: "bg-blue-100 text-blue-700" },
+  HAUL_OUT:   { label: "Haul-out",   color: "bg-blue-100 text-blue-700" },
   MOVE_BOAT:  { label: "Move Boat",  color: "bg-indigo-100 text-indigo-700" },
   WASH:       { label: "Wash",       color: "bg-sky-100 text-sky-700" },
   FUEL:       { label: "Fuel",       color: "bg-orange-100 text-orange-700" },
@@ -60,7 +60,7 @@ export default function RampBookingsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Ramp Bookings"
-        description="Launch, retrieval, and ramp operations management"
+        description="Launch, haul-out, and ramp operations management"
         actions={
           <div className="flex items-center gap-2">
             <Button size="sm" variant="outline" className="gap-2" asChild>

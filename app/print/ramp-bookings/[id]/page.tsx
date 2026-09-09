@@ -16,7 +16,7 @@ function InfoRow({ label, value, highlight }: { label: string; value: string; hi
 }
 
 const OP_LABELS: Record<string, string> = {
-  LAUNCH:"Launch",  RETRIEVAL:"Retrieval",  MOVE_BOAT:"Move Boat",
+  LAUNCH:"Launch",  HAUL_OUT:"Haul-out",  MOVE_BOAT:"Move Boat",
   WASH:"Wash",      FUEL:"Fuel",            INSPECTION:"Inspection",
 }
 
@@ -95,14 +95,14 @@ export default function RampBookingPrintPage() {
     "Obtain customer signature for completion",
   ]
 
-  const RETRIEVAL_CHECKLIST = [
+  const HAUL_OUT_CHECKLIST = [
     "Confirm customer booking and vessel details",
-    "Verify tide height at time of retrieval",
+    "Verify tide height at time of haul-out",
     "Prepare trailer / support frame",
     "Brief staff on safe approach angle",
     "Clear storage area for vessel placement",
     "Take before photos (vessel in water)",
-    "Execute retrieval operation",
+    "Execute haul-out operation",
     "Secure vessel on cradle / support",
     "Inspect hull condition, note any damage",
     "Take after photos",
@@ -110,7 +110,7 @@ export default function RampBookingPrintPage() {
     "Complete operation log",
   ]
 
-  const checklist = booking.operation_type==="RETRIEVAL" ? RETRIEVAL_CHECKLIST : LAUNCH_CHECKLIST
+  const checklist = booking.operation_type==="HAUL_OUT" ? HAUL_OUT_CHECKLIST : LAUNCH_CHECKLIST
 
   return (
     <div style={{ background:"#f5f5f5", minHeight:"100vh", padding:"24px 0" }}>

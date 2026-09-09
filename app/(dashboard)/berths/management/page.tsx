@@ -91,7 +91,7 @@ function EditAssignmentModal({
         body: JSON.stringify({
           ...(newBerthId ? { berth_id: newBerthId } : {}),
           start_date: startDate,
-          end_date:   endDate || startDate,
+          end_date:   endDate || null,
           status,
           notes: notes.trim() || null,
         }),

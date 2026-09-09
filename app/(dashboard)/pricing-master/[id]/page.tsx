@@ -6,6 +6,21 @@ import { ArrowLeft, Save, Loader } from "lucide-react"
 import Link from "next/link"
 import { PageHeader } from "@/components/layout/PageHeader"
 
+type PricingHistoryEntry = {
+  id: string
+  action: string
+  changed_by: string | null
+  approved_by: string | null
+  source_version: string | null
+  created_at: string
+}
+
+const CATEGORIES = ["Ramp Access", "Haul-out", "Paint Service", "Yard Services", "Storage", "Other"]
+const UNITS = ["trip", "sqm", "pkg", "hr", "day", "ft", "set", "pc", "unit"]
+const CALC_TYPES = ["FLAT_QTY", "FLAT_DAYS", "LOA_RATE_QTY", "LOA_RATE_DAYS", "MANUAL"]
+const QUOTE_RULES = ["YES", "NO", "CONTACT", "MANAGER_REVIEW", "MANUAL"]
+const PRICE_STATUSES = ["ACTIVE", "INACTIVE", "CONTACT_ONLY", "PENDING_PAINT_TEAM", "MANUAL_QUOTE"]
+
 export default function PricingMasterEditPage() {
   const router = useRouter()
   const params = useParams()
@@ -15,6 +30,7 @@ export default function PricingMasterEditPage() {
   const [loading, setLoading] = useState(!isNew)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
+  const [history, setHistory] = useState<PricingHistoryEntry[]>([])
   const [formData, setFormData] = useState({
     code: "",
     serviceNameEn: "",
@@ -22,12 +38,26 @@ export default function PricingMasterEditPage() {
     category: "Paint Service",
     unit: "sqm",
     rateThb: "",
+    fullRateThb: "",
+    discountPct: "0",
+    sourceDiscountPct: "0",
+    directCostThb: "",
+    revenueGlCode: "",
+    costGlCode: "",
+    pnlCategory: "",
+    costPnlCategory: "",
+    costBasis: "",
+    calcType: "FLAT_QTY",
+    serviceGroup: "",
+    subgroup: "",
+    providerType: "",
+    quoteAllowed: "YES",
+    priceStatus: "ACTIVE",
+    sourceVersion: "",
+    effectiveDate: "",
     description: "",
     notes: ""
   })
-
-  const categories = ["Ramp Access", "Haul-out", "Paint Service", "Yard Services", "Storage", "Other"]
-  const units = ["trip", "sqm", "pkg", "hr", "day", "ft", "set", "pc", "unit"]
 
   // Fetch pricing data if editing
   useEffect(() => {
@@ -35,7 +65,10 @@ export default function PricingMasterEditPage() {
 
     const fetchPricing = async () => {
       try {
-        const res = await fetch(`/api/pricing-master/${id}`)
+        const [res, historyRes] = await Promise.all([
+          fetch(`/api/pricing-master/${id}`),
+          fetch(`/api/pricing-master/${id}/history`),
+        ])
         if (!res.ok) throw new Error("Failed to fetch")
         const json = await res.json()
         const pricing = json.data
@@ -47,9 +80,31 @@ export default function PricingMasterEditPage() {
           category: pricing.category,
           unit: pricing.unit,
           rateThb: pricing.rateThb.toString(),
+          fullRateThb: pricing.fullRateThb.toString(),
+          discountPct: String(pricing.discountPct ?? 0),
+          sourceDiscountPct: String(pricing.sourceDiscountPct ?? 0),
+          directCostThb: pricing.directCostThb == null ? "" : String(pricing.directCostThb),
+          revenueGlCode: pricing.revenueGlCode || "",
+          costGlCode: pricing.costGlCode || "",
+          pnlCategory: pricing.pnlCategory || "",
+          costPnlCategory: pricing.costPnlCategory || "",
+          costBasis: pricing.costBasis || "",
+          calcType: pricing.calcType || "FLAT_QTY",
+          serviceGroup: pricing.serviceGroup || "",
+          subgroup: pricing.subgroup || "",
+          providerType: pricing.providerType || "",
+          quoteAllowed: pricing.quoteAllowed || "YES",
+          priceStatus: pricing.priceStatus || "ACTIVE",
+          sourceVersion: pricing.sourceVersion || "",
+          effectiveDate: pricing.effectiveDate || "",
           description: pricing.description || "",
           notes: pricing.notes || ""
         })
+
+        if (historyRes.ok) {
+          const historyJson = await historyRes.json()
+          setHistory(historyJson.data ?? [])
+        }
       } catch (err) {
         console.error("Error fetching pricing:", err)
         setError("Failed to load pricing data")
@@ -87,7 +142,12 @@ export default function PricingMasterEditPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
-          rateThb: parseFloat(formData.rateThb)
+          rateThb: parseFloat(formData.rateThb),
+          fullRateThb: formData.fullRateThb ? parseFloat(formData.fullRateThb) : parseFloat(formData.rateThb),
+          discountPct: formData.discountPct ? parseFloat(formData.discountPct) : 0,
+          sourceDiscountPct: formData.sourceDiscountPct ? parseFloat(formData.sourceDiscountPct) : 0,
+          directCostThb: formData.directCostThb ? parseFloat(formData.directCostThb) : null,
+          effectiveDate: formData.effectiveDate || null,
         })
       })
 
@@ -97,9 +157,9 @@ export default function PricingMasterEditPage() {
       }
 
       router.push("/pricing-master")
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error saving pricing:", err)
-      setError(err.message || "Failed to save pricing")
+      setError(err instanceof Error ? err.message : "Failed to save pricing")
     } finally {
       setSubmitting(false)
     }
@@ -157,7 +217,7 @@ export default function PricingMasterEditPage() {
               onChange={handleChange}
               className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm text-[#1f2933] focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20"
             >
-              {categories.map((cat) => (
+              {CATEGORIES.map((cat) => (
                 <option key={cat} value={cat}>
                   {cat}
                 </option>
@@ -200,7 +260,7 @@ export default function PricingMasterEditPage() {
               onChange={handleChange}
               className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm text-[#1f2933] focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20"
             >
-              {units.map((u) => (
+              {UNITS.map((u) => (
                 <option key={u} value={u}>
                   {u}
                 </option>
@@ -220,6 +280,125 @@ export default function PricingMasterEditPage() {
               step="0.01"
               className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm text-[#1f2933] placeholder:text-[#8b969a] focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20"
             />
+          </div>
+
+          <div className="sm:col-span-2 rounded-lg border border-[#d7efed] bg-[#f3fbfa] p-4">
+            <h2 className="font-semibold text-[#126c66]">Accounting-ready pricing</h2>
+            <p className="mt-1 text-xs text-[#647076]">
+              Current rate remains the approved selling price. Default customer discount starts at 0%.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Full / Normal Rate (THB)</label>
+            <input type="number" min="0" step="0.01" name="fullRateThb" value={formData.fullRateThb} onChange={handleChange}
+              placeholder="Defaults to current rate"
+              className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20" />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Default Discount (%)</label>
+            <input type="number" min="0" max="100" step="0.01" name="discountPct" value={formData.discountPct} onChange={handleChange}
+              className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20" />
+            <p className="mt-1 text-xs text-[#8b969a]">Default is 0%. Quotation approval rules still apply.</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Source Discount Reference (%)</label>
+            <input type="number" min="0" max="100" step="0.01" name="sourceDiscountPct" value={formData.sourceDiscountPct} onChange={handleChange}
+              className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20" />
+            <p className="mt-1 text-xs text-[#8b969a]">Informational only; it is not applied automatically.</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Direct Cost (THB)</label>
+            <input type="number" min="0" step="0.01" name="directCostThb" value={formData.directCostThb} onChange={handleChange}
+              placeholder="Unknown"
+              className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20" />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Revenue GL Code</label>
+            <input type="text" name="revenueGlCode" value={formData.revenueGlCode} onChange={handleChange} placeholder="e.g. 4100"
+              className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20" />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Cost GL Code</label>
+            <input type="text" name="costGlCode" value={formData.costGlCode} onChange={handleChange} placeholder="e.g. 5100"
+              className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20" />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Revenue P&amp;L Category</label>
+            <input type="text" name="pnlCategory" value={formData.pnlCategory} onChange={handleChange} placeholder="e.g. A.Access & Ramp"
+              className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20" />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Cost P&amp;L Category</label>
+            <input type="text" name="costPnlCategory" value={formData.costPnlCategory} onChange={handleChange} placeholder="e.g. Direct Service Cost (COGS)"
+              className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20" />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Calculation Type</label>
+            <select name="calcType" value={formData.calcType} onChange={handleChange}
+              className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20">
+              {CALC_TYPES.map(value => <option key={value} value={value}>{value}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Quote Rule</label>
+            <select name="quoteAllowed" value={formData.quoteAllowed} onChange={handleChange}
+              className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20">
+              {QUOTE_RULES.map(value => <option key={value} value={value}>{value}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Price Status</label>
+            <select name="priceStatus" value={formData.priceStatus} onChange={handleChange}
+              className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20">
+              {PRICE_STATUSES.map(value => <option key={value} value={value}>{value}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Effective Date</label>
+            <input type="date" name="effectiveDate" value={formData.effectiveDate} onChange={handleChange}
+              className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20" />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Source Version</label>
+            <input type="text" name="sourceVersion" value={formData.sourceVersion} onChange={handleChange} placeholder="e.g. ORM-PRICE-2026-v3.5"
+              className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20" />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Service Group</label>
+            <input type="text" name="serviceGroup" value={formData.serviceGroup} onChange={handleChange}
+              className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20" />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Subgroup</label>
+            <input type="text" name="subgroup" value={formData.subgroup} onChange={handleChange}
+              className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20" />
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Provider Type</label>
+            <input type="text" name="providerType" value={formData.providerType} onChange={handleChange}
+              className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20" />
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Cost Basis</label>
+            <textarea name="costBasis" value={formData.costBasis} onChange={handleChange} rows={2}
+              className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20" />
           </div>
 
           {/* Description */}
@@ -276,6 +455,31 @@ export default function PricingMasterEditPage() {
           </Link>
         </div>
       </form>
+
+      {!isNew && history.length > 0 ? (
+        <section className="rounded-lg border border-[#e5dfd2] bg-white p-6 shadow-sm">
+          <h2 className="font-semibold text-[#1f2933]">Price change history</h2>
+          <p className="mt-1 text-xs text-[#8b969a]">Visible to Admin and Finance roles.</p>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b border-[#e5dfd2] text-left text-xs text-[#647076]">
+                <tr><th className="py-2">Date</th><th>Action</th><th>Changed by</th><th>Approved by</th><th>Source</th></tr>
+              </thead>
+              <tbody className="divide-y divide-[#e5dfd2]">
+                {history.map(entry => (
+                  <tr key={entry.id}>
+                    <td className="py-2 pr-4 whitespace-nowrap">{new Date(entry.created_at).toLocaleString()}</td>
+                    <td className="pr-4">{entry.action}</td>
+                    <td className="pr-4">{entry.changed_by ?? "—"}</td>
+                    <td className="pr-4">{entry.approved_by ?? "—"}</td>
+                    <td>{entry.source_version ?? "Manual update"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ) : null}
     </div>
   )
 }

@@ -57,7 +57,7 @@ const TEMPLATE_TYPES: { type: string; label: string; description: string }[] = [
   { type: "CONTRACT_BERTH",   label: "Berth Contract",        description: "Wet berth rental contract" },
   { type: "CONTRACT_STORAGE", label: "Storage Contract",      description: "Dry storage rental contract" },
   { type: "WORK_ORDER",       label: "Work Order",            description: "Boat yard work order / ใบสั่งงาน" },
-  { type: "RAMP_CONFIRM",     label: "Ramp Confirmation",     description: "Launch / retrieval confirmation" },
+  { type: "RAMP_CONFIRM",     label: "Ramp Confirmation",     description: "Launch / haul-out confirmation" },
   { type: "INCIDENT",         label: "Incident Report",       description: "Safety incident report form" },
   { type: "OTHER",            label: "Other",                 description: "General purpose templates" },
 ]
@@ -1285,7 +1285,7 @@ export default function SettingsPage() {
                       { agent: "Comms Agent",     reads: "Language mode, tone, max words, phone → shapes every customer message" },
                       { agent: "Finance Agent",   reads: "Overdue warning days, escalation threshold → controls when reminders and alerts fire" },
                       { agent: "HR Agent",        reads: "Language, KPI count, onboarding duration, and instructions → controls management drafts" },
-                      { agent: "Tide Agent",      reads: "Ramp offset, safety clearance, trailer height → used in launch/retrieval safety formula" },
+                      { agent: "Tide Agent",      reads: "Ramp offset, safety clearance, trailer height → used in launch/haul-out safety formula" },
                       { agent: "Marina Agent",    reads: "Contract & insurance expiry days → controls when renewal alerts are sent" },
                     ].map(({ agent, reads }) => (
                       <div key={agent} className="rounded-lg border border-gray-100 bg-gray-50 p-3">

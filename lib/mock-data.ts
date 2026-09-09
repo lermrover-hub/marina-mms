@@ -977,7 +977,7 @@ export const mockRampBookings = [
     customerName: "James Thornton",
     boatId: "boat-002",
     boatName: "Night Star",
-    operationType: "RETRIEVAL",
+    operationType: "HAUL_OUT",
     status: "CONFIRMED",
     requestedDate: "2026-05-22",
     requestedTime: "08:00",

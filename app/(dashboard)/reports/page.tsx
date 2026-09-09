@@ -216,6 +216,12 @@ export default function ReportsPage() {
         >
           <TrendingUp className="h-4 w-4" /> Job Margin Analytics →
         </Link>
+        <Link
+          href="/reports/ramp-ledger"
+          className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-100 transition-colors"
+        >
+          <DollarSign className="h-4 w-4" /> Ramp Revenue &amp; Cost Ledger →
+        </Link>
       </div>
 
       {/* ── KPI Summary (static) ───────────────────────────────────────────── */}

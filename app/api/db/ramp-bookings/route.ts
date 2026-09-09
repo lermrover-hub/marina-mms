@@ -35,10 +35,27 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json()
+    const revenueAmount = Number(body.revenue_amount ?? 0)
+    const estimatedCostAmount = Number(body.estimated_cost_amount ?? 0)
+    if (!Number.isFinite(revenueAmount) || revenueAmount < 0) {
+      return NextResponse.json({ error: "Revenue amount must be zero or greater" }, { status: 400 })
+    }
+    if (!Number.isFinite(estimatedCostAmount) || estimatedCostAmount < 0) {
+      return NextResponse.json({ error: "Estimated cost must be zero or greater" }, { status: 400 })
+    }
     const now = new Date().toISOString()
     const { data, error } = await supabase
       .from("mms_ramp_bookings")
-      .insert({ ...body, created_at: now, updated_at: now })
+      .insert({
+        ...body,
+        revenue_amount: revenueAmount,
+        estimated_cost_amount: estimatedCostAmount,
+        revenue_account_code: body.revenue_account_code ?? "4100-RAMP",
+        cost_account_code: body.cost_account_code ?? "5100-RAMP",
+        financial_status: body.financial_status ?? "ESTIMATED",
+        created_at: now,
+        updated_at: now,
+      })
       .select()
       .single()
     if (error) throw error

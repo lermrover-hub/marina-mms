@@ -7,6 +7,10 @@ import { quotationSent } from "@/lib/email-templates"
 export const dynamic = "force-dynamic"
 
 type QuotationLineItem = {
+  pricingMasterId?: string
+  pricing_master_id?: string
+  pricingCode?: string
+  pricing_code?: string
   description?: string
   qty?: number
   quantity?: number
@@ -94,11 +98,54 @@ export async function POST(req: Request) {
       customer?.company_name ??
       ([customer?.first_name, customer?.last_name].filter(Boolean).join(" ") || null)
 
-    const subtotal = Number(body.subtotal ?? 0)
-    const discount = Number(body.discount_amount ?? body.discount ?? 0)
-    const vatAmount = Number(body.tax_amount ?? body.vat_amount ?? 0)
-    const totalAmount = Number(body.grand_total ?? body.total_amount ?? 0)
-    const depositAmount = Number(body.deposit_req ?? body.deposit_amount ?? 0)
+    const rawItems: QuotationLineItem[] = Array.isArray(body.items) ? body.items : []
+    const normalizedItems = rawItems.map((item, index) => {
+      const qty = Number(item.qty ?? item.quantity ?? 1)
+      const unitPrice = Number(item.unitPrice ?? item.unit_price ?? 0)
+      if (!Number.isFinite(qty) || qty <= 0 || !Number.isFinite(unitPrice) || unitPrice < 0) {
+        throw new Error(`Invalid quantity or unit price at quotation line ${index + 1}`)
+      }
+      return {
+        ...item,
+        qty,
+        unitPrice,
+        pricingCode: String(item.pricingCode ?? item.pricing_code ?? "").trim() || null,
+      }
+    })
+
+    const calculatedSubtotal = normalizedItems.reduce((sum, item) => sum + item.qty * item.unitPrice, 0)
+    const subtotal = normalizedItems.length > 0 ? calculatedSubtotal : Number(body.subtotal ?? 0)
+    const hasExplicitDiscountType = body.discount_type !== undefined && body.discount_type !== null
+    const discountType = String(body.discount_type ?? "NONE").toUpperCase()
+    const discountValue = Number(body.discount_value ?? 0)
+    const discount = discountType === "PERCENT"
+      ? Math.round(subtotal * discountValue / 100)
+      : discountType === "FIXED"
+        ? discountValue
+        : hasExplicitDiscountType
+          ? 0
+          : Number(body.discount_amount ?? body.discount ?? 0)
+    const vatRate = Number(body.tax_rate ?? 7)
+    const afterDiscount = subtotal - discount
+    const vatAmount = Math.round(afterDiscount * vatRate / 100)
+    const totalAmount = afterDiscount + vatAmount
+    const depositPct = Number(body.deposit_pct ?? 0)
+    const depositAmount = body.deposit_pct !== undefined
+      ? Math.round(totalAmount * depositPct / 100)
+      : Number(body.deposit_req ?? body.deposit_amount ?? 0)
+
+    if (
+      ![subtotal, discount, vatRate, vatAmount, totalAmount, depositAmount].every(Number.isFinite)
+      || subtotal < 0
+      || discount < 0
+      || discount > subtotal
+      || vatRate < 0
+      || vatRate > 100
+      || depositAmount < 0
+      || depositAmount > totalAmount
+    ) {
+      return NextResponse.json({ error: "Invalid quotation financial values" }, { status: 400 })
+    }
     const status = body.status === "SENT" ? "SENT" : "DRAFT"
     const discountPercent = subtotal > 0 ? (discount / subtotal) * 100 : 0
     const discountLevel =
@@ -152,19 +199,50 @@ export async function POST(req: Request) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-    if (Array.isArray(body.items) && body.items.length > 0) {
-      const items = body.items.map((item: QuotationLineItem, index: number) => {
-        const qty = Number(item.qty ?? item.quantity ?? 1)
-        const unitPrice = Number(item.unitPrice ?? item.unit_price ?? 0)
+    if (normalizedItems.length > 0) {
+      const pricingCodes = [...new Set(normalizedItems.map((item) => item.pricingCode).filter((code): code is string => Boolean(code)))]
+      const { data: pricingRows, error: pricingError } = pricingCodes.length > 0
+        ? await supabase
+            .from("pricing_master")
+            .select("id,code,full_rate_thb,rate_thb,direct_cost_thb,revenue_gl_code,cost_gl_code,pnl_category,cost_pnl_category,source_version,effective_date,updated_at")
+            .in("code", pricingCodes)
+        : { data: [], error: null }
+
+      if (pricingError) {
+        await supabase.from("mms_quotations").delete().eq("id", data.id)
+        return NextResponse.json({ error: pricingError.message }, { status: 500 })
+      }
+
+      const pricingByCode = new Map((pricingRows ?? []).map((row) => [row.code, row]))
+      const missingPricingCodes = pricingCodes.filter((code) => !pricingByCode.has(code))
+      if (missingPricingCodes.length > 0) {
+        await supabase.from("mms_quotations").delete().eq("id", data.id)
+        return NextResponse.json({ error: `Unknown pricing code: ${missingPricingCodes.join(", ")}` }, { status: 400 })
+      }
+
+      const items = normalizedItems.map((item, index) => {
+        const pricing = item.pricingCode ? pricingByCode.get(item.pricingCode) : null
 
         return {
           quotation_id: data.id,
           description: item.description ?? "",
-          qty,
+          qty: item.qty,
           unit: item.unit ?? "item",
-          unit_price: unitPrice,
+          unit_price: item.unitPrice,
           discount_pct: 0,
           taxable: vatAmount > 0,
+          pricing_master_id: pricing?.id ?? null,
+          pricing_code: pricing?.code ?? null,
+          full_rate_snapshot_thb: pricing?.full_rate_thb ?? null,
+          current_rate_snapshot_thb: pricing?.rate_thb ?? null,
+          direct_cost_snapshot_thb: pricing?.direct_cost_thb ?? null,
+          revenue_gl_code: pricing?.revenue_gl_code ?? null,
+          cost_gl_code: pricing?.cost_gl_code ?? null,
+          pnl_category: pricing?.pnl_category ?? null,
+          cost_pnl_category: pricing?.cost_pnl_category ?? null,
+          pricing_source_version: pricing?.source_version ?? null,
+          pricing_effective_date: pricing?.effective_date ?? null,
+          pricing_updated_at: pricing?.updated_at ?? null,
           // line_total omitted — generated column in production schema
           sort_order: index + 1,
         }

@@ -29,7 +29,7 @@ const PAYMENT_TERMS_OPTIONS = [
 ]
 
 const SERVICE_CATEGORIES = [
-  "Wet Berth", "Dry Storage", "Ramp Service", "Launch / Retrieval",
+  "Wet Berth", "Dry Storage", "Ramp Service", "Launch / Haul-out",
   "Boat Repair", "Antifouling", "Painting", "Engine Service",
   "Electrical", "Cleaning / Detailing", "Fuel", "Water / Electricity",
   "Contractor Service", "Other",

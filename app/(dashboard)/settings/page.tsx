@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
-import { supabase } from "@/lib/supabase"
 import type { Staff, DocumentTemplate } from "@/lib/supabase"
 import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher"
 import { useLocale } from "@/lib/i18n/LocaleContext"
@@ -254,20 +253,16 @@ export default function SettingsPage() {
     setUploadingType(templateType)
     setTemplateError(null)
     try {
-      // 1. Upload file to Supabase Storage
-      const storagePath = `${templateType.toLowerCase()}/${Date.now()}-${file.name}`
-      const { data: storageData, error: storageErr } = await supabase.storage
-        .from("mms-templates")
-        .upload(storagePath, file, { upsert: false, contentType: file.type })
-      if (storageErr) throw new Error(storageErr.message)
+      // 1. Upload through the authenticated server API; the browser never receives service credentials.
+      const uploadForm = new FormData()
+      uploadForm.set("bucket", "mms-templates")
+      uploadForm.set("folder", templateType.toLowerCase())
+      uploadForm.set("file", file)
+      const uploadRes = await fetch("/api/storage", { method: "POST", body: uploadForm })
+      const uploadData = await uploadRes.json()
+      if (!uploadRes.ok) throw new Error(uploadData?.error ?? "Storage upload failed")
 
-      // 2. Get public URL
-      const { data: urlData } = supabase.storage
-        .from("mms-templates")
-        .getPublicUrl(storageData.path)
-      const publicUrl = urlData?.publicUrl ?? ""
-
-      // 3. Save template record to DB
+      // 2. Save template record to DB
       const res = await fetch("/api/db/document-templates", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -276,10 +271,10 @@ export default function SettingsPage() {
           name:          `${TEMPLATE_TYPES.find(t => t.type === templateType)?.label ?? templateType} — Sample`,
           language:      "TH/EN",
           file_name:     file.name,
-          file_url:      publicUrl,
+          file_url:      uploadData.url,
           file_size:     file.size,
           mime_type:     file.type,
-          uploaded_by:   "Admin",
+          uploaded_by:   uploadData.uploadedBy,
           is_active:     true,
         }),
       })

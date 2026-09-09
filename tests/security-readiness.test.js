@@ -47,3 +47,18 @@ test("portal-facing APIs derive customer scope from the verified session", () =>
   assert.match(quotationDetail, /concealOtherCustomer\(access\.actor/)
   assert.match(quotationDetail, /body\.action !== "approve" && body\.status !== "REJECTED"/)
 })
+
+test("storage writes use an authenticated server route and remove the public ALL policy", () => {
+  const route = read("../app/api/storage/route.ts")
+  assert.match(route, /requireApiActor\(STAFF_ROLES\)/)
+  assert.match(route, /requireServiceRole: true/)
+  assert.match(route, /MAX_FILE_SIZE = 10 \* 1024 \* 1024/)
+
+  const photoUpload = read("../components/shared/PhotoUpload.tsx")
+  assert.match(photoUpload, /fetch\("\/api\/storage"/)
+  assert.doesNotMatch(photoUpload, /supabase\.storage/)
+
+  const migration = read("../supabase/migrations/20260909153000_harden_storage_writes.sql")
+  assert.match(migration, /DROP POLICY IF EXISTS marina_files_all_access/)
+  assert.match(migration, /SET public = false/)
+})

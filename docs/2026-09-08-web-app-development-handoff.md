@@ -60,17 +60,17 @@ Verified on staging:
 - quotation snapshot columns work inside a rollback transaction
 - rollback validation left no test residue
 
-Supabase advisory note: pricing history is service-role only. The staging project also has pre-existing RLS/policy advisories on several server-only tables; review before production deployment.
+Supabase advisory note: pricing history and operations tables are service-role only. `RLS enabled no policy` findings are INFO for this architecture; unused-index findings remain INFO and should be reassessed after pilot traffic.
 
 ## Last-known validation results
 
-These results were valid before the most recent handoff edit and must be rerun after completing E2E/fixes:
+These results were rerun after the 2026-09-10 Operations/Accounting isolation:
 
-- Accounting-focused tests: **10/10 passed**
-- Full test suite: **44/44 passed**
+- Accounting-focused tests: **passed**
+- Full test suite: **80/80 passed**
 - TypeScript: **passed**
-- ESLint: **0 errors, 19 warnings**
-- Production build: **passed, 65 routes**
+- ESLint: **0 errors, 22 warnings**
+- Production build: **passed, 79/79 static pages**
 
 Final gates:
 
@@ -196,4 +196,11 @@ Remaining completion work is outside this technical staging run: controlled real
 
 The production project is healthy but is **not deployment-ready**. Supabase reports 55 public-schema tables with RLS disabled, and direct grant inspection shows `anon`/`authenticated` retain broad privileges on sensitive business tables. A role-simulated read confirmed anonymous visibility of row counts in users, boats, and quotations. Storage also has a public `ALL` policy on the private `marina-files` bucket. No production data values were retrieved, and no production write was performed.
 
-Two local source-only security commits replace mock-password authentication with active database users and bcrypt verification, validate Auth.js sessions instead of cookie presence, scope portal customer reads, move storage writes behind an authenticated server API, and add staged RLS/storage hardening migrations. Full details and the required deploy-before-migrate sequence are in `docs/2026-09-09-production-security-readiness.md`. These remediations have not been deployed or applied to any database.
+The 2026-09-09 source-only security commits replaced mock-password authentication with active database users and bcrypt verification, validated Auth.js sessions instead of cookie presence, scoped portal customer reads, moved storage writes behind an authenticated server API, and added staged RLS/storage hardening migrations. Full details and the required deploy-before-migrate sequence are in `docs/2026-09-09-production-security-readiness.md`; the 2026-09-10 continuation below supersedes the older staging status.
+
+## Continuation result — 2026-09-10
+
+- Branch `codex/accounting-e2e-production-readiness` includes pushed commits `5297efa` (public inquiry hardening) and `a21167b` (Supabase-isolated Operations/Accounting APIs).
+- Inquiry and Operations/Accounting hardening migrations were applied only to staging; production remained untouched.
+- Protected Preview runtime passed authenticated contractor, supplier, PO/item/detail, stock and Finance inventory-report checks. PO totals were 200/14/214, stock moved 10 to 13, and cleanup left 0 test rows.
+- Remaining entry blockers are Accounting approval for 28 Cost GL/P&L/Cost Basis mappings, controlled Rate Card import/reconciliation of 127 codes, broader role/customer isolation runtime checks, and explicit production deployment/migration approval.

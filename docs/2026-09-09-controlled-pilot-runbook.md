@@ -12,8 +12,8 @@
 
 - [ ] Accounting อนุมัติ Cost GL, Cost P&L และ Cost Basis ที่ยังค้าง 28 รหัส
 - [ ] Rate Card v3.5 ผ่าน staging preview/import และ reconciliation ครบ 127 รหัส
-- [ ] Apply pricing-history hardening ใน staging และตรวจว่าสิทธิ์ `service_role` เหลือ `SELECT, INSERT`
-- [ ] Full staging E2E ผ่านซ้ำหลัง migration/import
+- [x] Apply pricing-history hardening ใน staging และตรวจว่าสิทธิ์ `service_role` เหลือ `SELECT, INSERT`
+- [ ] Full staging E2E ผ่านซ้ำหลัง **Rate Card import** (technical E2E ก่อน import ผ่านแล้ว)
 - [ ] Security/performance advisor findings ถูกจัดประเภทเป็น blocker, accepted risk หรือ follow-up พร้อมเจ้าของงาน
 - [ ] Production migration, deployment และ pilot scope ได้รับอนุมัติ ณ เวลาทำจริง
 - [ ] ระบุรายชื่อลูกค้า/เรือ/ผู้ใช้ pilot และผู้มีอำนาจหยุด pilot
@@ -92,3 +92,10 @@ Accounting ต้องตอบว่า `accept`, `correct before continue` �
 - audit/snapshot/role controls ผ่านการสุ่มตรวจ
 - Operations ยืนยันว่า workflow ใช้งานจริงได้โดยไม่พึ่ง workaround ที่เสี่ยง
 - รายการ V2 แยกจาก V1 พร้อม evidence และ priority; ไม่แทรก V2 ก่อน V1 sign-off
+
+## Technical readiness evidence — 2026-09-10
+
+- Full tests 80/80, TypeScript passed, ESLint 0 errors/22 warnings, diff-check passed และ staging-configured build 79/79 pages
+- Protected Preview runtime ผ่าน authenticated Operations/Accounting read/write smoke; PO totals 200/14/214 และ stock 10 เป็น 13
+- Staging RLS/FORCE RLS และ service-role-only grants ผ่าน; temporary verification rows ถูก cleanup เหลือ 0
+- Entry gates ที่ยังไม่ผ่าน: Accounting mapping 28 รหัส, Rate Card import/reconciliation 127 รหัส, role/customer-isolation runtime matrix และ production action-time approvals

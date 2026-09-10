@@ -4,6 +4,7 @@ import { createServerClient } from "@/lib/supabase-server"
 import { sendEmail } from "@/lib/email"
 import { quotationSent } from "@/lib/email-templates"
 import { customerScope, PORTAL_READ_ROLES, QUOTATION_WRITE_ROLES, requireApiActor } from "@/lib/api-auth"
+import { validateQuotationCreateInput } from "@/lib/quotation-validation"
 
 export const dynamic = "force-dynamic"
 
@@ -52,6 +53,11 @@ export async function POST(req: Request) {
     const body = await req.json()
     const supabase = createServerClient()
 
+    const validationError = validateQuotationCreateInput(body)
+    if (validationError) {
+      return NextResponse.json({ error: validationError }, { status: 400 })
+    }
+
     // APPROVAL GATE: If this is agent-created, require approval order
     if (body.generated_by === "ai-agent" || body.draft_by_agent) {
       if (!body.ai_order_id) {
@@ -80,7 +86,7 @@ export async function POST(req: Request) {
       }
     }
 
-    const customerId = body.customer_id || null
+    const customerId = String(body.customer_id).trim()
     const boatId = body.boat_id || null
 
     const [{ data: customer }, { data: boat }] = await Promise.all([

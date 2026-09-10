@@ -79,7 +79,36 @@ Truck and crane services for boat transportation are priced as a **round trip** 
 
 ---
 
-## 5. VAT Rule
+## 5. Outsourced / Subcontractor Pricing Rule
+
+Engine/mechanic and paint-related work must not be auto-priced by AI.
+
+### Engine / Mechanic
+
+- Engine, motor, impeller, oil/filter/gasket/consumable, and other mechanic specialist work is outsourced.
+- The quotation agent must not invent labour, material, or part codes such as `LABOUR_ENGINE_SERVICE`, `MAT_ENGINE_OIL`, or `MAT_IMPELLER`.
+- If a rate card row such as `MECH_ENGINE` exists, it is a manual-quote escalation marker only.
+- Manager must contact the customer directly and coordinate with the mechanic/specialist before pricing.
+
+### Paint / Polishing / Antifouling / Gelcoat
+
+- Paint, polishing, antifouling, primer, topside, and gelcoat prices may be revised later.
+- These prices must wait for subcontractor or painting team confirmation.
+- The quotation agent must not auto-price these items unless an approved active rate card row explicitly allows quoting.
+- Pending/contact/manual rows are escalation markers, not permission to estimate prices.
+
+### Escalation
+
+For any missing, unclear, out-of-policy, contact-only, manual-quote, or subcontractor-priced item:
+
+1. Do not contact the customer directly.
+2. Do not create a customer-facing quotation.
+3. Create a manager escalation/audit entry.
+4. Manager is responsible for customer contact and final pricing.
+
+---
+
+## 6. VAT Rule
 
 VAT is applied to the subtotal after discount.
 
@@ -94,7 +123,7 @@ Never hardcode 7% in agent logic — always read from config.
 
 ---
 
-## 6. Deposit Rule
+## 7. Deposit Rule
 
 ```
 depositRequired = round(grandTotal × (deposit_pct / 100))
@@ -106,7 +135,7 @@ Deposit is required before work begins unless a manager override is recorded.
 
 ---
 
-## 7. Quotation Validity Rule
+## 8. Quotation Validity Rule
 
 ```
 validUntil = today + valid_days
@@ -118,7 +147,7 @@ After `validUntil`, the quotation status must be set to `expired` and a new quot
 
 ---
 
-## 8. GL Mapping Rule
+## 9. GL Mapping Rule
 
 Each pricing item in `mms_pricing_master` should have a `gl_code` that maps to the marina's chart of accounts.
 
@@ -138,7 +167,7 @@ GL codes must not be assigned by AI agents. They are set by Finance when configu
 
 ---
 
-## 9. Pilot Rate Note
+## 10. Pilot Rate Note
 
 A pilot rate (`pilotRateThb`) is an override price used for testing new pricing or applying a promotional rate for a specific period.
 - Pilot rates are flagged in the rate card summary sent to Claude with the tag `[pilot]`.
@@ -147,7 +176,7 @@ A pilot rate (`pilotRateThb`) is an override price used for testing new pricing 
 
 ---
 
-## 10. Pricing Change Process
+## 11. Pricing Change Process
 
 1. Finance or Marina Manager updates `mms_pricing_master` via the web app Pricing Master page.
 2. Change takes effect immediately for new quotations.

@@ -6,7 +6,7 @@
  *   WHATSAPP_PHONE_NUMBER_ID    — from Meta Business → WhatsApp → API Setup
  *   WHATSAPP_ACCESS_TOKEN       — System user token from Meta Business
  *   WHATSAPP_WEBHOOK_VERIFY_TOKEN — any secret string you choose
- *   WHATSAPP_API_VERSION        — optional, defaults to v20.0
+ *   WHATSAPP_API_VERSION        — optional, defaults to v25.0
  */
 
 import { createHmac, timingSafeEqual } from "crypto"
@@ -14,8 +14,9 @@ import { createHmac, timingSafeEqual } from "crypto"
 const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID ?? ""
 const ACCESS_TOKEN    = process.env.WHATSAPP_ACCESS_TOKEN ?? ""
 const APP_SECRET      = process.env.WHATSAPP_APP_SECRET ?? ""
-const API_VERSION     = process.env.WHATSAPP_API_VERSION ?? "v20.0"
+const API_VERSION     = process.env.WHATSAPP_API_VERSION ?? "v25.0"
 const SITE_URL        = process.env.NEXTAUTH_URL ?? "https://marina-mms.vercel.app"
+const MESSAGES_ENABLED = process.env.ENABLE_REAL_CUSTOMER_MESSAGES === "true"
 
 export function verifyWhatsAppSignature(body: string, signature: string): boolean {
   if (!APP_SECRET || !signature.startsWith("sha256=")) return false
@@ -30,9 +31,16 @@ export function verifyWhatsAppSignature(body: string, signature: string): boolea
 // ─── Core send ────────────────────────────────────────────────────────────────
 
 async function waPost(body: unknown) {
+  if (!MESSAGES_ENABLED) {
+    return {
+      success: false,
+      blocked: true,
+      reason: "ENABLE_REAL_CUSTOMER_MESSAGES is not enabled",
+    }
+  }
   if (!PHONE_NUMBER_ID || !ACCESS_TOKEN) {
     console.log("[WhatsApp - not configured] Would send:", JSON.stringify(body).slice(0, 120))
-    return { success: true, mock: true }
+    return { success: false, mock: true, reason: "WhatsApp credentials are not configured" }
   }
   const res = await fetch(
     `https://graph.facebook.com/${API_VERSION}/${PHONE_NUMBER_ID}/messages`,

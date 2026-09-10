@@ -8,15 +8,22 @@ export const dynamic = "force-dynamic"
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const { data, error } = await supabase
+    const { data: invoice, error } = await supabase
       .from("mms_invoices")
-      .select("*, mms_invoice_items(*)")
+      .select("*")
       .eq("id", id)
       .single()
     if (error) throw error
-    return NextResponse.json(data)
+    const { data: items, error: itemsError } = await supabase
+      .from("mms_invoice_items")
+      .select("*")
+      .eq("invoice_id", id)
+      .order("sort_order")
+    if (itemsError) throw itemsError
+    return NextResponse.json({ ...invoice, mms_invoice_items: items ?? [] })
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    const message = e instanceof Error ? e.message : (e as { message?: string })?.message ?? String(e)
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
 

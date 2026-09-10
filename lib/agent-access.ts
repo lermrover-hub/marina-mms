@@ -8,7 +8,8 @@ const CONTROL_ROLES = new Set([
   "FINANCE",
 ])
 
-export async function canManageAgents() {
+export async function canManageAgents(req?: Request) {
+  if (req && hasValidAgentKey(req)) return true
   const session = await auth()
   const role = (session?.user as { role?: string } | undefined)?.role
   return Boolean(role && CONTROL_ROLES.has(role))

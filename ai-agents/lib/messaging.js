@@ -14,8 +14,9 @@ import { MARINA_NAME, MARINA_PHONE, MARINA_PORTAL_URL } from "./constants.js"
 const LINE_TOKEN   = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? ""
 const WA_PHONE_ID  = process.env.WHATSAPP_PHONE_NUMBER_ID  ?? ""
 const WA_TOKEN     = process.env.WHATSAPP_ACCESS_TOKEN     ?? ""
-const WA_VERSION   = process.env.WHATSAPP_API_VERSION      ?? "v20.0"
+const WA_VERSION   = process.env.WHATSAPP_API_VERSION      ?? "v25.0"
 const DRY_RUN      = process.env.AI_AGENT_DRY_RUN === "true"
+const REAL_MESSAGES_ENABLED = process.env.ENABLE_REAL_CUSTOMER_MESSAGES === "true"
 
 // ─── LINE ─────────────────────────────────────────────────────────────────────
 
@@ -64,9 +65,16 @@ export async function sendWhatsAppText(to, text) {
     console.log(`[Messaging DRY RUN] WhatsApp → ${phone}: ${text.slice(0, 80)}…`)
     return { success: true, dryRun: true }
   }
+  if (!REAL_MESSAGES_ENABLED) {
+    return {
+      success: false,
+      blocked: true,
+      reason: "ENABLE_REAL_CUSTOMER_MESSAGES is not enabled",
+    }
+  }
   if (!WA_PHONE_ID || !WA_TOKEN) {
     console.log(`[Messaging - WhatsApp not configured] Would send to ${phone}`)
-    return { success: true, mock: true }
+    return { success: false, mock: true, reason: "WhatsApp credentials are not configured" }
   }
   const res = await fetch(`https://graph.facebook.com/${WA_VERSION}/${WA_PHONE_ID}/messages`, {
     method: "POST",

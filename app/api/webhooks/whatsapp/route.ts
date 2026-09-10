@@ -38,7 +38,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 })
     }
     if (process.env.ENABLE_AUTOMATION_WRITES !== "true") {
-      return NextResponse.json({ error: "Automation writes are disabled" }, { status: 503 })
+      // Acknowledge valid Meta events without writing so safe mode does not
+      // trigger repeated webhook deliveries.
+      return NextResponse.json({
+        ok: true,
+        safe_mode: true,
+        writes_performed: false,
+        reason: "ENABLE_AUTOMATION_WRITES is not enabled",
+      })
     }
     const body = JSON.parse(rawBody)
 

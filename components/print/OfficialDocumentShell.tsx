@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect } from "react"
+import React, { useEffect, useState } from "react"
 
 export const COMPANY = {
   nameTh: "บริษัท ปาล์มบีช สมุย แอสเสท จำกัด (สำนักงานใหญ่)",
@@ -144,6 +144,8 @@ export interface ESignBlockProps {
   signedDate?: string
   companyDetails?: boolean
   showNameLine?: boolean
+  /** Override the company signature image (skips the API fetch when pre-fetched by the parent). */
+  signatureUrl?: string
 }
 
 export function ESignBlock({
@@ -153,8 +155,22 @@ export function ESignBlock({
   signedDate,
   companyDetails,
   showNameLine = true,
+  signatureUrl: signatureUrlProp,
 }: ESignBlockProps) {
   const displayName = signedName ?? (companyDetails ? COMPANY.nameEn : undefined)
+
+  // When companyDetails is true and no URL was passed as a prop, fetch from settings API.
+  const [fetchedUrl, setFetchedUrl] = useState<string | null>(signatureUrlProp ?? null)
+
+  useEffect(() => {
+    if (!companyDetails || signatureUrlProp !== undefined) return
+    fetch("/api/settings/signature")
+      .then((r) => r.json())
+      .then((d) => { if (d?.url) setFetchedUrl(d.url) })
+      .catch(() => {})
+  }, [companyDetails, signatureUrlProp])
+
+  const companySigSrc = fetchedUrl ?? COMPANY.eSignSrc
 
   return (
     <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: "12px 14px" }}>
@@ -175,7 +191,7 @@ export function ESignBlock({
         <div style={{ height: 56, display: "flex", alignItems: "center", justifyContent: "center" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={COMPANY.eSignSrc}
+            src={companySigSrc}
             alt="Company signature"
             style={{ maxHeight: 54, maxWidth: "100%", objectFit: "contain" }}
             onError={(event) => {

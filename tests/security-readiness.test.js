@@ -67,6 +67,10 @@ test("storage writes use an authenticated server route and remove the public ALL
   assert.match(photoUpload, /fetch\("\/api\/storage"/)
   assert.doesNotMatch(photoUpload, /supabase\.storage/)
 
+  const settings = read("../app/(dashboard)/settings/page.tsx")
+  assert.match(settings, /fetch\("\/api\/storage"/)
+  assert.doesNotMatch(settings, /supabase\.storage/)
+
   const migration = read("../supabase/migrations/20260909153000_harden_storage_writes.sql")
   assert.match(migration, /DROP POLICY IF EXISTS marina_files_all_access/)
   assert.match(migration, /SET public = false/)

@@ -21,5 +21,8 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.56.0",
     "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "pg": "^8.21.0"
   }
 }

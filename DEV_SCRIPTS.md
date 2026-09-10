@@ -1,5 +1,38 @@
 # Marina MMS - Development State and Safe Commands
 
+## CLAUDE QA PASS - 2026-06-13
+
+- Fixed `no-unused-expressions` warning in `app/(dashboard)/reports/aging/page.tsx` (ternary-for-side-effects → if/else).
+- `tsc --noEmit`: ✅ exit 0 | `lint --quiet`: ✅ exit 0 | `next build`: ✅ exit 0 (77/77 pages).
+- **Pending for Codex:** run web tests, agent tests, then browser/API smoke tests for receipts, invoice detail, and new modules from `611bc28`/`5096e75`. Production write flags remain disabled.
+
+## PAUSED HANDOFF TO CLAUDE - 2026-06-13
+
+- Current HEAD: `5096e75` on `main`/`origin/main`.
+- Current HEAD passes typecheck, lint `--quiet`, web tests `34/34`, agent tests `124 pass / 20 skip`, and production build (`77/77` pages).
+- Production browser/API smoke testing for receipt/invoice fixes and the new `611bc28`/`5096e75` modules remains pending.
+- Review the build warning in `app/(dashboard)/reports/aging/page.tsx` first. ← RESOLVED (see Claude QA Pass above)
+- Workflow decision: Claude implements; Codex reviews/debugs/tests. Production write flags remain disabled.
+
+## CODEX TEST RESULT - 2026-06-13
+
+- Commit reviewed: `2c7e284`.
+- Typecheck, lint `--quiet`, web tests `34/34`, AI-agent tests `124 pass / 20 skip`, and production build (`77/77`) all PASS.
+- Production read-only smoke tests PASS for all new module/report pages plus confirmed receipt and linked invoice APIs.
+- No production data was written. See `CLAUDE_HANDOFF.md` for route coverage.
+
+## CODEX REVIEW OF CLAUDE COMMIT 9ce1389 - 2026-06-12
+
+- Found Finance preview did not apply `upcoming_due_days`; fixed upcoming invoice count/list/total output.
+- Found Marina preview silently ignored Supabase query errors; fixed it to fail explicitly.
+- Found Control Center error messages used success styling; added distinct error state.
+- Reviewed concurrent tide commit `2bee980`: fixed New Ramp Booking required-tide formula, which understated the threshold by 2.0 m, and fixed blank ramp-offset fallback in Tide Calculator.
+- New Ramp Booking no longer calculates a safe window from zero draft/trailer values; both dimensions are required for Launch/Retrieval.
+- Reviewed receipt commit `f78c2fb`: receipt links/API now allow only `CONFIRMED` payments, and linked-invoice query failures are no longer ignored.
+- Production receipt smoke test found embedded invoice-item relationship lookup returning HTTP 500; payment and invoice detail routes now load items explicitly by `invoice_id`.
+- Full findings and remaining verification are recorded in `CLAUDE_HANDOFF.md`.
+- Production writes/messages/bookings remain disabled. Do not change those flags for verification.
+
 > Current Claude Code handoff: read `C:\marina-mms\CLAUDE_HANDOFF.md` first. It contains the active branch, completed AI Agent Control Center work, test evidence, remaining full-app QA, deployment steps, and production safety boundaries.
 
 ## ACTIVE HANDOFF TO CODEX - 2026-06-12 (Claude → Codex)
@@ -1098,3 +1131,37 @@ git push origin main
 ```
 
 Do not manually deploy or enable production writes without explicit approval. GitHub pushes may trigger the configured Vercel deployment automatically.
+
+## Operations Tables Migration - 2026-06-13
+
+Apply the idempotent operations compatibility migration:
+
+```powershell
+cd C:\marina-mms
+npx.cmd prisma db execute --file prisma\migrations\20260613_add_operations_tables\migration.sql
+```
+
+The operations API routes use server-only `DATABASE_URL` via `lib/postgres.ts`.
+Do not expose this value to client components. The migration intentionally keeps
+RLS enabled and revokes direct `anon` and `authenticated` table privileges.
+
+## WhatsApp Cloud API Setup
+
+Production webhook URL:
+
+```text
+https://marina-mms.vercel.app/api/webhooks/whatsapp
+```
+
+Required Vercel variables:
+
+- `WHATSAPP_WEBHOOK_VERIFY_TOKEN` - generated secret shared with Meta webhook setup.
+- `WHATSAPP_APP_SECRET` - Meta app secret used to validate `x-hub-signature-256`.
+- `WHATSAPP_PHONE_NUMBER_ID` - WhatsApp Cloud API phone number ID.
+- `WHATSAPP_ACCESS_TOKEN` - permanent system-user token.
+- `WHATSAPP_API_VERSION=v25.0`.
+
+Keep both `ENABLE_AUTOMATION_WRITES=false` and
+`ENABLE_REAL_CUSTOMER_MESSAGES=false` during setup. Webhook verification works
+while these flags are disabled. A valid signed POST is acknowledged without
+database writes, replies, or read receipts until the relevant flag is enabled.

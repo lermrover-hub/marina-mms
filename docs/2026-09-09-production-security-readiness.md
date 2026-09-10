@@ -54,7 +54,9 @@
 - Rollback transaction ยืนยัน PO subtotal/VAT/total, timesheet labor, material cost และ stock movement โดยเหลือ test rows 0
 - Protected Vercel Preview `marina-ajdab3ru2-lermrover-hubs-projects.vercel.app` ชี้ staging; branch-specific `DATABASE_URL` ถูก block ไม่ให้ fallback ไป production
 - Authenticated runtime smoke ผ่าน contractor, supplier, PO, PO item/detail (200/14/214), stock (10 เป็น 13) และ Finance inventory report; cleanup ยืนยัน test rows 0
-- Full gates: tests 80/80, TypeScript ผ่าน, ESLint 0 errors/22 warnings, diff-check ผ่าน, staging-configured build ผ่าน 79/79 pages
+- Full gates: tests 81/81, TypeScript ผ่าน, ESLint 0 errors/22 warnings, diff-check ผ่าน, staging-configured build ผ่าน 79/79 pages
+- Server Supabase client fail closed หากไม่มี service-role key; Preview ล่าสุดยังอ่าน staging ได้ตามปกติ
+- Runtime isolation matrix ผ่าน: Customer A ถูก scope กลับ A เมื่อขอ B สำหรับ boats/quotations/invoices; customer broad list 403; Staff report/procurement write 403/403; Finance report/operations write 200/403; Boat Yard report/stock validation 403/400
 - Supabase advisors ไม่มี error ใหม่; `RLS enabled no policy` เป็น INFO ที่ตั้งใจสำหรับ service-role-only tables และ performance เหลือ unused-index INFO
 
 ## Required deployment sequence
@@ -76,9 +78,9 @@
 - [ ] ไม่มี mock password หรือ plaintext credential ใน source/build output
 - [ ] request ที่มี cookie ปลอมถูก redirect/401
 - [ ] anon PostgREST อ่าน/เขียนทุก business table ไม่ได้ ยกเว้น public inquiry contract ที่อนุมัติ
-- [ ] customer A อ่านหรือแก้ record ของ customer B ไม่ได้
+- [x] customer A อ่าน list record ของ customer B ไม่ได้ (boats/quotations/invoices บน staging Preview); detail/write isolation ยังต้องสุ่มตรวจใน deployment gate
 - [ ] unauthenticated/public user upload, replace หรือ delete storage object ไม่ได้
-- [ ] staff role matrix ผ่าน expected 200/403 tests
+- [x] staff role matrix ชุด Customer/Staff/Finance/Boat Yard ผ่าน expected 200/403 tests; Admin และ Marina Manager ยังต้องตรวจใน deployment gate
 - [ ] all write flags ยังเป็น `false`
 - [ ] tests, TypeScript, lint, diff-check และ production build ผ่านหลังการเปลี่ยนแปลงครั้งสุดท้าย
 - [ ] Supabase security advisors ไม่มี unresolved `ERROR` ที่เกี่ยวกับ production business tables

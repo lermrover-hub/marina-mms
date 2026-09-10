@@ -95,7 +95,10 @@ Accounting ต้องตอบว่า `accept`, `correct before continue` �
 
 ## Technical readiness evidence — 2026-09-10
 
-- Full tests 80/80, TypeScript passed, ESLint 0 errors/22 warnings, diff-check passed และ staging-configured build 79/79 pages
+- Full tests 81/81, TypeScript passed, ESLint 0 errors/22 warnings, diff-check passed และ staging-configured build 79/79 pages
 - Protected Preview runtime ผ่าน authenticated Operations/Accounting read/write smoke; PO totals 200/14/214 และ stock 10 เป็น 13
 - Staging RLS/FORCE RLS และ service-role-only grants ผ่าน; temporary verification rows ถูก cleanup เหลือ 0
-- Entry gates ที่ยังไม่ผ่าน: Accounting mapping 28 รหัส, Rate Card import/reconciliation 127 รหัส, role/customer-isolation runtime matrix และ production action-time approvals
+- Rate Card read-only preview: staging มี 117 active rows; reviewed import จะเพิ่ม 10/แก้ 117 โดยไม่ deactivate รายการใด แต่ยังไม่ apply
+- Customer/Staff/Finance/Boat Yard runtime isolation matrix ผ่าน; Admin/Marina Manager และ detail/write isolation ยังอยู่ใน deployment gate
+- บัญชี training บน staging 4 บทบาท (Super Admin, Finance, Staff และ Boat Yard Manager) ผ่าน Auth.js credential callback และ session role verification ครบ โดยไม่บันทึก credential ลง source/docs
+- Entry gates ที่ยังไม่ผ่าน: Accounting mapping 28 รหัส, Rate Card import/reconciliation 127 รหัส และ production action-time approvals

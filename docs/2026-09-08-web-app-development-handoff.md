@@ -67,7 +67,7 @@ Supabase advisory note: pricing history and operations tables are service-role o
 These results were rerun after the 2026-09-10 Operations/Accounting isolation:
 
 - Accounting-focused tests: **passed**
-- Full test suite: **80/80 passed**
+- Full test suite: **81/81 passed**
 - TypeScript: **passed**
 - ESLint: **0 errors, 22 warnings**
 - Production build: **passed, 79/79 static pages**
@@ -204,3 +204,5 @@ The 2026-09-09 source-only security commits replaced mock-password authenticatio
 - Inquiry and Operations/Accounting hardening migrations were applied only to staging; production remained untouched.
 - Protected Preview runtime passed authenticated contractor, supplier, PO/item/detail, stock and Finance inventory-report checks. PO totals were 200/14/214, stock moved 10 to 13, and cleanup left 0 test rows.
 - Remaining entry blockers are Accounting approval for 28 Cost GL/P&L/Cost Basis mappings, controlled Rate Card import/reconciliation of 127 codes, broader role/customer isolation runtime checks, and explicit production deployment/migration approval.
+- Rate Card preview would add 10 and change 117 staging rows; it was not applied because Accounting approval and approver identity are still missing.
+- Runtime list isolation and core role matrix passed for Customer, Staff, Finance and Boat Yard. Admin/Marina Manager plus selected detail/write cases remain part of the deployment gate.

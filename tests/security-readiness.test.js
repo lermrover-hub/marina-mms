@@ -75,3 +75,20 @@ test("storage writes use an authenticated server route and remove the public ALL
   assert.match(migration, /DROP POLICY IF EXISTS marina_files_all_access/)
   assert.match(migration, /SET public = false/)
 })
+
+test("public inquiry API is rate-limited, staff-authenticated for reads, and fails closed", () => {
+  const route = read("../app/api/inquiries/route.ts")
+  assert.match(route, /mms_consume_public_rate_limit/)
+  assert.match(route, /createServerClient\(\{ requireServiceRole: true \}\)/)
+  assert.match(route, /requireApiActor\(STAFF_ROLES\)/)
+  assert.match(route, /RATE_LIMIT_MAX_REQUESTS = 5/)
+  assert.doesNotMatch(route, /authHeader\?\.startsWith\("Bearer "\)/)
+  assert.doesNotMatch(route, /mock-id|Returning mock response/)
+  assert.doesNotMatch(route, /error: error\.message/)
+
+  const migration = read("../supabase/migrations/20260910075627_harden_inquiries_api_access.sql")
+  assert.match(migration, /FORCE ROW LEVEL SECURITY/)
+  assert.match(migration, /REVOKE ALL ON TABLE public\.inquiries FROM anon, authenticated/)
+  assert.match(migration, /DROP POLICY IF EXISTS "Public can submit inquiry"/)
+  assert.match(migration, /inquiries_assigned_to_idx/)
+})

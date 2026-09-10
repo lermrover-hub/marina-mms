@@ -76,6 +76,14 @@ test("storage writes use an authenticated server route and remove the public ALL
   assert.match(migration, /SET public = false/)
 })
 
+test("server Supabase access fails closed without a service-role key", () => {
+  const serverClient = read("../lib/supabase-server.ts")
+  assert.match(serverClient, /if \(!serviceRoleKey\) throw new Error/)
+  assert.match(serverClient, /createClient\(url, serviceRoleKey/)
+  assert.doesNotMatch(serverClient, /serviceRoleKey \|\|/)
+  assert.doesNotMatch(serverClient, /NEXT_PUBLIC_SUPABASE_ANON_KEY/)
+})
+
 test("public inquiry API is rate-limited, staff-authenticated for reads, and fails closed", () => {
   const route = read("../app/api/inquiries/route.ts")
   assert.match(route, /mms_consume_public_rate_limit/)

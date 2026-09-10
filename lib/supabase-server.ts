@@ -9,21 +9,18 @@ function clean(s: string | undefined): string {
 /**
  * Server-side Supabase client — uses service role key when available.
  * NEVER import this in client components ("use client").
- * - With SUPABASE_SERVICE_ROLE_KEY set (Vercel production) → bypasses RLS, full access
- * - Without service role key → falls back to anon key (dev / no regression)
+ * Server operations always require SUPABASE_SERVICE_ROLE_KEY and fail closed.
+ * Browser/public access must use the separate lib/supabase.ts client.
  */
-export function createServerClient(options: { requireServiceRole?: boolean } = {}) {
+export function createServerClient(_options: { requireServiceRole?: boolean } = {}) {
+  void _options
   const url = clean(process.env.NEXT_PUBLIC_SUPABASE_URL)
   const serviceRoleKey = clean(process.env.SUPABASE_SERVICE_ROLE_KEY)
-  const key = serviceRoleKey || clean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
 
   if (!url) throw new Error("Supabase URL is not configured")
-  if (options.requireServiceRole && !serviceRoleKey) {
-    throw new Error("Supabase service role key is required for this server operation")
-  }
-  if (!key) throw new Error("Supabase server key is not configured")
+  if (!serviceRoleKey) throw new Error("Supabase service role key is required for server operations")
 
-  return createClient(url, key, {
+  return createClient(url, serviceRoleKey, {
     auth: { persistSession: false },
   })
 }

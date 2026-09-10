@@ -82,9 +82,8 @@ export default function NewInvoicePage() {
     { id: genId(), description: "", category: "", qty: 1, unit: "item", unitPrice: 0, discount: 0, taxable: true },
   ])
 
-  // ── discount / deposit ───────────────────────────────────────────────────
+  // ── discount ─────────────────────────────────────────────────────────────
   const [globalDiscount, setGlobalDiscount] = useState(0)
-  const [depositPaid, setDepositPaid]       = useState("")
 
   // ── derived ─────────────────────────────────────────────────────────────
   const boatsForCustomer = useMemo(() =>
@@ -100,8 +99,6 @@ export default function NewInvoicePage() {
   )
   const itemsSubtotal  = lineSubtotals.reduce((s, v) => s + v, 0)
   const afterDiscount  = itemsSubtotal * (1 - globalDiscount / 100)
-  const depositNum     = parseFloat(depositPaid) || 0
-
   const nonTaxable     = items.reduce((s, it, i) => !it.taxable ? s + lineSubtotals[i] * (1 - globalDiscount / 100) : s, 0)
   const taxableNet     = afterDiscount - nonTaxable
   const vat            = taxableNet * (COMPANY.vatRate / 100)
@@ -146,8 +143,6 @@ export default function NewInvoicePage() {
         after_discount:   afterDiscount,
         vat_amount:       vat,
         total:            total,
-        deposit_paid:     depositNum || 0,
-        balance_due:      total - depositNum,
         status:           draft ? "DRAFT" : "ISSUED",
         items:            items,
         created_at:       new Date().toISOString(),
@@ -258,7 +253,7 @@ export default function NewInvoicePage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
               <div className="space-y-1.5">
                 <Label>Invoice Date</Label>
                 <Input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} />
@@ -282,16 +277,9 @@ export default function NewInvoicePage() {
                 <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
               </div>
 
-              <div className="space-y-1.5">
-                <Label>Deposit Already Paid</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  value={depositPaid}
-                  onChange={(e) => setDepositPaid(e.target.value)}
-                  placeholder="0"
-                />
-              </div>
+              <p className="text-xs text-gray-500 sm:col-span-3">
+                Record any deposit in Payments after creating the invoice so every receipt has a payment record.
+              </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -514,19 +502,6 @@ export default function NewInvoicePage() {
                 <span>Grand Total</span>
                 <span className="text-teal-700">{formatTHB(total)}</span>
               </div>
-
-              {depositNum > 0 && (
-                <>
-                  <div className="flex justify-between text-sm text-green-600">
-                    <span>Deposit Paid</span>
-                    <span>-{formatTHB(depositNum)}</span>
-                  </div>
-                  <div className="flex justify-between text-base font-bold border-t border-teal-200 pt-2 text-amber-700">
-                    <span>Outstanding Balance</span>
-                    <span>{formatTHB(total - depositNum)}</span>
-                  </div>
-                </>
-              )}
 
             </CardContent>
           </Card>

@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { LineItemRow } from "@/components/quotations/LineItemRow"
-import type { Customer, Boat } from "@/lib/supabase"
+import type { Customer, Boat, ServiceRequest } from "@/lib/supabase"
 import { formatTHB, cn } from "@/lib/utils"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -316,11 +316,18 @@ function AiGenerateModal({
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function NewQuotationPage() {
   const router = useRouter()
+  const [serviceRequestId, setServiceRequestId] = useState("")
 
   // Live data
   const [customers,      setCustomers]      = useState<Customer[]>([])
   const [customersError, setCustomersError] = useState<string | null>(null)
   const [boats,          setBoats]          = useState<Boat[]>([])
+  const [sourceRequest,  setSourceRequest]  = useState<ServiceRequest | null>(null)
+  const [sourceError,    setSourceError]    = useState<string | null>(null)
+
+  useEffect(() => {
+    setServiceRequestId(new URLSearchParams(window.location.search).get("service_request_id")?.trim() ?? "")
+  }, [])
 
   useEffect(() => {
     fetch("/api/db/customers")
@@ -335,6 +342,30 @@ export default function NewQuotationPage() {
       .catch((e) => setCustomersError(String(e)))
     fetch("/api/db/boats").then(r => r.json()).then(d => { if (Array.isArray(d)) setBoats(d) }).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (!serviceRequestId) return
+
+    let cancelled = false
+    fetch(`/api/db/service-requests/${encodeURIComponent(serviceRequestId)}`)
+      .then(async (response) => {
+        const data = await response.json()
+        if (!response.ok) throw new Error(data?.error ?? "Service request not found")
+        return data as ServiceRequest
+      })
+      .then((request) => {
+        if (cancelled) return
+        setSourceRequest(request)
+        setCustomerId(request.customer_id ?? "")
+        setBoatId(request.boat_id ?? "")
+        setTitle(request.title ?? "")
+      })
+      .catch((error) => {
+        if (!cancelled) setSourceError(error instanceof Error ? error.message : String(error))
+      })
+
+    return () => { cancelled = true }
+  }, [serviceRequestId])
 
   // Panels
   const [showRateCard,  setShowRateCard]  = useState(false)
@@ -441,6 +472,7 @@ export default function NewQuotationPage() {
       ].filter(Boolean).join("\n\n")
       const finalNotes = [notes.trim(), approvalNotes].filter(Boolean).join("\n\n")
       const body = {
+        service_request_id: serviceRequestId || null,
         customer_id:      customerId || null,
         boat_id:          boatId || null,
         title:            title || null,
@@ -525,6 +557,16 @@ export default function NewQuotationPage() {
           <Card>
             <CardHeader><CardTitle>Customer & Boat</CardTitle></CardHeader>
             <CardContent className="space-y-3">
+              {sourceRequest && (
+                <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
+                  Linked to service request <span className="font-semibold">{sourceRequest.reference}</span>
+                </div>
+              )}
+              {sourceError && (
+                <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  Failed to load linked service request: {sourceError}
+                </div>
+              )}
               <div className="space-y-1.5">
                 <Label htmlFor="customer">Customer *</Label>
                 <select

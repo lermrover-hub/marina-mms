@@ -189,39 +189,6 @@ export async function getPayment(id: string) {
   return data as Payment | null
 }
 
-export async function createPayment(payment: Omit<Payment, "id" | "created_at">) {
-  const { data, error } = await supabase
-    .from("mms_payments")
-    .insert(payment)
-    .select()
-    .single()
-  if (error) throw error
-  return data as Payment
-}
-
-export async function updateInvoiceAfterPayment(invoiceId: string, newPaidAmount: number) {
-  // Fetch current invoice totals
-  const { data: inv, error: fetchErr } = await supabase
-    .from("mms_invoices")
-    .select("total_amount, paid_amount")
-    .eq("id", invoiceId)
-    .single()
-  if (fetchErr) throw fetchErr
-
-  const totalPaid = (inv.paid_amount ?? 0) + newPaidAmount
-  const outstanding = Math.max(0, (inv.total_amount ?? 0) - totalPaid)
-  const status = outstanding <= 0 ? "PAID" : totalPaid > 0 ? "PARTIALLY_PAID" : "ISSUED"
-
-  const { data, error } = await supabase
-    .from("mms_invoices")
-    .update({ paid_amount: totalPaid, outstanding_balance: outstanding, status })
-    .eq("id", invoiceId)
-    .select()
-    .single()
-  if (error) throw error
-  return data
-}
-
 // ── Material Usage ────────────────────────────────────────────────────────────
 export async function getMaterialUsage(workOrderId: string) {
   const { data, error } = await supabase

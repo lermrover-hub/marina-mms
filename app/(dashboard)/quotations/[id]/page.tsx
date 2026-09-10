@@ -128,13 +128,6 @@ export default function QuotationDetailPage() {
       const invData = await invRes.json()
       if (!invRes.ok) throw new Error(invData?.error ?? "Invoice creation failed")
 
-      // Mark quotation as converted
-      await fetch(`/api/db/quotations/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "CONVERTED" }),
-      })
-
       router.push(`/invoices/${invData.id}`)
     } catch (e) {
       alert("Conversion failed: " + String(e))

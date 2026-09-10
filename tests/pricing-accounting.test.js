@@ -144,6 +144,22 @@ test("quotation conversion preserves the linked work order on the invoice", () =
   assert.match(source, /work_order_id:\s+quotation\.work_order_id \?\? null/)
 })
 
+test("quotation creation preserves and prefills its linked service request", () => {
+  const source = readFileSync(new URL("../app/(dashboard)/quotations/new/page.tsx", import.meta.url), "utf8")
+  assert.match(source, /new URLSearchParams\(window\.location\.search\)\.get\("service_request_id"\)/)
+  assert.match(source, /fetch\(`\/api\/db\/service-requests\/\$\{encodeURIComponent\(serviceRequestId\)\}`\)/)
+  assert.match(source, /setCustomerId\(request\.customer_id \?\? ""\)/)
+  assert.match(source, /setBoatId\(request\.boat_id \?\? ""\)/)
+  assert.match(source, /service_request_id:\s+serviceRequestId \|\| null/)
+})
+
+test("ramp ledger resolves invoices linked from either side", () => {
+  const source = readFileSync(new URL("../app/api/db/reports/ramp-ledger/route.ts", import.meta.url), "utf8")
+  assert.match(source, /referencedInvoiceIds/)
+  assert.match(source, /\.in\("id", referencedInvoiceIds\)/)
+  assert.match(source, /booking\.invoice_id \? invoices\.find/)
+})
+
 test("blank berth end dates remain open-ended across assignment screens", () => {
   const berthList = readFileSync(new URL("../app/(dashboard)/berths/page.tsx", import.meta.url), "utf8")
   const berthDetail = readFileSync(new URL("../app/(dashboard)/berths/[id]/page.tsx", import.meta.url), "utf8")

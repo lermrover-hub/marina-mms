@@ -21,6 +21,13 @@ export const OPERATIONS_WRITE_ROLES = [
   "MARINA_MANAGER",
   "BOAT_YARD_MANAGER",
 ] as const
+export const PROCUREMENT_WRITE_ROLES = [
+  "SUPER_ADMIN",
+  "MANAGING_DIRECTOR",
+  "MARINA_MANAGER",
+  "BOAT_YARD_MANAGER",
+  "FINANCE",
+] as const
 
 export type ApiActor = {
   userId: string

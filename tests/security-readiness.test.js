@@ -92,3 +92,65 @@ test("public inquiry API is rate-limited, staff-authenticated for reads, and fai
   assert.match(migration, /DROP POLICY IF EXISTS "Public can submit inquiry"/)
   assert.match(migration, /inquiries_assigned_to_idx/)
 })
+
+test("operations and accounting routes cannot use a direct Postgres connection", () => {
+  for (const route of [
+    "../app/api/db/contractors/route.ts",
+    "../app/api/db/contractors/[id]/route.ts",
+    "../app/api/db/suppliers/route.ts",
+    "../app/api/db/suppliers/[id]/route.ts",
+    "../app/api/db/purchase-orders/route.ts",
+    "../app/api/db/purchase-orders/[id]/route.ts",
+    "../app/api/db/purchase-order-items/route.ts",
+    "../app/api/db/purchase-order-items/[id]/route.ts",
+    "../app/api/db/stock-movements/route.ts",
+    "../app/api/db/timesheets/route.ts",
+    "../app/api/db/timesheets/[id]/route.ts",
+    "../app/api/db/material-usage/route.ts",
+    "../app/api/db/audit-log/route.ts",
+    "../app/api/db/reports/inventory-usage/route.ts",
+  ]) {
+    const source = read(route)
+    assert.match(source, /requireApiActor\(/)
+    assert.match(source, /requireServiceRole: true/)
+    assert.doesNotMatch(source, /lib\/postgres|dbQuery|dbTransaction|DATABASE_URL/)
+  }
+})
+
+test("operations and accounting APIs use Supabase service role behind session RBAC", () => {
+  const routes = [
+    "../app/api/db/contractors/route.ts",
+    "../app/api/db/contractors/[id]/route.ts",
+    "../app/api/db/suppliers/route.ts",
+    "../app/api/db/suppliers/[id]/route.ts",
+    "../app/api/db/purchase-orders/route.ts",
+    "../app/api/db/purchase-orders/[id]/route.ts",
+    "../app/api/db/purchase-order-items/route.ts",
+    "../app/api/db/purchase-order-items/[id]/route.ts",
+    "../app/api/db/stock-movements/route.ts",
+    "../app/api/db/timesheets/route.ts",
+    "../app/api/db/timesheets/[id]/route.ts",
+    "../app/api/db/material-usage/route.ts",
+    "../app/api/db/audit-log/route.ts",
+    "../app/api/db/reports/inventory-usage/route.ts",
+  ]
+  for (const route of routes) {
+    const source = read(route)
+    assert.match(source, /requireApiActor\(/)
+    assert.match(source, /requireServiceRole: true/)
+    assert.doesNotMatch(source, /lib\/postgres|DATABASE_URL|apiErrorMessage/)
+  }
+
+  assert.match(read("../app/api/db/stock-movements/route.ts"), /mms_record_stock_movement/)
+  assert.match(read("../app/api/db/purchase-orders/route.ts"), /mms_create_purchase_order/)
+
+  const migration = read("../supabase/migrations/20260910081433_add_supabase_operations_accounting.sql")
+  assert.match(migration, /FORCE ROW LEVEL SECURITY/g)
+  assert.match(migration, /REVOKE ALL ON TABLE public\.mms_contractors/)
+  assert.match(migration, /mms_sync_purchase_order_totals/)
+  assert.match(migration, /mms_sync_timesheet_labor_cost/)
+  assert.match(migration, /mms_sync_material_cost/)
+  assert.match(migration, /mms_record_stock_movement/)
+  assert.match(migration, /mms_create_purchase_order/)
+  assert.match(migration, /FROM PUBLIC, anon, authenticated/)
+})

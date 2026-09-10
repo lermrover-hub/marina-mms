@@ -1,32 +1,39 @@
 import { NextResponse } from "next/server"
-import { apiErrorMessage, dbQuery } from "@/lib/postgres"
+import { PROCUREMENT_WRITE_ROLES, STAFF_ROLES, requireApiActor } from "@/lib/api-auth"
+import { apiServerError, finiteNonNegative } from "@/lib/api-route-utils"
+import { createServerClient } from "@/lib/supabase-server"
 
 export const dynamic = "force-dynamic"
 
 export async function GET(req: Request) {
+  const access = await requireApiActor(STAFF_ROLES)
+  if ("error" in access) return access.error
   try {
     const { searchParams } = new URL(req.url)
-    const status    = searchParams.get("status")
-    const specialty = searchParams.get("specialty")
-    const where: string[] = []
-    const values: unknown[] = []
-    if (status) { values.push(status); where.push(`status = $${values.length}`) }
-    if (specialty) { values.push(specialty); where.push(`specialty = $${values.length}`) }
-    const result = await dbQuery(`SELECT * FROM mms_contractors${where.length ? ` WHERE ${where.join(" AND ")}` : ""} ORDER BY name`, values)
-    return NextResponse.json(result.rows)
-  } catch (e) {
-    return NextResponse.json({ error: apiErrorMessage(e) }, { status: 500 })
-  }
+    let query = createServerClient({ requireServiceRole: true }).from("mms_contractors").select("*").order("name")
+    if (searchParams.get("status")) query = query.eq("status", searchParams.get("status")!)
+    if (searchParams.get("specialty")) query = query.eq("specialty", searchParams.get("specialty")!)
+    const { data, error } = await query
+    if (error) throw error
+    return NextResponse.json(data)
+  } catch (error) { return apiServerError("contractors.get", error) }
 }
 
 export async function POST(req: Request) {
+  const access = await requireApiActor(PROCUREMENT_WRITE_ROLES)
+  if ("error" in access) return access.error
   try {
     const body = await req.json()
-    if (!String(body.name ?? "").trim()) return NextResponse.json({ error: "Name is required" }, { status: 400 })
-    const values = [body.name, body.company_name || null, body.specialty || "other", body.phone || null, body.email || null, body.address || null, body.tax_id || null, body.rate_type || "daily", body.daily_rate ?? null, body.status || "active", body.notes || null]
-    const result = await dbQuery(`INSERT INTO mms_contractors (name, company_name, specialty, phone, email, address, tax_id, rate_type, daily_rate, status, notes) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`, values)
-    return NextResponse.json(result.rows[0], { status: 201 })
-  } catch (e) {
-    return NextResponse.json({ error: apiErrorMessage(e) }, { status: 500 })
-  }
+    const name = String(body.name ?? "").trim()
+    const dailyRate = body.daily_rate == null ? null : finiteNonNegative(body.daily_rate)
+    if (!name) return NextResponse.json({ error: "Name is required" }, { status: 400 })
+    if (body.daily_rate != null && dailyRate == null) return NextResponse.json({ error: "daily_rate must be non-negative" }, { status: 400 })
+    const { data, error } = await createServerClient({ requireServiceRole: true }).from("mms_contractors").insert({
+      name, company_name: body.company_name || null, specialty: body.specialty || "other", phone: body.phone || null,
+      email: body.email || null, address: body.address || null, tax_id: body.tax_id || null,
+      rate_type: body.rate_type || "daily", daily_rate: dailyRate, status: body.status || "active", notes: body.notes || null,
+    }).select().single()
+    if (error) throw error
+    return NextResponse.json(data, { status: 201 })
+  } catch (error) { return apiServerError("contractors.post", error) }
 }

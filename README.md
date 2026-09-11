@@ -48,6 +48,12 @@ Default Ramp Depth Offset = -1.00 m
 
 A time slot is SAFE when: `Predicted Tide Height >= Required Tide Table Height`
 
+## User Manual
+
+- [User Manual — English (latest)](docs/USER_MANUAL_LATEST_EN.md)
+- [คู่มือการใช้งาน — ภาษาไทย (ล่าสุด)](docs/USER_MANUAL_LATEST_TH.md)
+- [Documentation changelog / evidence review](docs/USER_MANUAL_CHANGELOG_FROM_CODEX_TASK_05.md)
+
 ## Getting Started
 
 ### Prerequisites

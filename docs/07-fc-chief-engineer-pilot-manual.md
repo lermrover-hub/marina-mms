@@ -1,11 +1,14 @@
 # คู่มือทดลองใช้ Marina MMS
 ## สำหรับ FC และ Chief Engineer
 ## Vercel Preview และ Supabase Staging
-## ฉบับล่าสุดตาม Codex Task 05 Web App Development Patch September
+## Version 07 — Latest Pilot Manual
+## อ้างอิงจาก repo/branch ปัจจุบัน และ audit วันที่ 14 กันยายน 2026
+## หมายเหตุ: ไม่พบหลักฐาน Codex Task 05 Web App Development Patch September ใน repo
 
 **วันที่จัดทำ:** 14 กันยายน 2026
 **สถานะเอกสาร:** ฉบับทดลองใช้งาน (Pilot) — สำหรับทีมภายในเท่านั้น
-**อ้างอิงจาก commit ปัจจุบัน:** `9126224` (2026-06-17) และ commit เอกสารล่าสุด `455e8f9`
+**Branch:** `claude/marina-mms-setup-cgg7v4` — **HEAD ที่ audit:** `1db7b61` (working tree clean ณ เวลา audit)
+**อ้างอิงจาก commit แอปพลิเคชันล่าสุด:** `9126224` (2026-06-17) และ commit เอกสารก่อนหน้า `455e8f9`
 
 ---
 
@@ -59,13 +62,22 @@ Marina MMS (Ocean Rover Marina & Boat Yard Management System) คือระบ
 
 ---
 
-### 4. สรุปสิ่งที่เปลี่ยนใน Codex Task 05
+### 4. Evidence / Documentation Gaps
 
-**Codex Task 05 evidence not found / cannot verify.**
+**Codex Task 05 evidence was not found — this is a documentation gap, not a software limitation.**
 
-ไม่พบ commit, ไฟล์, หรือเอกสารใดที่ระบุชื่อ "Codex Task 05" หรือ "September patch" ในซอร์สโค้ดนี้ จึงไม่สามารถสรุปการเปลี่ยนแปลงเฉพาะของ "Task 05" ได้
+การ audit ซ้ำ (filenames, file contents, `git log --all --grep`, branches, tags) ไม่พบ commit, ไฟล์, branch, tag หรือเอกสารใดที่ระบุชื่อ "Codex Task 05" หรือ "Web App Development Patch September" ในซอร์สโค้ดนี้เลยแม้แต่รายการเดียว คำว่า "Codex" ที่พบในโปรเจกต์ (`DEV_SCRIPTS.md`, `CLAUDE_HANDOFF.md`) หมายถึง **ชื่อของ AI agent อีกตัวหนึ่งในกระบวนการพัฒนาแบบ Claude ↔ Codex** ไม่ใช่ชื่อ task/patch ที่มีหมายเลขกำกับ
 
-สิ่งที่ยืนยันได้แทนคือ **ประวัติการพัฒนาล่าสุดของระบบ** (จาก `git log`, `CLAUDE_HANDOFF.md`) ซึ่งครอบคลุมงานตั้งแต่วันที่ 2026-06-11 ถึง 2026-06-17:
+**เหตุผลที่จัดเป็นช่องว่างด้านเอกสาร (ไม่ใช่ข้อจำกัดของซอฟต์แวร์):** การไม่พบหลักฐาน "Codex Task 05" ไม่ได้แปลว่าแอปพลิเคชันขาดฟีเจอร์ใด ๆ — มันหมายความเพียงว่าไม่มีบันทึกที่สามารถตรวจสอบย้อนกลับไปยัง task/patch ที่ชื่อนี้ได้ ข้อจำกัดของซอฟต์แวร์จริง (เช่น ไม่มี unified booking wizard) ถูกแยกไว้ต่างหากใน §23
+
+**คู่มือฉบับนี้จึงจัดทำจากหลักฐานที่ตรวจสอบได้จริงเท่านั้น:**
+
+- ซอร์สโค้ด repo/branch ปัจจุบัน (`claude/marina-mms-setup-cgg7v4`, HEAD `1db7b61` ณ วัน audit) — version 07 ของคู่มือฉบับนี้
+- ผลการ audit วันที่ 14 กันยายน 2026 (ยืนยัน pwd, git toplevel, branch, git status, git log)
+- `CLAUDE.md` — **ไม่พบในซอร์สโค้ด** (ค้นหาทั้ง root และทุก subdirectory)
+- ไฟล์แอปพลิเคชันจริง: `app/(dashboard)/**`, `app/api/**`, `prisma/schema.prisma`, `ai-agents/PRICING_RULES.md`, `ai-agents/TIDE_RULES.md`, `lib/speedboat-classification.ts`, `scripts/import-rate-card.sql`/`.json`, `CLAUDE_HANDOFF.md`, `DEV_SCRIPTS.md`
+
+จากหลักฐานเดียวกันนี้ ยังสามารถยืนยัน **ประวัติการพัฒนาล่าสุดของระบบ** (จาก `git log`, `CLAUDE_HANDOFF.md`) ซึ่งครอบคลุมงานตั้งแต่วันที่ 2026-06-11 ถึง 2026-06-17:
 
 - AI Agent Control Center (6 agents พร้อมโหมด preview)
 - ลายเซ็นดิจิทัลและประทับอัตโนมัติบนเอกสารทางการ
@@ -75,6 +87,8 @@ Marina MMS (Ocean Rover Marina & Boat Yard Management System) คือระบ
 - การแปลงใบเสนอราคาเป็นใบสั่งงาน
 - รายงานการใช้พัสดุ (Inventory Usage Report)
 - การแก้ไขสูตรคำนวณระดับน้ำ (tide calculation) และการบังคับ `force-dynamic` บน route คำนวณระดับน้ำ (commit ล่าสุด `9126224`)
+
+**ข้อเสนอแนะสำหรับอนาคต:** patch/task รอบถัดไปควรบันทึกหมายเลข task, ชื่อ patch, วันที่, ชื่อ branch, commit hash และไฟล์ที่ได้รับผลกระทบไว้ในไฟล์ changelog รูปแบบเดียวกันอย่างสม่ำเสมอ เพื่อให้การตรวจสอบย้อนหลังทำได้โดยไม่ต้องอาศัยการค้นหาทั้ง repository แบบนี้อีก
 
 รายละเอียดทั้งหมดอยู่ใน `docs/USER_MANUAL_CHANGELOG_FROM_CODEX_TASK_05.md`
 
@@ -183,7 +197,14 @@ Dashboard หลักอยู่ที่ `app/(dashboard)/dashboard/page.tsx`
 
 ### 11. New Booking Workflow
 
-ระบบมี **2 workflow แยกกัน** ตามวัตถุประสงค์ (ไม่มีตัวช่วยสร้าง "New Booking" แบบรวมศูนย์เดียว):
+**ระบบยังไม่มี Unified New Booking Wizard แบบฟอร์มเดียว** ที่ยืนยันแล้วจากการตรวจสอบโค้ดจริง มี **2 workflow แยกกัน** ตามวัตถุประสงค์:
+
+| Flow | เส้นทาง | มี | ไม่มี |
+|---|---|---|---|
+| A. Ramp Booking | `app/(dashboard)/ramp-bookings/new/page.tsx` | operation type + tide workflow (คำนวณระดับน้ำแบบเรียลไทม์) | **ไม่มี** service/price selection |
+| B. Quotation | `app/(dashboard)/quotations/new/page.tsx` | multi-service + price calculation workflow (VAT/ส่วนลด/เงินมัดจำ) | **ไม่มี** tide workflow |
+
+**ทั้งสอง flow นี้ยังไม่ถูกเชื่อมต่อกันเป็น booking → quotation → invoice workflow เดียวที่สมบูรณ์** — หน้า ramp-bookings/new ไม่เรียก API ของ quotations และหน้า quotations/new ก็ไม่เรียก API ของ ramp-bookings เลย (ยืนยันจากการอ่านโค้ดทั้งสองไฟล์โดยตรง ไม่พบการอ้างอิงข้ามกัน)
 
 **A. การจองแท่นลากเรือ (Ramp Booking)** — `app/(dashboard)/ramp-bookings/new/page.tsx`
 
@@ -421,14 +442,17 @@ minimum_required_tide_table_height_m = minimum_required_actual_depth_m − ramp_
 
 ### 23. Known Limitations
 
-ข้อจำกัดที่ยืนยันได้จากหลักฐานในซอร์สโค้ดปัจจุบัน:
+ข้อจำกัดที่ยืนยันได้จากหลักฐานในซอร์สโค้ดปัจจุบันเท่านั้น (หมายเหตุ: ความไม่พบหลักฐาน "Codex Task 05" ถูกย้ายไปไว้ที่ §4 Evidence / Documentation Gaps แล้ว เนื่องจากเป็นช่องว่างด้านเอกสาร ไม่ใช่ข้อจำกัดของซอฟต์แวร์):
 
-- **ไม่มีฟอร์มการจองแบบรวมศูนย์เดียว** ที่รวม slot selection → vessel info → truck/lift → services → price summary → save/confirm ในหน้าเดียว (§11)
-- **ไม่มีการผูกหลายบริการเข้ากับ ramp booking โดยตรง** — multi-service อยู่ในใบเสนอราคาเท่านั้น
+- **ไม่มี Unified New Booking Wizard** — ระบบปัจจุบันมี flow การจองแท่นลากเรือ (ramp booking) และใบเสนอราคา (quotation) แยกจากกัน ยังไม่รวมเป็นฟอร์มเดียว (§11)
+- **ramp-bookings POST ถูกล็อกด้วย `ENABLE_PRODUCTION_BOOKINGS`** — หากไม่เปิดใช้งาน environment variable นี้ การสร้าง production booking จะถูกปฏิเสธแบบ fail-closed ด้วย HTTP 403 (ยืนยันจาก `app/api/db/ramp-bookings/route.ts`, `lib/safe-mode.ts`)
+- **ข้อมูลการจองแท่นลากเรือถูกเก็บใน Supabase table ดิบ `mms_ramp_bookings`** — ยังไม่มี Prisma model สำหรับตารางนี้ (ยืนยันจาก `prisma/schema.prisma` ไม่มี model ที่เกี่ยวข้อง และ API route เรียก `supabase.from("mms_ramp_bookings")` โดยตรง)
+- **ใบเสนอราคาใช้ Prisma แต่การจองแท่นลากเรือใช้ raw Supabase access** — หมายความว่า data layer ของระบบยังไม่เป็นหนึ่งเดียว (unified) ผู้พัฒนาที่ query ผ่าน Prisma client เพียงอย่างเดียวจะไม่เห็นข้อมูลการจองแท่นลากเรือ
+- **`ramp-bookings/new` มีข้อมูล operation และ tide แต่ไม่มี service/price selection** (§11)
+- **`quotations/new` มี multi-service และ price calculation แต่ไม่มี tide workflow** (§11)
 - **รหัส GL ไม่ใช่ฟิลด์ schema ที่บังคับ** — อยู่ในข้อความหมายเหตุเท่านั้น ไม่สามารถค้นหา/กรองตามรหัส GL ได้อัตโนมัติ
 - **Recurring Billing** มี UI/API แต่กลไกตั้งเวลาการเรียกเก็บเงินจริงยังไม่ได้รับการยืนยันครบถ้วน
 - **ไม่มีหลักฐานยืนยันการมีปุ่มสลับภาษาไทย/อังกฤษทั้งระบบ** — Unknown
-- **ไม่พบ "Codex Task 05" หรือ "September patch"** ในซอร์สโค้ดหรือประวัติ git เลย
 
 ---
 
@@ -440,8 +464,9 @@ minimum_required_tide_table_height_m = minimum_required_actual_depth_m − ramp_
 2. เพิ่มฟิลด์ `gl_code` ที่เป็นโครงสร้างจริงใน `PricingMaster` model แทนการฝังในข้อความหมายเหตุ เพื่อให้ FC ค้นหา/ตรวจสอบได้อัตโนมัติ
 3. ยืนยันและบันทึกเป็นลายลักษณ์อักษรว่า speedboat haul-out เป็นราคาเหมาจ่ายหรือไม่ (ปัจจุบันไม่มีหลักฐาน) เพื่อป้องกันความสับสนในการออกใบเสนอราคา
 4. ตรวจสอบและยืนยันกลไกการทำงานจริงของ Recurring Billing ให้ครบวงจร
-5. พิจารณาบันทึก "Codex Task 05" หรือ patch note รูปแบบเดียวกันในไฟล์ changelog ที่มีวันที่และหมายเลข task ชัดเจน เพื่อให้การตรวจสอบย้อนหลังทำได้ง่ายขึ้นในอนาคต
+5. บันทึก patch/task รอบถัดไปในไฟล์ changelog รูปแบบเดียวกันเสมอ — ระบุหมายเลข task, ชื่อ patch, วันที่, ชื่อ branch, commit hash และไฟล์ที่ได้รับผลกระทบ เพื่อป้องกันปัญหาแบบ "Codex Task 05" ที่ตรวจสอบย้อนหลังไม่ได้ (ดู §4)
 6. เพิ่มเอกสารอ้างอิงจำนวนช่องจอดสูงสุดต่อโซน (C/W/B/WB) ให้ชัดเจนในระดับ config หรือ schema
+7. พิจารณาย้ายตาราง `mms_ramp_bookings` เข้าสู่ Prisma model เพื่อรวม data layer กับ quotations/invoices ให้เป็นหนึ่งเดียว และทำเอกสาร `ENABLE_PRODUCTION_BOOKINGS` ให้ชัดเจนสำหรับทีม deploy staging/production
 
 ---
 

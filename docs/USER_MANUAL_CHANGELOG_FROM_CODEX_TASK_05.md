@@ -10,6 +10,20 @@ based on commit `9126224` (application code) plus `455e8f9` (prior
 documentation commit from this same session). Working tree clean at the
 start of this task.
 
+**Re-audit note (2026-09-14):** A dedicated evidence audit (repo/branch
+verification, repeated Codex Task 05 search, and direct code inspection of
+the booking/quotation flows) was performed after this file was first
+written. It reconfirmed every finding below and surfaced two additional
+verified facts not previously recorded here: the `ENABLE_PRODUCTION_BOOKINGS`
+safe-mode gate on ramp-booking writes, and the fact that ramp bookings are
+stored in a raw Supabase table with no Prisma model. Both are folded into
+§6 and §9 below, and into the manual's §23 Known Limitations. The manual's
+title block was also corrected during this pass — the previous wording
+("ฉบับล่าสุดตาม Codex Task 05...") implied the manual was based on Codex
+Task 05 evidence that does not exist; the missing-evidence finding is a
+**documentation gap**, not a software limitation, and is now presented as
+such in the manual's §4 "Evidence / Documentation Gaps."
+
 ---
 
 ## 1. Evidence found
@@ -116,6 +130,16 @@ pilot manual with an explicit status (see manual §5 for the full table):
   change found; cited in the manual's approval-chain section as the
   system-level default that pilot testers should expect, distinct from the
   human "dockmaster final approval" rule above.
+- **New in the 2026-09-14 re-audit:** `app/api/db/ramp-bookings/route.ts`
+  writes to a **raw Supabase table `mms_ramp_bookings`**, not a Prisma
+  model — `prisma/schema.prisma` has no ramp-booking model at all. POST/PATCH
+  on this route are gated by `isProductionBookingsEnabled()`
+  (`ENABLE_PRODUCTION_BOOKINGS` env var, `lib/safe-mode.ts`) and **fail
+  closed with HTTP 403** when that flag is not explicitly `"true"`.
+  Quotations (`/api/db/quotations`), by contrast, are Prisma-backed and
+  carry no equivalent gate. This means the data layer is not fully unified
+  between the two booking-adjacent flows — now recorded in the manual's
+  §23 Known Limitations rather than left undocumented.
 
 ---
 
@@ -168,6 +192,10 @@ pilot manual with an explicit status (see manual §5 for the full table):
   the actual trigger (cron/webhook/manual) was not traced end-to-end in
   this pass either.
 - **Unified single-form booking wizard** — does not appear to exist in the
-  codebase; the app has two separate workflows (Ramp Booking, Quotation).
+  codebase; the app has two separate workflows (Ramp Booking, Quotation),
+  not yet connected into one booking → quotation → invoice workflow.
   Flagged so pilot testers are not told to look for a feature that is not
   there.
+- **`mms_ramp_bookings` outside Prisma** — unknown whether this is planned
+  to migrate into Prisma later or is intentionally kept on raw Supabase
+  access; not resolvable from static code alone.

@@ -66,6 +66,10 @@ Marina MMS (Ocean Rover Marina & Boat Yard Management System) คือระบ
 
 **Codex Task 05 evidence was not found — this is a documentation gap, not a software limitation.**
 
+- ไม่พบหลักฐาน "Codex Task 05 Web App Development Patch September" ใน filename, content grep, git log, branch หรือ tag
+- คู่มือฉบับนี้จึงอ้างอิงจาก version 07 current repo/codebase, CLAUDE.md (ไม่พบ), audit result, และไฟล์ app ปัจจุบัน
+- ในอนาคตควรบันทึก patch/task ทุกครั้งในไฟล์ changelog ที่มี task number, patch name, date, branch, commit hash และ affected files (ดู §24 ข้อ 6)
+
 การ audit ซ้ำ (filenames, file contents, `git log --all --grep`, branches, tags) ไม่พบ commit, ไฟล์, branch, tag หรือเอกสารใดที่ระบุชื่อ "Codex Task 05" หรือ "Web App Development Patch September" ในซอร์สโค้ดนี้เลยแม้แต่รายการเดียว คำว่า "Codex" ที่พบในโปรเจกต์ (`DEV_SCRIPTS.md`, `CLAUDE_HANDOFF.md`) หมายถึง **ชื่อของ AI agent อีกตัวหนึ่งในกระบวนการพัฒนาแบบ Claude ↔ Codex** ไม่ใช่ชื่อ task/patch ที่มีหมายเลขกำกับ
 
 **เหตุผลที่จัดเป็นช่องว่างด้านเอกสาร (ไม่ใช่ข้อจำกัดของซอฟต์แวร์):** การไม่พบหลักฐาน "Codex Task 05" ไม่ได้แปลว่าแอปพลิเคชันขาดฟีเจอร์ใด ๆ — มันหมายความเพียงว่าไม่มีบันทึกที่สามารถตรวจสอบย้อนกลับไปยัง task/patch ที่ชื่อนี้ได้ ข้อจำกัดของซอฟต์แวร์จริง (เช่น ไม่มี unified booking wizard) ถูกแยกไว้ต่างหากใน §23
@@ -197,7 +201,15 @@ Dashboard หลักอยู่ที่ `app/(dashboard)/dashboard/page.tsx`
 
 ### 11. New Booking Workflow
 
-**ระบบยังไม่มี Unified New Booking Wizard แบบฟอร์มเดียว** ที่ยืนยันแล้วจากการตรวจสอบโค้ดจริง มี **2 workflow แยกกัน** ตามวัตถุประสงค์:
+> ระบบปัจจุบันยังไม่มี Unified New Booking Wizard แบบหน้าจอเดียวที่รวม operation/tide + service/price เข้าด้วยกัน
+>
+> **Current verified flows:**
+> - **ramp-bookings/new:** ใช้สำหรับ operation และ tide workflow แต่ไม่มี service/price selection
+> - **quotations/new:** ใช้สำหรับ multi-service และ price calculation แต่ไม่มี tide workflow
+>
+> ทั้งสอง flow ยังไม่เชื่อมกันเป็น booking-to-quotation-to-invoice workflow เดียว
+
+รายละเอียดเพิ่มเติมที่ยืนยันแล้วจากการตรวจสอบโค้ดจริง มี **2 workflow แยกกัน** ตามวัตถุประสงค์:
 
 | Flow | เส้นทาง | มี | ไม่มี |
 |---|---|---|---|
@@ -460,13 +472,16 @@ minimum_required_tide_table_height_m = minimum_required_actual_depth_m − ramp_
 
 ข้อเสนอแนะสำหรับการพัฒนารอบถัดไป โดยอิงจากช่องว่างที่พบ:
 
-1. พิจารณาสร้างฟอร์มการจองแบบรวมศูนย์เดียว (Unified New Booking Wizard) ที่รวม vessel info, truck/lift selection, multi-service, price summary ตามที่ทีมปฏิบัติการต้องการ
-2. เพิ่มฟิลด์ `gl_code` ที่เป็นโครงสร้างจริงใน `PricingMaster` model แทนการฝังในข้อความหมายเหตุ เพื่อให้ FC ค้นหา/ตรวจสอบได้อัตโนมัติ
-3. ยืนยันและบันทึกเป็นลายลักษณ์อักษรว่า speedboat haul-out เป็นราคาเหมาจ่ายหรือไม่ (ปัจจุบันไม่มีหลักฐาน) เพื่อป้องกันความสับสนในการออกใบเสนอราคา
-4. ตรวจสอบและยืนยันกลไกการทำงานจริงของ Recurring Billing ให้ครบวงจร
-5. บันทึก patch/task รอบถัดไปในไฟล์ changelog รูปแบบเดียวกันเสมอ — ระบุหมายเลข task, ชื่อ patch, วันที่, ชื่อ branch, commit hash และไฟล์ที่ได้รับผลกระทบ เพื่อป้องกันปัญหาแบบ "Codex Task 05" ที่ตรวจสอบย้อนหลังไม่ได้ (ดู §4)
-6. เพิ่มเอกสารอ้างอิงจำนวนช่องจอดสูงสุดต่อโซน (C/W/B/WB) ให้ชัดเจนในระดับ config หรือ schema
-7. พิจารณาย้ายตาราง `mms_ramp_bookings` เข้าสู่ Prisma model เพื่อรวม data layer กับ quotations/invoices ให้เป็นหนึ่งเดียว และทำเอกสาร `ENABLE_PRODUCTION_BOOKINGS` ให้ชัดเจนสำหรับทีม deploy staging/production
+1. **สร้าง Unified New Booking Wizard** ที่เชื่อมขั้นตอนต่อไปนี้เข้าด้วยกันเป็นหน้าเดียว: vessel info → slot selection → tide check → truck/lift selection → multi-service selection → price summary → save/confirm
+2. **เชื่อมต่อ flow ระหว่าง ramp booking และ quotation** ให้เป็น operational workflow เดียวกัน (ปัจจุบันทั้งสอง flow แยกกันโดยสิ้นเชิง ไม่มีการอ้างอิงข้าม API — ดู §11, §23)
+3. **ตัดสินใจสถาปัตยกรรมข้อมูล:** ควรย้าย ramp booking (`mms_ramp_bookings`) เข้าสู่ Prisma schema หรือคงไว้เป็น raw Supabase access ต่อไป — หากคงไว้ ต้องกำหนดขอบเขต repository/service ให้ชัดเจนเพื่อไม่ให้ data layer กระจัดกระจาย
+4. **เพิ่ม Prisma model สำหรับ `mms_ramp_bookings`** หากทีมยึดมาตรฐาน Prisma-first สำหรับทุกตาราง (สอดคล้องกับข้อ 3)
+5. **จัดทำเอกสาร `ENABLE_PRODUCTION_BOOKINGS` ให้ชัดเจน** ครอบคลุม: วัตถุประสงค์ของ flag, พฤติกรรมเริ่มต้น (default = ปิด/fail-closed), พฤติกรรมบน staging, พฤติกรรมบน production, และเหตุผลด้านความปลอดภัยที่ต้อง fail-closed แทนที่จะ fail-open
+6. **สร้างไฟล์ changelog ที่เป็นทางการสำหรับทุก patch ของ Codex/Claude ในอนาคต** โดยระบุ: หมายเลข task, วันที่, ชื่อ branch, commit hash, ไฟล์ที่เปลี่ยนแปลง, ผลกระทบต่อฟีเจอร์ (feature impact), และผลกระทบต่อข้อจำกัด (limitation impact) — เพื่อป้องกันปัญหาแบบ "Codex Task 05" ที่ตรวจสอบย้อนหลังไม่ได้ (ดู §4)
+7. เพิ่มฟิลด์ `gl_code` ที่เป็นโครงสร้างจริงใน `PricingMaster` model แทนการฝังในข้อความหมายเหตุ เพื่อให้ FC ค้นหา/ตรวจสอบได้อัตโนมัติ
+8. ยืนยันและบันทึกเป็นลายลักษณ์อักษรว่า speedboat haul-out เป็นราคาเหมาจ่ายหรือไม่ (ปัจจุบันไม่มีหลักฐาน) เพื่อป้องกันความสับสนในการออกใบเสนอราคา
+9. ตรวจสอบและยืนยันกลไกการทำงานจริงของ Recurring Billing ให้ครบวงจร
+10. เพิ่มเอกสารอ้างอิงจำนวนช่องจอดสูงสุดต่อโซน (C/W/B/WB) ให้ชัดเจนในระดับ config หรือ schema
 
 ---
 

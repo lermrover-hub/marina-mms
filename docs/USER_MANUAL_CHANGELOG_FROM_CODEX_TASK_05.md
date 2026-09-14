@@ -24,6 +24,23 @@ Task 05 evidence that does not exist; the missing-evidence finding is a
 **documentation gap**, not a software limitation, and is now presented as
 such in the manual's §4 "Evidence / Documentation Gaps."
 
+**Bottom line, stated plainly:**
+- **Codex Task 05 evidence was not found** — repeated across two independent
+  audits, with no match in filenames, file contents, `git log --all --grep`,
+  branches, or tags.
+- **No verified "Codex Task 05" changelog can be produced.** There is
+  nothing in this repository to diff against, so any changelog claiming to
+  describe "what changed in Codex Task 05" would be fabricated. This file
+  does not attempt that.
+- **All corrections applied to the pilot manual are based on the audit
+  result and the current version 07 codebase** — not on any Codex Task 05
+  artifact.
+- **Verified findings (from direct code/schema inspection) are kept
+  separate from unverified historical patch claims** throughout this file:
+  §3–§8 below are verified, code-cited findings; anything relating to
+  "Codex Task 05" itself is confined to §1 (the search) and §9 (explicitly
+  marked unverifiable), never presented as a source of the changes in §3–§8.
+
 ---
 
 ## 1. Evidence found

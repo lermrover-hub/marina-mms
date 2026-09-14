@@ -56,9 +56,9 @@ A time slot is SAFE when: `Predicted Tide Height >= Required Tide Table Height`
 
 ## User Manuals
 
-- [คู่มือทดลองใช้ Marina MMS สำหรับ FC และ Chief Engineer (Markdown)](docs/07-fc-chief-engineer-pilot-manual.md)
-- [คู่มือทดลองใช้ Marina MMS สำหรับ FC และ Chief Engineer (Word / .docx)](docs/07-fc-chief-engineer-pilot-manual.docx)
-- [Changelog / evidence review for the pilot manual](docs/USER_MANUAL_CHANGELOG_FROM_CODEX_TASK_05.md)
+- Version 07 Pilot Manual for FC / Chief Engineer: [docs/07-fc-chief-engineer-pilot-manual.md](docs/07-fc-chief-engineer-pilot-manual.md)
+- Word DOCX version: [docs/07-fc-chief-engineer-pilot-manual.docx](docs/07-fc-chief-engineer-pilot-manual.docx)
+- Codex Task 05 evidence/changelog note: [docs/USER_MANUAL_CHANGELOG_FROM_CODEX_TASK_05.md](docs/USER_MANUAL_CHANGELOG_FROM_CODEX_TASK_05.md)
 
 ## Getting Started
 

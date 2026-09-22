@@ -2,13 +2,15 @@
 import React, { useState, useEffect } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
 import {
   Download, Send, CheckCircle, XCircle,
   AlertCircle, User, Ship, ChevronRight, FileText,
-  Edit, Copy, Loader2, PenLine, Wrench, Receipt,
+  Edit, Copy, Loader2, PenLine, Wrench, Receipt, RotateCcw,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/shared/PageHeader"
+import { HelpHint } from "@/components/shared/HelpHint"
 import { StatusBadge } from "@/components/shared/StatusBadge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -16,6 +18,8 @@ import { SignatureApprovalModal } from "@/components/ui/SignatureApprovalModal"
 import type { Quotation, QuotationItem } from "@/lib/supabase"
 import { formatTHB, formatDate, formatDateLong } from "@/lib/utils"
 import { cn } from "@/lib/utils"
+import { calculateQuotationLineTotal } from "@/lib/quotation-workflow"
+import { QUOTATION_PRICE_EDIT_ROLES, QUOTATION_SUBMIT_ROLES, roleAllowed } from "@/lib/workflow-access"
 
 // ─── Confirm dialog ────────────────────────────────────────────────────────────
 function ConfirmDialog({
@@ -52,10 +56,12 @@ export default function QuotationDetailPage() {
   const [lineItems,  setLineItems]  = useState<QuotationItem[]>([])
   const [loading,    setLoading]    = useState(true)
   const [error,      setError]      = useState<string | null>(null)
-  const [dialog,     setDialog]     = useState<"send" | "accept" | "reject" | "convert" | "convert-wo" | null>(null)
+  const [dialog,     setDialog]     = useState<"submit" | "approve" | "send" | "return-draft" | "accept" | "reject" | "convert" | "convert-wo" | null>(null)
   const [saving,     setSaving]     = useState(false)
   const [showSigModal, setShowSigModal] = useState(false)
   const router = useRouter()
+  const { data: session } = useSession()
+  const actorRole = (session?.user as { role?: string } | undefined)?.role ?? ""
 
   useEffect(() => {
     if (!id) return
@@ -86,6 +92,29 @@ export default function QuotationDetailPage() {
       setQuotation(data)
     } catch (e) {
       alert("Failed to update: " + String(e))
+    } finally {
+      setSaving(false)
+      setDialog(null)
+    }
+  }
+
+  async function handleWorkflow(action: "submit_for_approval" | "approve_internal" | "send_to_customer" | "return_to_draft") {
+    if (!quotation) return
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/db/quotations/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error ?? "Update failed")
+      setQuotation(data)
+      if (data?.delivery?.safe_mode) {
+        alert("Preview safe mode is active. The quotation remains approved and no real customer message was sent.")
+      }
+    } catch (e) {
+      alert("Failed to update: " + (e instanceof Error ? e.message : String(e)))
     } finally {
       setSaving(false)
       setDialog(null)
@@ -192,12 +221,19 @@ export default function QuotationDetailPage() {
   }
 
   const isExpired  = quotation.valid_until ? new Date(quotation.valid_until) < new Date() : false
-  const canSend       = ["DRAFT"].includes(quotation.status)
+  const canSubmit     = quotation.status === "DRAFT"
   const canAccept     = ["SENT"].includes(quotation.status)
   const canReject     = ["SENT", "ACCEPTED"].includes(quotation.status)
   const canConvert    = ["ACCEPTED"].includes(quotation.status)
-  const canEdit       = ["DRAFT", "SENT"].includes(quotation.status)
-  const canSignApprove = ["SENT", "PENDING_APPROVAL"].includes(quotation.status)
+  const canEdit       = quotation.status === "DRAFT" && roleAllowed(actorRole, QUOTATION_PRICE_EDIT_ROLES)
+  const canSubmitForApproval = canSubmit && roleAllowed(actorRole, QUOTATION_SUBMIT_ROLES)
+  const isGeneralApprover = ["SUPER_ADMIN", "MANAGING_DIRECTOR"].includes(actorRole)
+  const isManagerApprover = [...["MARINA_MANAGER", "BOAT_YARD_MANAGER"], "SUPER_ADMIN", "MANAGING_DIRECTOR"].includes(actorRole)
+  const approvalLevel = quotation.required_approver_role ?? "MANAGER"
+  const canApprove = quotation.status === "PENDING_APPROVAL" && (approvalLevel === "GENERAL_MANAGER" ? isGeneralApprover : isManagerApprover)
+  const canSendApproved = quotation.status === "APPROVED" && ["SUPER_ADMIN", "MANAGING_DIRECTOR", "MARINA_MANAGER", "FINANCE"].includes(actorRole)
+  const canReturnToDraft = quotation.status === "PENDING_APPROVAL" && isGeneralApprover
+  const canSignApprove = quotation.status === "SENT"
   const hasSignature  = !!(quotation.signature_data)
 
   // Derive totals from Quotation type fields
@@ -225,14 +261,46 @@ export default function QuotationDetailPage() {
           }}
         />
       )}
-      {dialog === "send" && (
+      {dialog === "submit" && (
         <ConfirmDialog
-          title="Send Quotation to Customer"
-          message={`Send ${quotation.quote_number} to ${quotation.customer_name}? Status will change to SENT.`}
-          confirmLabel="Send Quotation"
+          title="Submit Quotation for Approval"
+          message={`Submit ${quotation.quote_number} to the Managing Director / Super Admin? The customer will not see it until approval.`}
+          confirmLabel="Submit for Approval"
           confirmVariant="teal"
           saving={saving}
-          onConfirm={() => handleAction("SENT")}
+          onConfirm={() => handleWorkflow("submit_for_approval")}
+          onCancel={() => setDialog(null)}
+        />
+      )}
+      {dialog === "approve" && (
+        <ConfirmDialog
+          title="Approve Quotation Internally"
+          message={`Approve ${quotation.quote_number}? This records the approver and does not send anything to the customer.`}
+          confirmLabel="Approve"
+          confirmVariant="teal"
+          saving={saving}
+          onConfirm={() => handleWorkflow("approve_internal")}
+          onCancel={() => setDialog(null)}
+        />
+      )}
+      {dialog === "send" && (
+        <ConfirmDialog
+          title="Send Approved Quotation"
+          message={`Send ${quotation.quote_number} to available customer channels? Preview safe mode blocks real delivery.`}
+          confirmLabel="Send Approved"
+          confirmVariant="teal"
+          saving={saving}
+          onConfirm={() => handleWorkflow("send_to_customer")}
+          onCancel={() => setDialog(null)}
+        />
+      )}
+      {dialog === "return-draft" && (
+        <ConfirmDialog
+          title="Return to Draft"
+          message={`Return ${quotation.quote_number} to Draft so it can be edited and resubmitted?`}
+          confirmLabel="Return to Draft"
+          saving={saving}
+          onConfirm={() => handleWorkflow("return_to_draft")}
           onCancel={() => setDialog(null)}
         />
       )}
@@ -298,18 +366,33 @@ export default function QuotationDetailPage() {
                 <Copy className="h-4 w-4" /> Duplicate
               </Button>
               {canEdit && (
-                <Button variant="outline" size="sm" className="gap-2" disabled>
-                  <Edit className="h-4 w-4" /> Edit
+                <Button variant="outline" size="sm" className="gap-2" asChild>
+                  <Link href={`/quotations/${id}/edit`}><Edit className="h-4 w-4" /> Edit Draft</Link>
                 </Button>
               )}
-              {canSend && (
-                <Button size="sm" className="gap-2" onClick={() => setDialog("send")}>
-                  <Send className="h-4 w-4" /> Send to Customer
+              {canSubmitForApproval && (
+                <Button size="sm" className="gap-2" onClick={() => setDialog("submit")}>
+                  <Send className="h-4 w-4" /> Submit for Approval
+                </Button>
+              )}
+              {canApprove && (
+                <Button size="sm" variant="teal" className="gap-2" onClick={() => setDialog("approve")}>
+                  <CheckCircle className="h-4 w-4" /> Approve Internally
+                </Button>
+              )}
+              {canSendApproved && (
+                <Button size="sm" variant="teal" className="gap-2" onClick={() => setDialog("send")}>
+                  <Send className="h-4 w-4" /> Send Approved Quotation
+                </Button>
+              )}
+              {canReturnToDraft && (
+                <Button size="sm" variant="outline" className="gap-2" onClick={() => setDialog("return-draft")}>
+                  <RotateCcw className="h-4 w-4" /> Return to Draft
                 </Button>
               )}
               {canSignApprove && (
                 <Button size="sm" variant="teal" className="gap-2" onClick={() => setShowSigModal(true)}>
-                  <PenLine className="h-4 w-4" /> Approve with Signature
+                  <PenLine className="h-4 w-4" /> Customer Signature
                 </Button>
               )}
               {canAccept && (
@@ -319,9 +402,7 @@ export default function QuotationDetailPage() {
               )}
               {canConvert && (
                 <>
-                  <Button size="sm" className="gap-2 bg-orange-600 hover:bg-orange-700 text-white" onClick={() => setDialog("convert-wo")}>
-                    <Wrench className="h-4 w-4" /> Work Order
-                  </Button>
+                  {quotation.sr_id && <Button size="sm" variant="outline" className="gap-2" asChild><Link href={`/service-requests/${quotation.sr_id}`}><Wrench className="h-4 w-4" /> Payment / Work Order Gate</Link></Button>}
                   <Button size="sm" className="gap-2 bg-blue-700 hover:bg-blue-800 text-white" onClick={() => setDialog("convert")}>
                     <Receipt className="h-4 w-4" /> Invoice
                   </Button>
@@ -335,6 +416,20 @@ export default function QuotationDetailPage() {
             </div>
           }
         />
+
+        {quotation.status === "PENDING_APPROVAL" && (
+          <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            Awaiting {approvalLevel === "GENERAL_MANAGER" ? "General Manager / Super Admin" : "Manager"} approval. The customer cannot see this quotation yet.
+            <HelpHint title="Approval rule">Every quotation needs management approval. Discounts above 20% or any no-charge line escalate to General Manager / Super Admin.</HelpHint>
+          </div>
+        )}
+        {quotation.status === "APPROVED" && (
+          <div className="flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            Approved internally. Use “Send Approved Quotation” for delivery; Preview safe mode blocks real messages.
+          </div>
+        )}
 
         {isExpired && !["ACCEPTED", "CONVERTED", "REJECTED"].includes(quotation.status) && (
           <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
@@ -520,7 +615,7 @@ export default function QuotationDetailPage() {
                             <td className="px-5 py-3 text-left text-xs text-gray-500">—</td>
                             <td className="px-5 py-3 text-right text-sm tabular-nums text-gray-900">{item.qty}</td>
                             <td className="px-5 py-3 text-right text-sm tabular-nums text-gray-900">{formatTHB(item.unit_price)}</td>
-                            <td className="px-5 py-3 text-right text-sm tabular-nums font-semibold text-gray-900">{formatTHB(item.line_total)}</td>
+                            <td className="px-5 py-3 text-right text-sm tabular-nums font-semibold text-gray-900">{formatTHB(calculateQuotationLineTotal(item))}</td>
                           </tr>
                         ))}
                       </tbody>

@@ -29,6 +29,7 @@ const TYPE_CONFIG: Record<string, { icon: React.ElementType; color: string }> = 
   INSURANCE_EXPIRY: { icon: ShieldAlert,   color: "text-amber-500 bg-amber-50" },
   WORK_ORDER_UPDATE:{ icon: Wrench,        color: "text-teal-500 bg-teal-50"   },
   QUOTATION_SENT:   { icon: FileText,      color: "text-blue-500 bg-blue-50"   },
+  QUOTATION_APPROVAL:{ icon: FileText,     color: "text-amber-600 bg-amber-50" },
   PAYMENT_RECEIVED: { icon: CheckCircle2,  color: "text-green-500 bg-green-50" },
   SERVICE_REQUEST:  { icon: AlertTriangle, color: "text-orange-500 bg-orange-50"},
   warning:          { icon: AlertTriangle, color: "text-red-500 bg-red-50"     },

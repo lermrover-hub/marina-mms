@@ -1,7 +1,7 @@
 "use client"
 import React, { useState, useCallback, useEffect } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { Plus, Save, Send, Sparkles, BookOpen, X, Loader2, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { LineItemRow } from "@/components/quotations/LineItemRow"
-import type { Customer, Boat, ServiceRequest } from "@/lib/supabase"
+import type { Customer, Boat, Quotation, QuotationItem, ServiceRequest } from "@/lib/supabase"
 import { formatTHB, cn } from "@/lib/utils"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -316,6 +316,8 @@ function AiGenerateModal({
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function NewQuotationPage() {
   const router = useRouter()
+  const params = useParams<{ id?: string }>()
+  const editId = params?.id ?? ""
   const [serviceRequestId, setServiceRequestId] = useState("")
 
   // Live data
@@ -382,13 +384,62 @@ export default function NewQuotationPage() {
   const [depositPct,     setDepositPct]     = useState(50)
   const [notes,          setNotes]          = useState("")
   const [customizeBooking, setCustomizeBooking] = useState("")
-  const [managerName,    setManagerName]    = useState("")
-  const [managerSignature, setManagerSignature] = useState("")
   const [saving,         setSaving]         = useState(false)
+  const [loadingExisting, setLoadingExisting] = useState(!!editId)
+  const [existingError, setExistingError] = useState<string | null>(null)
 
   const [items, setItems] = useState<LineItem[]>([
     { id: uid(), description: "", category: "Other", unit: "job", qty: 1, unitPrice: 0 },
   ])
+
+  useEffect(() => {
+    if (!editId) return
+    let cancelled = false
+    setLoadingExisting(true)
+    fetch(`/api/db/quotations/${encodeURIComponent(editId)}`)
+      .then(async (response) => {
+        const data = await response.json()
+        if (!response.ok) throw new Error(data?.error ?? "Quotation not found")
+        return data as Quotation & { mms_quotation_items?: Array<QuotationItem & { pricing_code?: string | null }> }
+      })
+      .then((quotation) => {
+        if (cancelled) return
+        if (quotation.status !== "DRAFT") throw new Error("Only a Draft quotation can be edited.")
+        setCustomerId(quotation.customer_id ?? "")
+        setBoatId(quotation.boat_id ?? "")
+        setServiceRequestId(quotation.sr_id ?? "")
+        setTitle(quotation.title ?? "")
+        setNotes(quotation.notes ?? "")
+        if (quotation.valid_until) {
+          const remainingDays = Math.max(1, Math.ceil((new Date(quotation.valid_until).getTime() - Date.now()) / 86_400_000))
+          setValidDays(remainingDays)
+        }
+        const subtotalValue = Number(quotation.subtotal ?? 0)
+        const discountValue = Number(quotation.discount ?? 0)
+        setDiscountType(discountValue > 0 ? "FIXED" : "NONE")
+        setDiscountValue(discountValue)
+        const taxableBase = subtotalValue - discountValue
+        setTaxRate(taxableBase > 0 ? Number(((Number(quotation.vat_amount ?? 0) / taxableBase) * 100).toFixed(2)) : 7)
+        const totalValue = Number(quotation.total_amount ?? 0)
+        setDepositPct(totalValue > 0 ? Number(((Number(quotation.deposit_amount ?? 0) / totalValue) * 100).toFixed(2)) : 0)
+        setItems((quotation.mms_quotation_items ?? []).map((item) => ({
+          id: item.id,
+          description: item.description,
+          category: "Other",
+          unit: item.unit ?? "item",
+          qty: Number(item.qty),
+          unitPrice: Number(item.unit_price),
+          pricingCode: item.pricing_code ?? undefined,
+        })))
+      })
+      .catch((error) => {
+        if (!cancelled) setExistingError(error instanceof Error ? error.message : String(error))
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingExisting(false)
+      })
+    return () => { cancelled = true }
+  }, [editId])
 
   const selectedCustomer = customers.find((c) => c.id === customerId)
   const customerBoats    = boats.filter((b) => b.owner_id === customerId)
@@ -409,8 +460,6 @@ export default function NewQuotationPage() {
     discountPercent >= 6 && discountPercent < 10 ? "L2" :
     discountPercent >= 3 && discountPercent < 6 ? "L3" :
     discountPercent > 15 ? "BLOCKED" : ""
-  const requiresManagerApproval = !!customizeBooking.trim() || discountPercent >= 3
-  const hasManagerApproval = managerName.trim().length > 0 && managerSignature.trim().length > 0
   const approvalBlocked = discountLevel === "BLOCKED"
 
   // Item handlers
@@ -453,13 +502,9 @@ export default function NewQuotationPage() {
     setShowAiModal(false)
   }, [])
 
-  async function handleSave(andSend = false) {
-    if (andSend && approvalBlocked) {
+  async function handleSave(submitForApproval = false) {
+    if (submitForApproval && approvalBlocked) {
       alert("Discount above 15% is outside the configured authorization levels.")
-      return
-    }
-    if (andSend && requiresManagerApproval && !hasManagerApproval) {
-      alert("Manager name and signature are required before sending this customized or discounted quotation.")
       return
     }
     setSaving(true)
@@ -468,7 +513,6 @@ export default function NewQuotationPage() {
       validUntilDate.setDate(validUntilDate.getDate() + validDays)
       const approvalNotes = [
         customizeBooking.trim() ? `[Customize Booking]\n${customizeBooking.trim()}` : "",
-        requiresManagerApproval ? `[Manager Approval]\nLevel: ${discountLevel || "Required"}\nManager: ${managerName.trim() || "-"}\nSignature: ${managerSignature.trim() || "-"}\nDiscount percent: ${discountPercent.toFixed(2)}%` : "",
       ].filter(Boolean).join("\n\n")
       const finalNotes = [notes.trim(), approvalNotes].filter(Boolean).join("\n\n")
       const body = {
@@ -484,8 +528,6 @@ export default function NewQuotationPage() {
         deposit_pct:      depositPct,
         notes:            finalNotes || null,
         customize_booking: customizeBooking.trim() || null,
-        manager_approval_name: managerName.trim() || null,
-        manager_approval_signature: managerSignature.trim() || null,
         discount_authorization_level: discountLevel || null,
         subtotal,
         discount_amount:  discountAmount,
@@ -493,20 +535,31 @@ export default function NewQuotationPage() {
         tax_amount:       taxAmount,
         grand_total:      grandTotal,
         deposit_req:      depositReq,
-        status:           andSend ? "SENT" : "DRAFT",
+        status:           "DRAFT",
         items,
         created_at:       new Date().toISOString(),
         updated_at:       new Date().toISOString(),
       }
-      const res = await fetch("/api/db/quotations", {
-        method: "POST",
+      const res = await fetch(editId ? `/api/db/quotations/${editId}` : "/api/db/quotations", {
+        method: editId ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify(editId ? { ...body, action: "edit_draft", status: "DRAFT" } : body),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error ?? "Save failed")
-      router.push(data?.id ? `/quotations/${data.id}` : "/quotations")
-    } catch {
+      const quotationId = data?.id ?? editId
+      if (submitForApproval && quotationId) {
+        const submitResponse = await fetch(`/api/db/quotations/${quotationId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "submit_for_approval" }),
+        })
+        const submitData = await submitResponse.json()
+        if (!submitResponse.ok) throw new Error(submitData?.error ?? "Submit for approval failed")
+      }
+      router.push(quotationId ? `/quotations/${quotationId}` : "/quotations")
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Save failed")
       setSaving(false)
     }
   }
@@ -532,23 +585,29 @@ export default function NewQuotationPage() {
       )}
 
       <PageHeader
-        title="New Quotation"
+        title={editId ? "Edit Draft Quotation" : "New Quotation"}
         breadcrumb={[
           { label: "Quotations", href: "/quotations" },
-          { label: "New" },
+          { label: editId ? "Edit Draft" : "New" },
         ]}
         actions={
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" asChild><Link href="/quotations">Cancel</Link></Button>
-            <Button variant="outline" size="sm" onClick={() => handleSave(false)} disabled={saving} className="gap-2">
+            <Button variant="outline" size="sm" asChild><Link href={editId ? `/quotations/${editId}` : "/quotations"}>Cancel</Link></Button>
+            <Button variant="outline" size="sm" onClick={() => handleSave(false)} disabled={saving || loadingExisting || !!existingError} className="gap-2">
               <Save className="h-4 w-4" /> Save Draft
             </Button>
-            <Button size="sm" variant="teal" onClick={() => handleSave(true)} disabled={saving || !customerId || approvalBlocked || (requiresManagerApproval && !hasManagerApproval)} className="gap-2">
-              <Send className="h-4 w-4" /> Save & Send
+            <Button size="sm" variant="teal" onClick={() => handleSave(true)} disabled={saving || loadingExisting || !customerId || !title.trim() || approvalBlocked} className="gap-2">
+              <Send className="h-4 w-4" /> {editId ? "Save & Submit for Approval" : "Submit for Approval"}
             </Button>
           </div>
         }
       />
+
+      {existingError && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {existingError}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Left sidebar — header info */}
@@ -672,22 +731,9 @@ export default function NewQuotationPage() {
                 />
               </div>
 
-              {requiresManagerApproval && (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-3">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">Manager Confirmation Required</p>
-                    <p className="mt-1 text-xs text-amber-700">Customized booking or L1/L2/L3 discount cannot be sent until a manager confirms with name and signature.</p>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="manager-name">Manager Name</Label>
-                    <Input id="manager-name" value={managerName} onChange={(e) => setManagerName(e.target.value)} placeholder="Approving manager" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="manager-signature">Manager Signature</Label>
-                    <Input id="manager-signature" value={managerSignature} onChange={(e) => setManagerSignature(e.target.value)} placeholder="Typed signature / approval code" />
-                  </div>
-                </div>
-              )}
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-700">
+                Every quotation must be submitted to the Managing Director or Super Admin before it can be delivered to the customer.
+              </div>
 
               <div className="space-y-1.5">
                 <Label htmlFor="deposit">Deposit Required (%)</Label>
@@ -836,11 +882,11 @@ export default function NewQuotationPage() {
               </div>
 
               <div className="flex gap-2 pt-4 border-t mt-4">
-                <Button className="flex-1 gap-2" variant="outline" onClick={() => handleSave(false)} disabled={saving}>
+                <Button className="flex-1 gap-2" variant="outline" onClick={() => handleSave(false)} disabled={saving || loadingExisting || !!existingError}>
                   <Save className="h-4 w-4" /> Save as Draft
                 </Button>
-                <Button className="flex-1 gap-2" variant="teal" onClick={() => handleSave(true)} disabled={saving || !customerId || approvalBlocked || (requiresManagerApproval && !hasManagerApproval)}>
-                  <Send className="h-4 w-4" /> {saving ? "Saving…" : "Save & Send to Customer"}
+                <Button className="flex-1 gap-2" variant="teal" onClick={() => handleSave(true)} disabled={saving || loadingExisting || !customerId || !title.trim() || approvalBlocked || !!existingError}>
+                  <Send className="h-4 w-4" /> {saving ? "Saving…" : "Submit for Approval"}
                 </Button>
               </div>
               {!customerId && (
@@ -849,8 +895,8 @@ export default function NewQuotationPage() {
               {approvalBlocked && (
                 <p className="text-xs text-center text-red-600 mt-2">Discount over 15% is outside L1/L2/L3 approval limits.</p>
               )}
-              {customerId && !approvalBlocked && requiresManagerApproval && !hasManagerApproval && (
-                <p className="text-xs text-center text-amber-600 mt-2">Manager name and signature are required before sending.</p>
+              {customerId && !approvalBlocked && (
+                <p className="text-xs text-center text-blue-600 mt-2">Customer delivery occurs only after Managing Director / Super Admin approval.</p>
               )}
             </CardContent>
           </Card>

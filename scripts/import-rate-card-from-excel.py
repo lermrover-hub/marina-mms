@@ -146,7 +146,12 @@ def load_rate_rows(workbook_path: Path) -> tuple[str, list[dict[str, object]]]:
         unit = normalize_unit(source_unit)
         full_rate = parse_decimal(value_for(values, headers, "FULL RATE (THB)", "FULL RATE", "RATE (THB)", "RATE"))
         source_discount_pct = percentage_points(parse_optional_decimal(value_for(values, headers, "OPENING DISC %")))
-        current_rate = parse_optional_decimal(value_for(values, headers, "CURRENT RATE (THB)", "CURRENT RATE")) or full_rate
+        source_current_rate = parse_optional_decimal(
+            value_for(values, headers, "CURRENT RATE (THB)", "CURRENT RATE")
+        )
+        # Column F (FULL RATE) is the operational selling price. The workbook's
+        # opening discount/current-rate columns remain source references only.
+        operational_rate = full_rate
         direct_cost = parse_optional_decimal(value_for(values, headers, "DIRECT COST (THB)", "DIRECT COST"))
         gl_value = value_for(values, headers, "GL", "REVENUE GL")
         gl = str(gl_value).strip() if gl_value else None
@@ -181,11 +186,12 @@ def load_rate_rows(workbook_path: Path) -> tuple[str, list[dict[str, object]]]:
         if source_unit:
             description_parts.append(f"Source unit: {source_unit}")
         description_parts.append(f"Source workbook: {workbook_path.name}")
-        description_parts.append("Imported from CURRENT RATE (THB)")
+        description_parts.append("Operational rate imported from FULL RATE (THB), column F")
 
         note_parts = [part for part in [source_note, audit_remark, rate_check] if part]
         note_parts.append(f"Full rate: {full_rate}")
-        note_parts.append(f"Current rate: {current_rate}")
+        if source_current_rate is not None:
+            note_parts.append(f"Source current rate (reference only): {source_current_rate}")
         note_parts.append(f"Source opening discount: {source_discount_pct}%")
         if direct_cost is not None:
             note_parts.append(f"Direct cost: {direct_cost}")
@@ -203,7 +209,7 @@ def load_rate_rows(workbook_path: Path) -> tuple[str, list[dict[str, object]]]:
                 "service_th": service_th,
                 "category": category,
                 "unit": unit,
-                "rate": current_rate,
+                "rate": operational_rate,
                 "full_rate": full_rate,
                 "discount_pct": Decimal("0"),
                 "source_discount_pct": source_discount_pct,
@@ -305,7 +311,8 @@ def build_sql(
     )
 
     output = f"""-- Generated from {workbook_path.name}, sheet {sheet_name}
--- Operational discount_pct is deliberately 0%. Source opening discounts are informational only.
+-- Operational rate_thb is imported from FULL RATE (THB), column F.
+-- Operational discount_pct is deliberately 0%. Source opening discounts and current rates are informational only.
 {deactivation_sql}
 
 INSERT INTO pricing_master (

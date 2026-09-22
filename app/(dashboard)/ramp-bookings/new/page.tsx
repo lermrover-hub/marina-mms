@@ -11,6 +11,13 @@ import { Input } from "@/components/ui/input"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { Boat } from "@/lib/supabase"
+import {
+  calculateRampCustomerCharge,
+  deriveRampServicePlan,
+  getRampServiceOption,
+  RAMP_SERVICE_CATEGORIES,
+  RAMP_SERVICE_OPTIONS,
+} from "@/lib/ramp-booking-service"
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -171,6 +178,8 @@ export default function NewRampBookingPage() {
 
   // form fields
   const [opType,         setOpType]         = useState("LAUNCH")
+  const [serviceCategory,setServiceCategory]= useState("BOAT_STORAGE")
+  const [serviceOption,  setServiceOption]  = useState("STORAGE_DAILY")
   const [requestedDate,  setRequestedDate]  = useState("")
   const [requestedTime,  setRequestedTime]  = useState("")
   const [boatQuery,      setBoatQuery]      = useState("")
@@ -255,6 +264,8 @@ export default function NewRampBookingPage() {
 
       const body: Record<string, unknown> = {
         operation_type: opType,
+        service_category: serviceCategory,
+        service_option: serviceOption,
         requested_date: requestedDate,
         requested_time: requestedTime || null,
         customer_id:    selectedBoat?.owner_id    ?? null,
@@ -265,7 +276,7 @@ export default function NewRampBookingPage() {
         trailer_height_ft: trailerM ? mToFt(trailer) : null,
         safety_clearance_ft: mToFt(safety),
         assigned_staff: assignedStaff || null,
-        revenue_amount: Number(revenueAmount) || 0,
+        revenue_amount: (servicePlan?.pricing_adjustment_pct ?? 0) > 0 ? recommendedCharge : (Number(revenueAmount) || 0),
         estimated_cost_amount: Number(estimatedCost) || 0,
         revenue_account_code: "4100-RAMP",
         cost_account_code: "5100-RAMP",
@@ -300,6 +311,13 @@ export default function NewRampBookingPage() {
 
   // Fallback formula (when no live result yet)
   const formulaReqTide = requiredTideHeight(draft, trailer, safety)
+  const availableServiceOptions = RAMP_SERVICE_OPTIONS[serviceCategory as keyof typeof RAMP_SERVICE_OPTIONS]
+  const selectedService = getRampServiceOption(serviceCategory, serviceOption)
+  const servicePlan = deriveRampServicePlan(serviceCategory, serviceOption, requestedDate)
+  const recommendedCharge = calculateRampCustomerCharge(
+    Number(estimatedCost) || 0,
+    servicePlan?.pricing_adjustment_pct ?? 0,
+  )
 
   return (
     <div className="space-y-6">
@@ -345,6 +363,79 @@ export default function NewRampBookingPage() {
                     </button>
                   ))}
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Service type */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Service Type</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-xs text-gray-500">
+                  Select the commercial service that follows this ramp operation. Operation/tide safety remains tracked separately above.
+                </p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {RAMP_SERVICE_CATEGORIES.map((category) => (
+                    <button
+                      key={category.value}
+                      type="button"
+                      aria-pressed={serviceCategory === category.value}
+                      onClick={() => {
+                        setServiceCategory(category.value)
+                        setServiceOption(RAMP_SERVICE_OPTIONS[category.value][0].value)
+                      }}
+                      className={`rounded-lg border-2 p-3 text-left transition-colors ${
+                        serviceCategory === category.value
+                          ? "border-teal-500 bg-teal-50"
+                          : "border-gray-200 bg-white hover:border-gray-300"
+                      }`}
+                    >
+                      <div className="text-sm font-semibold text-gray-900">{category.code}. {category.label}</div>
+                      <div className="mt-1 text-xs text-gray-500">{category.description}</div>
+                    </button>
+                  ))}
+                </div>
+
+                <fieldset className="space-y-2">
+                  <legend className="text-sm font-medium text-gray-700">Service option</legend>
+                  {availableServiceOptions.map((option) => (
+                    <label
+                      key={option.value}
+                      className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 ${
+                        serviceOption === option.value ? "border-teal-400 bg-teal-50/60" : "border-gray-200"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="service-option"
+                        value={option.value}
+                        checked={serviceOption === option.value}
+                        onChange={() => setServiceOption(option.value)}
+                        className="mt-0.5 h-4 w-4 text-teal-600"
+                      />
+                      <span>
+                        <span className="block text-sm font-semibold text-gray-900">{option.code}. {option.label}</span>
+                        <span className="mt-0.5 block text-xs text-gray-500">{option.description}</span>
+                      </span>
+                    </label>
+                  ))}
+                </fieldset>
+
+                {servicePlan?.recurring_billing && (
+                  <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
+                    Monthly billing reminder is enabled. The first reminder will be due one calendar month after the requested date
+                    {servicePlan.next_billing_date ? ` (${servicePlan.next_billing_date})` : ""}.
+                  </div>
+                )}
+                {(servicePlan?.pricing_adjustment_pct ?? 0) > 0 && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                    Default {servicePlan?.pricing_adjustment_type === "SUBCONTRACTOR_MARKUP" ? "markup" : "project overhead"}: {servicePlan?.pricing_adjustment_pct}%.
+                    {Number(estimatedCost) > 0 && (
+                      <span className="ml-1 font-semibold">Recommended charge from estimated cost: ฿{recommendedCharge.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -526,10 +617,29 @@ export default function NewRampBookingPage() {
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium text-gray-700">Customer Charge (THB)</label>
-                    <Input type="number" min="0" step="0.01" value={revenueAmount} onChange={e => setRevenueAmount(e.target.value)} placeholder="0" />
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={(servicePlan?.pricing_adjustment_pct ?? 0) > 0 ? recommendedCharge.toFixed(2) : revenueAmount}
+                      onChange={e => setRevenueAmount(e.target.value)}
+                      placeholder="0"
+                      readOnly={(servicePlan?.pricing_adjustment_pct ?? 0) > 0}
+                    />
+                    {(servicePlan?.pricing_adjustment_pct ?? 0) > 0 && (
+                      <p className="text-xs text-blue-700">
+                        Calculated automatically from the direct cost using the {servicePlan?.pricing_adjustment_pct}% rule.
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-gray-700">Estimated Direct Cost (THB)</label>
+                    <label className="text-sm font-medium text-gray-700">
+                      {serviceOption === "MARINA_SUBCONTRACTOR"
+                        ? "Subcontractor Quotation (THB)"
+                        : serviceOption === "TURNKEY_PROJECT"
+                          ? "Estimated Project Direct Cost (THB)"
+                          : "Estimated Direct Cost (THB)"}
+                    </label>
                     <Input type="number" min="0" step="0.01" value={estimatedCost} onChange={e => setEstimatedCost(e.target.value)} placeholder="0" />
                   </div>
                 </div>
@@ -596,6 +706,12 @@ export default function NewRampBookingPage() {
                     {OPERATION_TYPES.find(o => o.value === opType)?.label ?? opType}
                   </span>
                 </div>
+                <div className="flex justify-between gap-3">
+                  <span className="text-gray-500">Service</span>
+                  <span className="max-w-[180px] text-right font-medium text-gray-900">
+                    {selectedService ? `${selectedService.code}. ${selectedService.label}` : "—"}
+                  </span>
+                </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Date</span>
                   <span className="font-medium text-gray-900">{requestedDate || "—"}</span>
@@ -620,7 +736,7 @@ export default function NewRampBookingPage() {
                 )}
                 <div className="flex justify-between border-t pt-1">
                   <span className="text-gray-500">Customer charge</span>
-                  <span className="font-semibold text-gray-900">฿{(Number(revenueAmount) || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                  <span className="font-semibold text-gray-900">฿{((servicePlan?.pricing_adjustment_pct ?? 0) > 0 ? recommendedCharge : (Number(revenueAmount) || 0)).toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Estimated cost</span>

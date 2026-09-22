@@ -41,8 +41,7 @@ export const dynamic = "force-dynamic"
  *
  * Two valid callers:
  *  1. Vercel Cron with Authorization: Bearer <CRON_SECRET>.
- *  2. Internal admin users — authenticated session with role SUPER_ADMIN or
- *     ADMIN (for manual triggers from the UI).
+ *  2. Internal Finance, Managing Director, or Super Admin users for manual UI runs.
  */
 async function isAuthorised(req: Request): Promise<boolean> {
   // 1. Vercel Cron secret
@@ -55,7 +54,7 @@ async function isAuthorised(req: Request): Promise<boolean> {
   const session = await auth()
   if (!session?.user) return false
   const role = (session.user as { role?: string }).role ?? ""
-  return ["SUPER_ADMIN", "ADMIN"].includes(role)
+  return ["SUPER_ADMIN", "MANAGING_DIRECTOR", "FINANCE"].includes(role)
 }
 
 // ─── helpers ─────────────────────────────────────────────────────────────────

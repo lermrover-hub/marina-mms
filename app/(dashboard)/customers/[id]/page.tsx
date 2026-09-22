@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import {
-  Phone, Mail, MapPin, Globe, Ship, Edit, ArrowLeft, Loader2, Users, MessageCircle
+  Phone, Mail, MapPin, Globe, Ship, Edit, ArrowLeft, Loader2, Users, MessageCircle, Plus
 } from "lucide-react"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { StatusBadge } from "@/components/shared/StatusBadge"
@@ -83,6 +83,9 @@ export default function CustomerDetailPage() {
           <div className="flex gap-2">
             <Button variant="outline" size="sm" asChild>
               <Link href="/customers"><ArrowLeft className="h-4 w-4" /></Link>
+            </Button>
+            <Button variant="outline" size="sm" className="gap-2" asChild>
+              <Link href={`/boats/new?owner_id=${id}`}><Plus className="h-4 w-4" /> Register Boat</Link>
             </Button>
             <Button size="sm" className="gap-2" asChild>
               <Link href={`/customers/${id}/edit`}><Edit className="h-4 w-4" /> Edit</Link>

@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server"
-import { isRealCustomerMessagesEnabled } from "@/lib/safe-mode"
 import { createServerClient } from "@/lib/supabase-server"
-import { sendEmail } from "@/lib/email"
-import { quotationSent } from "@/lib/email-templates"
 import { customerScope, PORTAL_READ_ROLES, QUOTATION_WRITE_ROLES, requireApiActor } from "@/lib/api-auth"
 import { validateQuotationCreateInput } from "@/lib/quotation-validation"
+import { CUSTOMER_VISIBLE_QUOTATION_STATUSES } from "@/lib/quotation-workflow"
+import { minimumQuotationApprover } from "@/lib/service-workflow"
 
 export const dynamic = "force-dynamic"
 
@@ -33,6 +32,9 @@ export async function GET(req: Request) {
 
     let query = supabase.from("mms_quotations").select("*").order("created_at", { ascending: false })
     if (scope.customerId) query = query.eq("customer_id", scope.customerId)
+    if (access.actor.role === "CUSTOMER") {
+      query = query.in("status", [...CUSTOMER_VISIBLE_QUOTATION_STATUSES])
+    }
     if (boatId) query = query.eq("boat_id", boatId)
 
     const { data, error } = await query
@@ -145,6 +147,8 @@ export async function POST(req: Request) {
     const depositAmount = body.deposit_pct !== undefined
       ? Math.round(totalAmount * depositPct / 100)
       : Number(body.deposit_req ?? body.deposit_amount ?? 0)
+    const effectiveDiscountPct = subtotal > 0 ? discount / subtotal * 100 : 0
+    const hasNoChargeLine = normalizedItems.some((item) => item.unitPrice === 0)
 
     if (
       ![subtotal, discount, vatRate, vatAmount, totalAmount, depositAmount].every(Number.isFinite)
@@ -158,33 +162,9 @@ export async function POST(req: Request) {
     ) {
       return NextResponse.json({ error: "Invalid quotation financial values" }, { status: 400 })
     }
-    const status = body.status === "SENT" ? "SENT" : "DRAFT"
-    const discountPercent = subtotal > 0 ? (discount / subtotal) * 100 : 0
-    const discountLevel =
-      discountPercent >= 10 && discountPercent <= 15 ? "L1" :
-      discountPercent >= 6 && discountPercent < 10 ? "L2" :
-      discountPercent >= 3 && discountPercent < 6 ? "L3" :
-      discountPercent > 15 ? "BLOCKED" : null
-    const customizeBooking = String(body.customize_booking ?? "").trim()
-    const managerName = String(body.manager_approval_name ?? "").trim()
-    const managerSignature = String(body.manager_approval_signature ?? "").trim()
-
-    if (status === "SENT") {
-      if (!customerId) {
-        return NextResponse.json({ error: "Cannot send quotation: customer is required." }, { status: 409 })
-      }
-      const hasDeliveryChannel = !!(customer?.email || customer?.line_user_id || customer?.whatsapp_number)
-      if (!hasDeliveryChannel) {
-        return NextResponse.json({ error: "Cannot send quotation: customer has no email, LINE user ID, or WhatsApp number." }, { status: 409 })
-      }
-      if (discountLevel === "BLOCKED") {
-        return NextResponse.json({ error: "Cannot send quotation: discount above 15% is outside approval limits." }, { status: 409 })
-      }
-      if ((customizeBooking || discountPercent >= 3) && (!managerName || !managerSignature)) {
-        return NextResponse.json({ error: "Cannot send quotation: manager name and signature are required for customized booking or L1/L2/L3 discount." }, { status: 409 })
-      }
-    }
-
+    // Creation always starts as Draft. Submission must use the audited
+    // submit_for_approval transition on /api/db/quotations/[id].
+    const status = "DRAFT"
     const { data, error } = await supabase
       .from("mms_quotations")
       .insert({
@@ -196,6 +176,10 @@ export async function POST(req: Request) {
         sr_id: body.service_request_id ?? body.sr_id ?? null,
         title: body.title ?? null,
         status,
+        required_approver_role: minimumQuotationApprover(effectiveDiscountPct, hasNoChargeLine),
+        max_discount_pct: effectiveDiscountPct,
+        has_no_charge_line: hasNoChargeLine,
+        payment_mode: String(body.payment_mode ?? (depositAmount > 0 ? "DEPOSIT" : "FULL_PREPAYMENT")),
         subtotal,
         discount,
         vat_amount: vatAmount,
@@ -269,38 +253,6 @@ export async function POST(req: Request) {
         await supabase.from("mms_quotations").delete().eq("id", data.id)
         return NextResponse.json({ error: itemError.message }, { status: 500 })
       }
-    }
-
-    // Email is only sent for explicit Send flow, and only when real messages are enabled.
-    if (isRealCustomerMessagesEnabled()) try {
-      if (status === "SENT" && data?.customer_id) {
-        const recipientEmail = customer?.email
-        const recipientName = customerName ?? "Valued Customer"
-
-        if (recipientEmail) {
-          await sendEmail({
-            to: recipientEmail,
-            subject: `Quotation ${data.quote_number ?? data.id} - Ocean Rover Marina`,
-            html: quotationSent({
-              customerName: recipientName,
-              quotationNumber: data.quote_number ?? String(data.id),
-              serviceDescription: data.title ?? "Marina Services",
-              totalAmount: Number(data.total_amount ?? 0),
-              currency: "THB",
-              validUntil: data.valid_until
-                ? new Date(data.valid_until).toLocaleDateString("en-GB", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  })
-                : "-",
-              quotationUrl: `${process.env.NEXTAUTH_URL ?? ""}/quotations/${data.id}`,
-            }),
-          })
-        }
-      }
-    } catch (emailErr) {
-      console.error("[Quotation email trigger error]", emailErr)
     }
 
     return NextResponse.json(data, { status: 201 })

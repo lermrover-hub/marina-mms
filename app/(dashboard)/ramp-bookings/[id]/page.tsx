@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatDate, formatDateLong, formatTHB } from "@/lib/utils"
 import { cn } from "@/lib/utils"
 import type { RampBooking } from "@/lib/supabase"
+import { rampServiceLabel } from "@/lib/ramp-booking-service"
 
 const OP_LABELS: Record<string, string> = {
   LAUNCH:"Launch", HAUL_OUT:"Haul-out", MOVE_BOAT:"Move Boat",
@@ -260,6 +261,20 @@ export default function RampBookingDetailPage() {
               <div className="flex justify-between text-xs"><span className="text-gray-400">Cost account</span><span className="font-mono text-gray-600">{booking.cost_account_code ?? "5100-RAMP"}</span></div>
               <div className="flex justify-between text-xs"><span className="text-gray-400">Financial status</span><span className="font-medium text-gray-700">{booking.financial_status ?? "ESTIMATED"}</span></div>
               {booking.invoice_id && <Link href={`/invoices/${booking.invoice_id}`} className="block pt-1 text-xs text-teal-700 hover:underline">View linked invoice →</Link>}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle>Service Plan</CardTitle></CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <div className="flex justify-between gap-4"><span className="text-gray-500">Service</span><span className="text-right font-semibold text-gray-900">{rampServiceLabel(booking.service_category, booking.service_option)}</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">Billing cycle</span><span className="font-medium text-gray-900">{booking.billing_cycle?.replace(/_/g, " ") ?? "—"}</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">Pricing rule</span><span className="font-medium text-gray-900">{booking.pricing_adjustment_type?.replace(/_/g, " ") ?? "NONE"} ({booking.pricing_adjustment_pct ?? 0}%)</span></div>
+              {booking.recurring_billing && (
+                <div className="mt-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-blue-800">
+                  Monthly billing reminder: {booking.next_billing_date ? formatDate(booking.next_billing_date) : "date pending"}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

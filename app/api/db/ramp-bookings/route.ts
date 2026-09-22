@@ -2,8 +2,10 @@ import { NextResponse } from "next/server"
 import { isProductionBookingsEnabled, safeModeResponse } from "@/lib/safe-mode"
 import { createServerClient } from "@/lib/supabase-server"
 import { customerScope, PORTAL_READ_ROLES, requireApiActor } from "@/lib/api-auth"
+import { calculateRampCustomerCharge, deriveRampServicePlan } from "@/lib/ramp-booking-service"
 
 const supabase = createServerClient()
+const OPERATION_TYPES = new Set(["LAUNCH", "HAUL_OUT", "MOVE_BOAT", "WASH", "FUEL", "INSPECTION"])
 
 export const dynamic = "force-dynamic"
 
@@ -41,17 +43,35 @@ export async function POST(req: Request) {
     const access = await requireApiActor(PORTAL_READ_ROLES)
     if ("error" in access) return access.error
     const body = await req.json()
+    const requestedDate = typeof body.requested_date === "string" ? body.requested_date : ""
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(requestedDate)) {
+      return NextResponse.json({ error: "Requested date is required" }, { status: 400 })
+    }
+    if (!OPERATION_TYPES.has(body.operation_type)) {
+      return NextResponse.json({ error: "A valid operation type is required" }, { status: 400 })
+    }
+    const servicePlan = deriveRampServicePlan(
+      typeof body.service_category === "string" ? body.service_category : "",
+      typeof body.service_option === "string" ? body.service_option : "",
+      requestedDate,
+    )
+    if (!servicePlan) {
+      return NextResponse.json({ error: "A valid booking service type is required" }, { status: 400 })
+    }
     const scope = customerScope(access.actor, body.customer_id ?? null)
     if ("error" in scope) return scope.error
     const isCustomer = access.actor.role === "CUSTOMER"
-    const revenueAmount = Number(isCustomer ? 0 : (body.revenue_amount ?? 0))
+    const requestedRevenueAmount = Number(isCustomer ? 0 : (body.revenue_amount ?? 0))
     const estimatedCostAmount = Number(isCustomer ? 0 : (body.estimated_cost_amount ?? 0))
-    if (!Number.isFinite(revenueAmount) || revenueAmount < 0) {
+    if (!Number.isFinite(requestedRevenueAmount) || requestedRevenueAmount < 0) {
       return NextResponse.json({ error: "Revenue amount must be zero or greater" }, { status: 400 })
     }
     if (!Number.isFinite(estimatedCostAmount) || estimatedCostAmount < 0) {
       return NextResponse.json({ error: "Estimated cost must be zero or greater" }, { status: 400 })
     }
+    const revenueAmount = !isCustomer && servicePlan.pricing_adjustment_pct > 0
+      ? calculateRampCustomerCharge(estimatedCostAmount, servicePlan.pricing_adjustment_pct)
+      : requestedRevenueAmount
 
     if (isCustomer) {
       if (!body.boat_id) {
@@ -72,8 +92,20 @@ export async function POST(req: Request) {
     const { data, error } = await supabase
       .from("mms_ramp_bookings")
       .insert({
-        ...body,
+        operation_type: body.operation_type,
+        requested_date: requestedDate,
+        requested_time: body.requested_time ?? null,
         customer_id: scope.customerId,
+        customer_name: body.customer_name ?? null,
+        boat_id: body.boat_id ?? null,
+        boat_name: body.boat_name ?? null,
+        boat_draft_ft: body.boat_draft_ft ?? null,
+        trailer_height_ft: body.trailer_height_ft ?? null,
+        safety_clearance_ft: body.safety_clearance_ft ?? null,
+        required_tide_m: body.required_tide_m ?? null,
+        assigned_staff: body.assigned_staff ?? null,
+        notes: body.notes ?? null,
+        ...servicePlan,
         status: isCustomer ? "REQUESTED" : (body.status ?? "REQUESTED"),
         revenue_amount: revenueAmount,
         estimated_cost_amount: estimatedCostAmount,

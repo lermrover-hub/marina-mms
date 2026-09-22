@@ -1,516 +1,162 @@
 "use client"
-import React, { useState, useEffect, useMemo } from "react"
+
+import React, { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Save, AlertTriangle } from "lucide-react"
+import { useSession } from "next-auth/react"
+import { ArrowLeft, Plus, Save, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { PageHeader } from "@/components/shared/PageHeader"
+import { HelpHint } from "@/components/shared/HelpHint"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import type { Customer, Boat } from "@/lib/supabase"
+import type { Boat, Customer } from "@/lib/supabase"
+import { formatTHB } from "@/lib/utils"
+import { maxOperationalDiscountForRole, QUOTATION_PRICE_EDIT_ROLES, roleAllowed } from "@/lib/workflow-access"
 
-// ── constants ────────────────────────────────────────────────────────────────
-const JOB_CATEGORIES = [
-  "Engine", "Electrical", "Fiberglass", "Painting", "Antifouling",
-  "Interior", "Canvas", "Stainless / Metal Work", "Cleaning / Detailing",
-  "Plumbing", "Generator", "Air Conditioning", "Other",
-]
+type Price = { id: string; code: string; serviceNameEn: string; category: string; unit: string; rateThb: number; directCostThb: number | null }
+type ServiceLine = { pricing_code: string; description: string; qty: number; unit: string; unit_price: number; direct_cost: number; discount_pct: number }
 
-const PRIORITY_OPTIONS = [
-  { value: "LOW",    label: "Low",    color: "bg-gray-100 text-gray-600 border-gray-300" },
-  { value: "MEDIUM", label: "Medium", color: "bg-blue-100 text-blue-700 border-blue-300" },
-  { value: "HIGH",   label: "High",   color: "bg-orange-100 text-orange-700 border-orange-300" },
-  { value: "URGENT", label: "Urgent", color: "bg-red-100 text-red-700 border-red-300" },
-]
-
-const LOCATION_OPTIONS = [
-  "In Water — Wet Berth",
-  "On Hard — Dry Storage",
-  "On Hard — Repair Yard",
-  "Customer Brings In",
-  "Other",
-]
-
-// ── component ────────────────────────────────────────────────────────────────
 export default function NewServiceRequestPage() {
   const router = useRouter()
-  const [saving,         setSaving]         = useState(false)
-  const [saveError,      setSaveError]      = useState<string | null>(null)
-  const [customers,      setCustomers]      = useState<Customer[]>([])
-  const [customersError, setCustomersError] = useState<string | null>(null)
-  const [boats,          setBoats]          = useState<Boat[]>([])
+  const { data: session } = useSession()
+  const actorRole = (session?.user as { role?: string } | undefined)?.role ?? ""
+  const maximumDiscount = maxOperationalDiscountForRole(actorRole)
+  const canEditCost = roleAllowed(actorRole, QUOTATION_PRICE_EDIT_ROLES)
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [boats, setBoats] = useState<Boat[]>([])
+  const [prices, setPrices] = useState<Price[]>([])
+  const [customerId, setCustomerId] = useState("")
+  const [boatId, setBoatId] = useState("")
+  const requestType = "RAMP_SERVICE"
+  const [rampPlan, setRampPlan] = useState("HAUL_OUT_CONFIRMED_LAUNCH_OPEN")
+  const [haulOutDate, setHaulOutDate] = useState("")
+  const [launchDate, setLaunchDate] = useState("")
+  const [serviceType, setServiceType] = useState("STORAGE")
+  const [storagePeriod, setStoragePeriod] = useState("DAILY")
+  const [operatorType, setOperatorType] = useState("OCEAN_ROVER")
+  const [trade, setTrade] = useState("Paint")
+  const [markupPct, setMarkupPct] = useState(10)
+  const [paymentMode, setPaymentMode] = useState("FULL_PREPAYMENT")
+  const [goodCredit, setGoodCredit] = useState(false)
+  const [title, setTitle] = useState("")
+  const [notes, setNotes] = useState("")
+  const [selectedPrice, setSelectedPrice] = useState("")
+  const [items, setItems] = useState<ServiceLine[]>([])
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/db/customers").then(r => r.json()),
-      fetch("/api/db/boats").then(r => r.json()),
-    ]).then(([c, b]) => {
-      if (Array.isArray(c)) {
-        setCustomers(c)
-      } else if (c?.error) {
-        setCustomersError(c.error)
-        console.error("Customers load error:", c.error)
-      }
-      if (Array.isArray(b)) setBoats(b)
-    }).catch((e) => {
-      setCustomersError(String(e))
-      console.error("Customers/boats fetch failed:", e)
-    })
+      fetch("/api/db/customers").then((r) => r.json()),
+      fetch("/api/db/boats").then((r) => r.json()),
+      fetch("/api/pricing-master?isActive=true").then((r) => r.json()),
+    ]).then(([customerRows, boatRows, priceRows]) => {
+      setCustomers(Array.isArray(customerRows) ? customerRows : [])
+      setBoats(Array.isArray(boatRows) ? boatRows : [])
+      setPrices(Array.isArray(priceRows?.data) ? priceRows.data : [])
+    }).catch((e) => setError(String(e)))
   }, [])
 
-  // ── form state ──────────────────────────────────────────────────────────
-  const [customerId, setCustomerId]     = useState("")
-  const [boatId, setBoatId]             = useState("")
-  const [category, setCategory]         = useState("")
-  const [priority, setPriority]         = useState("MEDIUM")
-  const [location, setLocation]         = useState("")
-  const [description, setDescription]   = useState("")
-  const [symptomDetail, setSymptom]     = useState("")
-  const [requestedDate, setReqDate]     = useState("")
-  const [requiresInspection, setInsp]   = useState(true)
-  const [executionType, setExecutionType] = useState("INTERNAL")
-  const [estimatedBudget, setBudget]    = useState("")
-  const [depositPct, setDepositPct]     = useState("50")
-  const [laborRate, setLaborRate]       = useState("450")
-  const [contractorMarkup, setMarkup]   = useState("15")
-  const [attachNote, setAttachNote]     = useState("")
-  const [internalNote, setInternalNote] = useState("")
+  useEffect(() => {
+    setPaymentMode(serviceType === "YARD_SERVICE" && operatorType === "OCEAN_ROVER" ? "DEPOSIT" : "FULL_PREPAYMENT")
+  }, [serviceType, operatorType])
 
-  // ── derived ──────────────────────────────────────────────────────────────
-  const boatsForCustomer = useMemo(() =>
-    customerId ? boats.filter((b) => b.owner_id === customerId) : [],
-  [boats, customerId])
+  const boatsForCustomer = useMemo(() => boats.filter((boat) => boat.owner_id === customerId), [boats, customerId])
+  const selectedCustomer = customers.find((customer) => customer.id === customerId)
+  const selectedBoat = boats.find((boat) => boat.id === boatId)
+  const total = items.reduce((sum, item) => sum + item.qty * item.unit_price * (1 - item.discount_pct / 100), 0)
 
-  const selectedCustomer = customers.find((c) => c.id === customerId)
-  const selectedBoat     = boats.find((b) => b.id === boatId)
-
-  function handleCustomerChange(id: string) {
-    setCustomerId(id)
-    setBoatId("")
+  function addRate() {
+    const price = prices.find((row) => row.code === selectedPrice)
+    if (!price) return
+    setItems((rows) => [...rows, { pricing_code: price.code, description: price.serviceNameEn, qty: 1, unit: price.unit, unit_price: price.rateThb, direct_cost: price.directCostThb ?? 0, discount_pct: 0 }])
+    setSelectedPrice("")
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setSaveError(null)
+  function addSuggestedService(keywords: string[]) {
+    const price = prices.find((row) => keywords.some((keyword) => `${row.code} ${row.serviceNameEn}`.toLowerCase().includes(keyword)))
+    if (!price) {
+      setError(`No active rate-card item found for ${keywords[0]}. Please select it from the rate card.`)
+      return
+    }
+    setItems((rows) => [...rows, { pricing_code: price.code, description: price.serviceNameEn, qty: 1, unit: price.unit, unit_price: price.rateThb, direct_cost: price.directCostThb ?? 0, discount_pct: 0 }])
+  }
+
+  function updateLine(index: number, patch: Partial<ServiceLine>) {
+    setItems((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, ...patch } : row))
+  }
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault()
     setSaving(true)
+    setError(null)
     try {
-      const selectedC = customers.find(c => c.id === customerId)
-      const selectedB = boats.find(b => b.id === boatId)
-      const body = {
-        customer_id:         customerId || null,
-        customer_name:       selectedC ? (selectedC.company_name ?? [selectedC.first_name, selectedC.last_name].filter(Boolean).join(" ")) : null,
-        boat_id:             boatId || null,
-        boat_name:           selectedB?.name ?? null,
-        category,
-        priority,
-        title:               description.trim().split("\n")[0]?.slice(0, 80) || "Service Request",
-        description:         description || null,
-        location:            location || null,
-        requested_date:      requestedDate || null,
-        requires_inspection: requiresInspection,
-        estimated_budget:    estimatedBudget ? parseFloat(estimatedBudget) : null,
-        deposit_pct:         depositPct ? parseFloat(depositPct) : null,
-        labor_rate:          laborRate ? parseFloat(laborRate) : null,
-        contractor_markup:   contractorMarkup ? parseFloat(contractorMarkup) : null,
-        execution_type:      executionType,
-        subcontractor_required: executionType !== "INTERNAL",
-        procurement_status:   executionType === "INTERNAL" ? "NOT_REQUIRED" : "NEEDS_SOURCING",
-        notes:               [attachNote, internalNote].filter(Boolean).join("\n") || null,
-        status:              "NEW_REQUEST",
-        reference:           `SR-${Date.now().toString().slice(-6)}`,
-      }
-      const res = await fetch("/api/db/service-requests", {
+      const response = await fetch("/api/db/service-requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          reference: `SR-${Date.now().toString().slice(-6)}`,
+          customer_id: customerId,
+          customer_name: selectedCustomer?.company_name ?? [selectedCustomer?.first_name, selectedCustomer?.last_name].filter(Boolean).join(" "),
+          boat_id: boatId,
+          boat_name: selectedBoat?.name,
+          title: title || `${requestType === "RAMP_SERVICE" ? "Ramp service" : serviceType} — ${selectedBoat?.name ?? "boat"}`,
+          description: notes,
+          request_type: requestType,
+          ramp_operation_plan: requestType === "RAMP_SERVICE" ? rampPlan : null,
+          confirmed_haul_out_date: haulOutDate || null,
+          confirmed_launch_date: launchDate || null,
+          service_type: serviceType,
+          storage_period: serviceType === "STORAGE" ? storagePeriod : null,
+          operator_type: operatorType,
+          subcontractor_trade: operatorType === "OCEAN_ROVER_SUBCONTRACTOR" ? trade : null,
+          markup_pct: operatorType === "OCEAN_ROVER_SUBCONTRACTOR" ? markupPct : 0,
+          payment_mode: paymentMode,
+          good_credit_customer: paymentMode === "CREDIT" && goodCredit,
+          notes,
+          items: items.map((item) => ({ ...item, operator_type: operatorType, markup_pct: operatorType === "OCEAN_ROVER_SUBCONTRACTOR" ? markupPct : 0, service_group: requestType === "RAMP_SERVICE" ? "RAMP_SERVICE" : serviceType })),
+        }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data?.error ?? "Save failed")
-      router.push(data?.id ? `/service-requests/${data.id}` : "/service-requests")
-    } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Save failed")
+      const data = await response.json()
+      if (!response.ok) throw new Error(data?.error ?? "Unable to create workflow")
+      router.push(`/service-requests/${data.id}`)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
       setSaving(false)
     }
   }
 
-  const isFormValid = customerId && boatId && category && description.trim().length > 10
-
-  // ── render ───────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      <PageHeader
-        title="New Service Request"
-        description="Submit a new boat service or repair request"
-        actions={
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/service-requests">
-              <ArrowLeft className="h-4 w-4 mr-2" /> Back
-            </Link>
-          </Button>
-        }
-      />
+    <div className="mx-auto max-w-5xl space-y-6">
+      <PageHeader title="New Service Request" description="Operational request, rate-card quotation and payment gate in one workflow" actions={<Button variant="outline" size="sm" asChild><Link href="/service-requests"><ArrowLeft className="mr-2 h-4 w-4" />Back</Link></Button>} />
+      <form onSubmit={submit} className="space-y-6">
+        {error && <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+        <Card><CardHeader><CardTitle>1. Customer & Boat</CardTitle></CardHeader><CardContent className="grid gap-4 md:grid-cols-2">
+          <div><Label>Customer *</Label><select required className="mt-1 w-full rounded-md border p-2" value={customerId} onChange={(e) => { setCustomerId(e.target.value); setBoatId("") }}><option value="">Select customer</option>{customers.map((c) => <option key={c.id} value={c.id}>{c.company_name ?? [c.first_name, c.last_name].filter(Boolean).join(" ")}</option>)}</select></div>
+          <div><Label>Boat / Vessel *</Label><select required className="mt-1 w-full rounded-md border p-2" value={boatId} onChange={(e) => setBoatId(e.target.value)}><option value="">Select boat</option>{boatsForCustomer.map((boat) => <option key={boat.id} value={boat.id}>{boat.name} — {boat.boat_type ?? "type not set"}</option>)}</select>{selectedBoat && <p className="mt-1 text-xs text-gray-500">Boat type: {selectedBoat.boat_type ?? "Not set"} · LOA {selectedBoat.loa_ft ?? "?"} ft</p>}</div>
+        </CardContent></Card>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+        <Card><CardHeader><CardTitle>2. Ramp Service <HelpHint title="Ramp Service workflow">Every request on this screen starts with ramp planning, then branches to Storage or Yard Service. Yard Service then branches by who performs the work.</HelpHint></CardTitle></CardHeader><CardContent className="space-y-4">
+          <div className="grid gap-4 rounded-lg border border-sky-200 bg-sky-50 p-4 md:grid-cols-3"><div><Label>Ramp plan *</Label><select className="mt-1 w-full rounded-md border p-2" value={rampPlan} onChange={(e) => setRampPlan(e.target.value)}><option value="HAUL_OUT_AND_LAUNCH_CONFIRMED">Confirm haul-out + launch dates</option><option value="HAUL_OUT_CONFIRMED_LAUNCH_OPEN">Confirm haul-out / launch open</option></select></div><div><Label>Confirmed haul-out *</Label><Input required type="date" value={haulOutDate} onChange={(e) => setHaulOutDate(e.target.value)} /></div><div><Label>Confirmed launch</Label><Input required={rampPlan === "HAUL_OUT_AND_LAUNCH_CONFIRMED"} type="date" value={launchDate} onChange={(e) => setLaunchDate(e.target.value)} /></div></div>
+          <div><Label>Choose service under Ramp Service *</Label><div className="mt-2 grid gap-3 md:grid-cols-2"><button type="button" onClick={() => { setServiceType("STORAGE"); setOperatorType("OCEAN_ROVER") }} className={`rounded-lg border p-4 text-left ${serviceType === "STORAGE" ? "border-teal-500 bg-teal-50" : "border-gray-200"}`}><b>A. Storage</b><p className="text-sm text-gray-500">Daily, weekly or monthly boat storage</p></button><button type="button" onClick={() => setServiceType("YARD_SERVICE")} className={`rounded-lg border p-4 text-left ${serviceType === "YARD_SERVICE" ? "border-teal-500 bg-teal-50" : "border-gray-200"}`}><b>B. Yard Service</b><p className="text-sm text-gray-500">Marina work or external contractor work</p></button></div></div>
+          {serviceType === "STORAGE" ? <div className="rounded-lg border bg-gray-50 p-4"><Label>Storage billing period</Label><div className="mt-2 grid grid-cols-3 gap-2">{["DAILY", "WEEKLY", "MONTHLY"].map((period) => <button type="button" key={period} onClick={() => setStoragePeriod(period)} className={`rounded-md border px-3 py-2 text-sm font-medium ${storagePeriod === period ? "border-teal-500 bg-white text-teal-700" : "border-gray-200 bg-white text-gray-600"}`}>{period[0] + period.slice(1).toLowerCase()}</button>)}</div>{storagePeriod === "MONTHLY" && <p className="mt-2 text-xs text-amber-700">Monthly storage creates an officer billing reminder.</p>}</div> : <div className="space-y-4 rounded-lg border bg-gray-50 p-4"><div><Label>Who performs the Yard Service? <HelpHint title="Operator affects price and approval">Ocean Rover work may receive an authorised discount. Boat-owner contractor work requires verified insurance. Ocean Rover subcontractor work uses direct cost plus markup and cannot receive a Marina discount.</HelpHint></Label><div className="mt-2 grid gap-2 md:grid-cols-3">{[{ value: "OCEAN_ROVER", label: "Ocean Rover" }, { value: "BOAT_OWNER_CONTRACTOR", label: "Boat owner / contractor" }, { value: "OCEAN_ROVER_SUBCONTRACTOR", label: "Ocean Rover subcontractor" }].map((operator) => <button type="button" key={operator.value} onClick={() => setOperatorType(operator.value)} className={`rounded-md border p-3 text-sm font-semibold ${operatorType === operator.value ? "border-teal-500 bg-white text-teal-700" : "border-gray-200 bg-white"}`}>{operator.label}</button>)}</div></div>
+          {operatorType === "OCEAN_ROVER" && <div><Label>Common Ocean Rover services</Label><div className="mt-2 flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" onClick={() => addSuggestedService(["tow", "truck"])}>+ Tow truck</Button><Button type="button" size="sm" variant="outline" onClick={() => addSuggestedService(["pressure", "bottom clean"])}>+ Hi-pressure bottom cleaning</Button><Button type="button" size="sm" variant="outline" onClick={() => addSuggestedService(["boat wash", "wash"])}>+ Boat wash</Button></div></div>}
+          {operatorType === "BOAT_OWNER_CONTRACTOR" && <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-800">Enter the contractor scope in Internal Notes. Insurance starts as Requested and must be verified before confirming the Service Order.</p>}
+          {operatorType === "OCEAN_ROVER_SUBCONTRACTOR" && <div className="grid gap-4 md:grid-cols-2"><div><Label>Trade</Label><select className="mt-1 w-full rounded-md border p-2" value={trade} onChange={(e) => setTrade(e.target.value)}><option>Paint</option><option>Mechanic</option><option>Electrical</option><option>Other</option></select></div><div><Label>Markup %</Label><Input type="number" min="0" max="100" value={markupPct} onChange={(e) => setMarkupPct(Number(e.target.value))} /></div></div>}</div>}
+        </CardContent></Card>
 
-        {/* ── Customer & Boat ─────────────────────────────────────────────── */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Customer & Boat</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <Card><CardHeader><CardTitle>3. Ordered Service Items (Rate Card) <HelpHint title="How pricing works">Select every billable item from the active rate card in document order. The Draft keeps a price and direct-cost snapshot so later rate changes do not alter the quotation.</HelpHint></CardTitle></CardHeader><CardContent className="space-y-3">
+          <div className="flex gap-2"><select className="min-w-0 flex-1 rounded-md border p-2" value={selectedPrice} onChange={(e) => setSelectedPrice(e.target.value)}><option value="">Select rate-card item</option>{prices.map((price) => <option key={price.id} value={price.code}>{price.code} — {price.serviceNameEn} ({formatTHB(price.rateThb)}/{price.unit})</option>)}</select><Button type="button" variant="outline" onClick={addRate}><Plus className="mr-1 h-4 w-4" />Add</Button></div>
+          {items.map((item, index) => <div key={`${item.pricing_code}-${index}`} className="grid items-end gap-2 rounded-lg border p-3 md:grid-cols-[1fr_90px_110px_90px_40px]"><div><p className="text-xs text-gray-500">{item.pricing_code}</p><p className="font-medium">{item.description}</p><p className="text-xs text-gray-500">Rate {formatTHB(item.unit_price)} / {item.unit}</p></div><div><Label>Qty</Label><Input type="number" min="0.001" step="0.001" value={item.qty} onChange={(e) => updateLine(index, { qty: Number(e.target.value) })} /></div><div><Label>Direct cost</Label><Input type="number" min="0" step="0.01" disabled={!canEditCost} title={canEditCost ? "" : "Admin or Finance only"} value={item.direct_cost} onChange={(e) => updateLine(index, { direct_cost: Number(e.target.value) })} /></div><div><Label>Discount %</Label><Input type="number" min="0" max={maximumDiscount} step="0.01" disabled={operatorType !== "OCEAN_ROVER" || maximumDiscount === 0} title={`Maximum ${maximumDiscount}% for your role`} value={item.discount_pct} onChange={(e) => updateLine(index, { discount_pct: Math.min(maximumDiscount, Number(e.target.value)) })} /></div><Button type="button" variant="ghost" onClick={() => setItems((rows) => rows.filter((_, i) => i !== index))}><Trash2 className="h-4 w-4 text-red-500" /></Button></div>)}
+          {!items.length && <p className="py-6 text-center text-sm text-gray-400">Add services in the order they should appear on the quotation.</p>}
+          <p className="text-right font-semibold">Preview subtotal: {formatTHB(total)}</p>
+        </CardContent></Card>
 
-            {/* Customer */}
-            <div className="space-y-1.5">
-              <Label htmlFor="customer">Customer <span className="text-red-500">*</span></Label>
-              <select
-                id="customer"
-                value={customerId}
-                onChange={(e) => handleCustomerChange(e.target.value)}
-                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-                required
-              >
-                <option value="">— Select customer —</option>
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.company_name ?? ([c.first_name, c.last_name].filter(Boolean).join(" ") || c.id)}
-                  </option>
-                ))}
-              </select>
-              {customersError && (
-                <p className="text-xs text-red-500 mt-1">Failed to load customers: {customersError}</p>
-              )}
-              {selectedCustomer && (
-                <p className="text-xs text-gray-500">
-                  {selectedCustomer.phone} · {selectedCustomer.email}
-                </p>
-              )}
-            </div>
-
-            {/* Boat */}
-            <div className="space-y-1.5">
-              <Label htmlFor="boat">Boat <span className="text-red-500">*</span></Label>
-              <select
-                id="boat"
-                value={boatId}
-                onChange={(e) => setBoatId(e.target.value)}
-                disabled={!customerId}
-                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:bg-gray-100 disabled:text-gray-400"
-                required
-              >
-                <option value="">— Select boat —</option>
-                {boatsForCustomer.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name} ({b.boat_type ?? ""})
-                  </option>
-                ))}
-              </select>
-              {selectedBoat && (
-                <p className="text-xs text-gray-500">
-                  LOA {selectedBoat.loa_ft ?? "?"}ft · {selectedBoat.engine_brand ?? ""} · {selectedBoat.current_location_code ?? ""}
-                </p>
-              )}
-              {customerId && boatsForCustomer.length === 0 && (
-                <p className="text-xs text-amber-600">No boats linked to this customer.</p>
-              )}
-            </div>
-
-          </CardContent>
-        </Card>
-
-        {/* ── Service Details ─────────────────────────────────────────────── */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Service Details</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-5">
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-
-              {/* Category */}
-              <div className="space-y-1.5">
-                <Label htmlFor="category">Job Category <span className="text-red-500">*</span></Label>
-                <select
-                  id="category"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  required
-                >
-                  <option value="">— Select category —</option>
-                  {JOB_CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Current Location */}
-              <div className="space-y-1.5">
-                <Label htmlFor="location">Current Boat Location</Label>
-                <select
-                  id="location"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-                >
-                  <option value="">— Select location —</option>
-                  {LOCATION_OPTIONS.map((l) => (
-                    <option key={l} value={l}>{l}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Priority */}
-            <div className="space-y-1.5">
-              <Label>Priority <span className="text-red-500">*</span></Label>
-              <div className="flex flex-wrap gap-2">
-                {PRIORITY_OPTIONS.map((p) => (
-                  <button
-                    key={p.value}
-                    type="button"
-                    onClick={() => setPriority(p.value)}
-                    className={`rounded-full px-4 py-1.5 text-sm font-medium border transition-all ${
-                      priority === p.value
-                        ? p.color + " ring-2 ring-offset-1 ring-current"
-                        : "bg-white text-gray-500 border-gray-200 hover:border-gray-400"
-                    }`}
-                  >
-                    {p.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Description */}
-            <div className="space-y-1.5">
-              <Label htmlFor="description">
-                Problem Description <span className="text-red-500">*</span>
-              </Label>
-              <textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={3}
-                placeholder="Describe the problem clearly (minimum 10 characters)…"
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
-                required
-              />
-              <p className="text-xs text-gray-400">{description.length} chars</p>
-            </div>
-
-            {/* Symptom Detail */}
-            <div className="space-y-1.5">
-              <Label htmlFor="symptom">Symptom Detail / When does it occur?</Label>
-              <textarea
-                id="symptom"
-                value={symptomDetail}
-                onChange={(e) => setSymptom(e.target.value)}
-                rows={2}
-                placeholder="e.g. Occurs at high RPM above 3,000, only on port engine…"
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
-              />
-            </div>
-
-            {/* Requested Date */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="space-y-1.5">
-                <Label htmlFor="reqDate">Requested Service Date</Label>
-                <Input
-                  id="reqDate"
-                  type="date"
-                  value={requestedDate}
-                  onChange={(e) => setReqDate(e.target.value)}
-                />
-              </div>
-
-              {/* Inspection toggle */}
-              <div className="flex items-end pb-1">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <div
-                    onClick={() => setInsp((v) => !v)}
-                    className={`relative w-10 h-5 rounded-full transition-colors ${requiresInspection ? "bg-teal-500" : "bg-gray-300"}`}
-                  >
-                    <span
-                      className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${requiresInspection ? "translate-x-5" : ""}`}
-                    />
-                  </div>
-                  <span className="text-sm text-gray-700">Inspection required before quote</span>
-                </label>
-              </div>
-            </div>
-
-          </CardContent>
-        </Card>
-
-        {/* ── Delivery Model ────────────────────────────────────────────── */}
-        <Card>
-          <CardHeader><CardTitle className="text-base">Delivery Model</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            <Label htmlFor="executionType">Who will perform the work?</Label>
-            <select
-              id="executionType"
-              value={executionType}
-              onChange={(e) => setExecutionType(e.target.value)}
-              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-            >
-              <option value="INTERNAL">Internal marina / boat yard team</option>
-              <option value="SUBCONTRACTOR">External subcontractor / mechanic</option>
-              <option value="MIXED">Mixed: internal team + subcontractor</option>
-            </select>
-            <p className="text-xs text-gray-500">
-              External or mixed work creates a sourcing step for supplier quotes and cost approval before the customer quotation is finalized.
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* ── Costing Parameters ─────────────────────────────────────────── */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Costing Parameters</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-
-            <div className="space-y-1.5">
-              <Label htmlFor="budget">Estimated Budget (THB)</Label>
-              <Input
-                id="budget"
-                type="number"
-                min="0"
-                value={estimatedBudget}
-                onChange={(e) => setBudget(e.target.value)}
-                placeholder="0"
-              />
-              <p className="text-xs text-gray-400">Customer&apos;s budget expectation</p>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="deposit">Deposit % Required</Label>
-              <div className="relative">
-                <Input
-                  id="deposit"
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={depositPct}
-                  onChange={(e) => setDepositPct(e.target.value)}
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
-              </div>
-              <p className="text-xs text-gray-400">Default 50% before work starts</p>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="laborRate">Labor Rate (THB/hr)</Label>
-              <select
-                id="laborRate"
-                value={laborRate}
-                onChange={(e) => setLaborRate(e.target.value)}
-                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-              >
-                <option value="350">350 THB/hr — Standard</option>
-                <option value="450">450 THB/hr — Skilled</option>
-                <option value="600">600 THB/hr — Specialist</option>
-              </select>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="markup">Contractor Markup %</Label>
-              <div className="relative">
-                <Input
-                  id="markup"
-                  type="number"
-                  min="0"
-                  value={contractorMarkup}
-                  onChange={(e) => setMarkup(e.target.value)}
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
-              </div>
-              <p className="text-xs text-gray-400">Default 15% markup on contractors</p>
-            </div>
-
-          </CardContent>
-        </Card>
-
-        {/* ── Notes ──────────────────────────────────────────────────────── */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Notes & Attachments</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-
-            <div className="space-y-1.5">
-              <Label htmlFor="attachNote">Customer Notes / Attachment Instructions</Label>
-              <textarea
-                id="attachNote"
-                value={attachNote}
-                onChange={(e) => setAttachNote(e.target.value)}
-                rows={2}
-                placeholder="Any special instructions from the customer, photos already received, etc."
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="internalNote">Internal Note (staff only)</Label>
-              <textarea
-                id="internalNote"
-                value={internalNote}
-                onChange={(e) => setInternalNote(e.target.value)}
-                rows={2}
-                placeholder="Internal notes not visible to customer…"
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
-              />
-            </div>
-
-            {/* Photo upload placeholder */}
-            <div className="rounded-lg border-2 border-dashed border-gray-300 p-6 text-center">
-              <p className="text-sm text-gray-500">
-                📎 Photo / document upload — drag &amp; drop or click to browse
-              </p>
-              <p className="text-xs text-gray-400 mt-1">
-                JPEG, PNG, PDF — max 10 MB each
-              </p>
-            </div>
-
-          </CardContent>
-        </Card>
-
-        {/* ── Validation alert ──────────────────────────────────────────── */}
-        {!isFormValid && (customerId || category || description) && (
-          <div className="flex items-center gap-2 rounded-md bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-700">
-            <AlertTriangle className="h-4 w-4 shrink-0" />
-            Please select a customer, a boat, a category, and provide a description (min 10 chars).
-          </div>
-        )}
-
-        {saveError && (
-          <div className="flex items-center gap-2 rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-            <AlertTriangle className="h-4 w-4 shrink-0" />
-            {saveError}
-          </div>
-        )}
-
-        {/* ── Actions ──────────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between pb-8">
-          <Link href="/service-requests">
-            <Button variant="outline" type="button">Cancel</Button>
-          </Link>
-          <div className="flex gap-3">
-            <Button variant="outline" type="button" disabled={saving}>
-              Save as Draft
-            </Button>
-            <Button
-              type="submit"
-              disabled={!isFormValid || saving}
-              className="bg-teal-600 hover:bg-teal-700 text-white"
-            >
-              <Save className="h-4 w-4 mr-2" />
-              {saving ? "Submitting…" : "Submit Service Request"}
-            </Button>
-          </div>
-        </div>
-
+        <Card><CardHeader><CardTitle>4. Payment Rule <HelpHint title="Service Request vs Work Order">You can save the Service Request before payment. A Work Order is created only after Finance clears full payment, the required deposit, or approved credit, and an officer confirms the Service Order.</HelpHint></CardTitle></CardHeader><CardContent className="space-y-4"><div><Label>Payment mode <HelpHint title="Payment options">Full pre-payment is standard for ramp/storage. Deposit defaults to 50/40/10 for Ocean Rover yard work, with the first payment never below committed material/subcontractor cost. Credit needs Finance/GM approval and uses a maximum 30-day first cycle.</HelpHint></Label><select className="mt-1 w-full rounded-md border p-2" value={paymentMode} onChange={(e) => setPaymentMode(e.target.value)}><option value="FULL_PREPAYMENT">Full pre-payment — must be Paid before service</option><option value="DEPOSIT">Deposit — 50/40/10 (initial amount covers committed cost)</option><option value="CREDIT">Credit — maximum first 30-day cycle</option></select></div>{paymentMode === "CREDIT" && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={goodCredit} onChange={(e) => setGoodCredit(e.target.checked)} />Existing good-credit customer (Finance/GM approval still required; max 7 days after launch)</label>}<div><Label>Title</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Optional; generated automatically if blank" /></div><div><Label>Internal notes</Label><textarea className="mt-1 min-h-24 w-full rounded-md border p-2 text-sm" value={notes} onChange={(e) => setNotes(e.target.value)} /></div></CardContent></Card>
+        <div className="rounded-lg border border-teal-200 bg-teal-50 p-3 text-sm text-teal-900">Saving creates the Service Request, an ordered Draft quotation, and its payment plan. It does not send anything to the customer. Review the Draft, then use Submit for Approval.</div>
+        <Button type="submit" variant="teal" disabled={saving || !customerId || !boatId || !items.length}><Save className="mr-2 h-4 w-4" />{saving ? "Creating workflow…" : "Save Draft Workflow"}</Button>
       </form>
     </div>
   )

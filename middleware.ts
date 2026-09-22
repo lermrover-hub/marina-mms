@@ -43,6 +43,7 @@ export default auth((req) => {
     pathname === "/api/inquiries" ||
     pathname === "/inquiry" ||
     pathname === "/api/billing/recurring" ||
+    pathname === "/api/billing/service-payment-reminders" ||
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico"
   ) {

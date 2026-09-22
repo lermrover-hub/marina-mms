@@ -91,6 +91,9 @@ test("generated rate card preserves v3.5 pricing and zero operational discount",
   assert.equal(new Set(codes).size, rows.length)
   assert.deepEqual(new Set(rows.map((row) => row.source_version)), new Set(["ORM-PRICE-2026-v3.5"]))
   assert.equal(rows.every((row) => Number(row.discount_pct) === 0), true)
+  assert.equal(rows.every((row) => Number(row.rate) === Number(row.full_rate)), true)
+  assert.equal(Number(rows.find((row) => row.code === "STORE_SB_L_D")?.rate), 700)
+  assert.equal(Number(rows.find((row) => row.code === "STORE_SB3_D")?.rate), 700)
   assert.deepEqual(
     [...new Set(rows.map((row) => Number(row.source_discount_pct)))].sort((left, right) => left - right),
     [0, 25, 30],

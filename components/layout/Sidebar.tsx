@@ -2,6 +2,7 @@
 import React, { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useSession } from "next-auth/react"
 import { cn } from "@/lib/utils"
 import {
   LayoutDashboard, Users, Ship, Anchor, Navigation, Wrench,
@@ -16,8 +17,13 @@ interface NavItem {
   href?:    string
   icon:     React.ElementType
   badge?:   string
+  roles?: readonly string[]
   children?: NavItem[]
 }
+
+const ADMIN = ["SUPER_ADMIN", "MANAGING_DIRECTOR"] as const
+const FINANCE = ["SUPER_ADMIN", "MANAGING_DIRECTOR", "FINANCE"] as const
+const MANAGEMENT_REPORTS = ["SUPER_ADMIN", "MANAGING_DIRECTOR", "FINANCE", "MARINA_MANAGER"] as const
 
 const navItems: NavItem[] = [
   { label: "Dashboard",       href: "/dashboard",   icon: LayoutDashboard },
@@ -52,12 +58,13 @@ const navItems: NavItem[] = [
     label: "Pricing & Quotations", icon: FileText,
     children: [
       { label: "Quotations",      href: "/quotations",       icon: FileText },
-      { label: "Pricing Master",  href: "/pricing-master",   icon: BarChart3 },
+      { label: "Pricing Master",  href: "/pricing-master",   icon: BarChart3, roles: FINANCE },
     ],
   },
   { label: "Invoices",        href: "/invoices",    icon: Receipt },
-  { label: "Payments",        href: "/payments",    icon: CreditCard },
-  { label: "Recurring Billing", href: "/billing/recurring", icon: RefreshCw },
+  { label: "Payments",        href: "/payments",    icon: CreditCard, roles: FINANCE },
+  { label: "Recurring Billing", href: "/billing/recurring", icon: RefreshCw, roles: FINANCE },
+  { label: "Service Payment Follow-up", href: "/billing/service-payments", icon: CreditCard, roles: MANAGEMENT_REPORTS },
   {
     label: "Inventory", icon: Package,
     children: [
@@ -78,7 +85,7 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    label: "Reports", icon: BarChart3,
+    label: "Reports", icon: BarChart3, roles: MANAGEMENT_REPORTS,
     children: [
       { label: "Reports Overview",     href: "/reports",                   icon: BarChart3 },
       { label: "Revenue Report",       href: "/reports/revenue",           icon: BarChart3 },
@@ -90,18 +97,20 @@ const navItems: NavItem[] = [
   },
   { label: "Documents",       href: "/documents",    icon: FolderOpen },
   { label: "Notifications",   href: "/notifications",icon: Bell       },
-  { label: "AI Agents",       href: "/ai-agents",    icon: Bot        },
+  { label: "AI Agents",       href: "/ai-agents",    icon: Bot, roles: ADMIN },
   { label: "Customer Portal", href: "/portal",       icon: Globe      },
-  { label: "Audit Log",       href: "/audit-log",    icon: Shield     },
+  { label: "Audit Log",       href: "/audit-log",    icon: Shield, roles: ADMIN },
   { label: "User Guide",      href: "/help",         icon: HelpCircle },
-  { label: "Settings",        href: "/settings",     icon: Settings   },
+  { label: "Settings",        href: "/settings",     icon: Settings, roles: ADMIN },
 ]
 
-function NavGroup({ item, depth = 0, onNavigate }: { item: NavItem; depth?: number; onNavigate?: () => void }) {
+function NavGroup({ item, role, depth = 0, onNavigate }: { item: NavItem; role: string; depth?: number; onNavigate?: () => void }) {
   const pathname = usePathname() ?? ""
   const [open, setOpen] = useState(() =>
     item.children?.some((c) => c.href && pathname.startsWith(c.href)) ?? false
   )
+
+  if (item.roles && !item.roles.includes(role)) return null
 
   if (!item.children) {
     const isActive = item.href ? pathname === item.href || pathname.startsWith(item.href + "/") : false
@@ -146,7 +155,7 @@ function NavGroup({ item, depth = 0, onNavigate }: { item: NavItem; depth?: numb
       {open && (
         <div className="mt-0.5 space-y-0.5">
           {item.children.map((child) => (
-            <NavGroup key={child.label} item={child} depth={depth + 1} onNavigate={onNavigate} />
+            <NavGroup key={child.label} item={child} role={role} depth={depth + 1} onNavigate={onNavigate} />
           ))}
         </div>
       )}
@@ -159,6 +168,8 @@ interface SidebarProps {
 }
 
 export function Sidebar({ onClose }: SidebarProps) {
+  const { data: session } = useSession()
+  const role = (session?.user as { role?: string } | undefined)?.role ?? ""
   return (
     <aside className="flex h-screen w-60 shrink-0 flex-col border-r border-[#d7efed] shadow-[10px_0_28px_rgba(19,152,143,0.08)] bg-white"
            style={{ backgroundColor: "var(--color-sidebar)" }}>
@@ -177,7 +188,7 @@ export function Sidebar({ onClose }: SidebarProps) {
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
         {navItems.map((item) => (
-          <NavGroup key={item.label} item={item} onNavigate={onClose} />
+          <NavGroup key={item.label} item={item} role={role} onNavigate={onClose} />
         ))}
       </nav>
 

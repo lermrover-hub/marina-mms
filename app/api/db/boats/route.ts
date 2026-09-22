@@ -29,13 +29,29 @@ export async function POST(req: Request) {
     const access = await requireApiActor(OPERATIONS_WRITE_ROLES)
     if ("error" in access) return access.error
     const body = await req.json()
+    const name = typeof body.name === "string" ? body.name.trim() : ""
+    if (!name) {
+      return NextResponse.json({ error: "Boat name is required" }, { status: 400 })
+    }
     const boatType = body.boat_type === "SPEED_BOAT" ? "SPEEDBOAT" : body.boat_type
     const supabase = createServerClient()
+    let ownerName: string | null = null
+    if (body.owner_id) {
+      const { data: owner, error: ownerError } = await supabase
+        .from("mms_customers")
+        .select("id,first_name,last_name,company_name")
+        .eq("id", body.owner_id)
+        .maybeSingle()
+      if (ownerError) return NextResponse.json({ error: ownerError.message }, { status: 500 })
+      if (!owner) return NextResponse.json({ error: "Selected owner was not found" }, { status: 400 })
+      ownerName = owner.company_name ?? ([owner.first_name, owner.last_name].filter(Boolean).join(" ") || null)
+    }
     const { data, error } = await supabase
       .from("mms_boats")
       .insert({
         owner_id: body.owner_id ?? null,
-        name: body.name,
+        owner_name: ownerName,
+        name,
         boat_type: boatType ?? "OTHER",
         usage_type: body.usage_type ?? null,
         brand: body.brand ?? null,

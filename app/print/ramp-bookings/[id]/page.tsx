@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { Loader2 } from "lucide-react"
 import type { RampBooking } from "@/lib/supabase"
+import { rampServiceLabel } from "@/lib/ramp-booking-service"
 import { formatDate } from "@/lib/utils"
 import { ESignBlock, PBCompanyHeader, PBWatermark } from "@/components/print/OfficialDocumentShell"
 
@@ -162,6 +163,8 @@ export default function RampBookingPrintPage() {
             <InfoRow label="Customer"    value={booking.customer_name ?? "—"} />
             <InfoRow label="Vessel"      value={booking.boat_name ?? "—"} />
             <InfoRow label="Operation"   value={opLabel} />
+            <InfoRow label="Service"     value={rampServiceLabel(booking.service_category, booking.service_option)} />
+            <InfoRow label="Billing"     value={booking.recurring_billing && booking.next_billing_date ? `${booking.billing_cycle} · next ${formatDate(booking.next_billing_date)}` : booking.billing_cycle ?? "—"} />
             <InfoRow label="Staff"       value={booking.assigned_staff ?? "TBC"} />
           </div>
           {/* Schedule */}

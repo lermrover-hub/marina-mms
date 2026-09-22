@@ -76,6 +76,14 @@ test("storage writes use an authenticated server route and remove the public ALL
   assert.match(migration, /SET public = false/)
 })
 
+test("sidebar hides finance and admin surfaces from operational roles", () => {
+  const sidebar = readFileSync("components/layout/Sidebar.tsx", "utf8")
+  assert.match(sidebar, /Pricing Master[^\n]+roles: FINANCE/)
+  assert.match(sidebar, /Payments[^\n]+roles: FINANCE/)
+  assert.match(sidebar, /AI Agents[^\n]+roles: ADMIN/)
+  assert.match(sidebar, /Settings[^\n]+roles: ADMIN/)
+})
+
 test("server Supabase access fails closed without a service-role key", () => {
   const serverClient = read("../lib/supabase-server.ts")
   assert.match(serverClient, /if \(!serviceRoleKey\) throw new Error/)

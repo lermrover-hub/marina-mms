@@ -100,6 +100,21 @@ export type ServiceRequest = {
   budget_min: number | null
   budget_max: number | null
   procurement_status: string
+  request_type?: string | null
+  ramp_operation_plan?: string | null
+  confirmed_haul_out_date?: string | null
+  confirmed_launch_date?: string | null
+  service_type?: string | null
+  storage_period?: string | null
+  operator_type?: string | null
+  insurance_status?: string | null
+  subcontractor_trade?: string | null
+  contractor_cost?: number | null
+  markup_pct?: number | null
+  payment_mode?: string | null
+  payment_gate_status?: string | null
+  service_order_confirmed_at?: string | null
+  quotation_id?: string | null
   created_at: string
   updated_at: string
 }
@@ -118,6 +133,15 @@ export type Quotation = {
   contractor_markup_pct: number
   title: string | null
   status: string
+  internal_approval_status?: string | null
+  internal_approved_by?: string | null
+  internal_approval_role?: string | null
+  internal_approved_at?: string | null
+  customer_sent_at?: string | null
+  required_approver_role?: "MANAGER" | "GENERAL_MANAGER" | string
+  max_discount_pct?: number
+  has_no_charge_line?: boolean
+  payment_mode?: string
   subtotal: number
   discount: number
   vat_amount: number
@@ -367,6 +391,13 @@ export type RampBooking = {
   work_order_id: string | null
   quotation_id: string | null
   operation_type: string
+  service_category: string | null
+  service_option: string | null
+  billing_cycle: string | null
+  recurring_billing: boolean
+  next_billing_date: string | null
+  pricing_adjustment_type: string | null
+  pricing_adjustment_pct: number
   requested_date: string
   requested_time: string | null
   confirmed_time: string | null

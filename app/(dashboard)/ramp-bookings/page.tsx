@@ -1,7 +1,7 @@
 "use client"
 import React, { useState, useEffect } from "react"
 import Link from "next/link"
-import { Anchor, Search, Plus, Loader2, Calendar, Ship, Waves } from "lucide-react"
+import { Anchor, Search, Plus, Loader2, Calendar, Ship, Waves, BellRing } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { PageHeader } from "@/components/shared/PageHeader"
@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { StatusBadge } from "@/components/shared/StatusBadge"
 import { formatDate } from "@/lib/utils"
 import type { RampBooking } from "@/lib/supabase"
+import { rampServiceLabel } from "@/lib/ramp-booking-service"
 
 const OP_LABELS: Record<string, { label: string; color: string }> = {
   LAUNCH:     { label: "Launch",     color: "bg-teal-100 text-teal-700" },
@@ -47,13 +48,20 @@ export default function RampBookingsPage() {
       (b.reference ?? "").toLowerCase().includes(q) ||
       (b.customer_name ?? "").toLowerCase().includes(q) ||
       (b.boat_name ?? "").toLowerCase().includes(q) ||
-      b.operation_type.toLowerCase().includes(q)
+      b.operation_type.toLowerCase().includes(q) ||
+      rampServiceLabel(b.service_category, b.service_option).toLowerCase().includes(q)
     )
   })
 
   const todayStr = new Date().toISOString().slice(0, 10)
   const todayBookings = bookings.filter(b =>
     b.requested_date === todayStr && !["CANCELLED","COMPLETED"].includes(b.status)
+  )
+  const reminderCutoff = new Date()
+  reminderCutoff.setDate(reminderCutoff.getDate() + 7)
+  const reminderCutoffStr = reminderCutoff.toISOString().slice(0, 10)
+  const billingReminders = bookings.filter(b =>
+    b.recurring_billing && b.next_billing_date && b.next_billing_date <= reminderCutoffStr && b.status !== "CANCELLED"
   )
 
   return (
@@ -91,6 +99,25 @@ export default function RampBookingsPage() {
                 </Link>
               )
             })}
+          </div>
+        </div>
+      )}
+
+      {billingReminders.length > 0 && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
+          <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-blue-800">
+            <BellRing className="h-4 w-4" /> Monthly Billing Reminders ({billingReminders.length})
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {billingReminders.map((booking) => (
+              <Link
+                key={booking.id}
+                href={`/ramp-bookings/${booking.id}`}
+                className="rounded-full border border-blue-300 bg-white px-3 py-1 text-xs font-medium text-blue-800 hover:bg-blue-100"
+              >
+                {booking.boat_name ?? booking.reference} — due {formatDate(booking.next_billing_date!)}
+              </Link>
+            ))}
           </div>
         </div>
       )}
@@ -145,6 +172,7 @@ export default function RampBookingsPage() {
                   <th className="px-5 py-3 text-left">Reference</th>
                   <th className="px-5 py-3 text-left">Customer / Boat</th>
                   <th className="px-5 py-3 text-left">Operation</th>
+                  <th className="px-5 py-3 text-left">Service</th>
                   <th className="px-5 py-3 text-left">Date</th>
                   <th className="px-5 py-3 text-left">Time</th>
                   <th className="px-5 py-3 text-center">Status</th>
@@ -173,6 +201,12 @@ export default function RampBookingsPage() {
                         <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${op.color}`}>
                           {op.label}
                         </span>
+                      </td>
+                      <td className="px-5 py-3 text-xs text-gray-700">
+                        {rampServiceLabel(b.service_category, b.service_option)}
+                        {b.recurring_billing && b.next_billing_date && (
+                          <div className="mt-1 flex items-center gap-1 text-blue-700"><BellRing className="h-3 w-3" /> Next bill {formatDate(b.next_billing_date)}</div>
+                        )}
                       </td>
                       <td className="px-5 py-3 text-gray-700">{formatDate(b.requested_date)}</td>
                       <td className="px-5 py-3 text-xs">

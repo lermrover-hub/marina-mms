@@ -1,6 +1,6 @@
 # Marina MMS Web App Development Handoff
 
-**Updated:** 2026-09-09
+**Updated:** 2026-09-21
 **Workspace:** `C:\marina-mms`
 **Primary environment:** staging Supabase project `zanlunbgupdtqznruzok`
 **Production project:** `csltloqbjupxqwbkunsd` — do not modify until staging sign-off
@@ -23,6 +23,32 @@ Complete Marina MMS in this order:
 3. After V1 staging acceptance, open a controlled real-use pilot for 2–4 weeks.
 4. Let Accounting review the reports and define confirmed requirements.
 5. Start Accounting V2 only after V1 is proven with real-use data.
+
+## V1 field-workflow completion gate
+
+V1 is not complete until the workflow below matches actual marina operations. Work must proceed one gate at a time. A gate may be marked complete only after its focused tests, rendered UI check, and relevant staging database evidence pass. Do not start the next gate while the current gate has an unresolved blocking defect.
+
+1. **Staging schema:** apply and verify the Service Request, ramp/storage/yard-service, payment-plan, and quotation internal-approval migrations in staging only. Confirm rollback/recovery and keep production untouched.
+2. **Service Request and pricing:** create the Service Request before payment, select Storage or Yard Service under Ramp Service, generate ordered Rate Card items, keep operational discount at `0%`, and snapshot price/direct cost/accounting fields in the Draft quotation.
+3. **Quotation approval:** verify Draft edit, Submit for Approval, Manager/GM authority tiers, no-charge and over-20% escalation, approval audit history, and the rule that no customer-delivery action is available before internal approval.
+4. **Role permissions:** verify RSVN/FC, Manager, GM/Super Admin, Finance, and Chief Engineer access with expected allow/deny evidence for pricing, approval, payment, Service Order, and Work Order actions.
+5. **Payment and execution gate:** verify full pre-payment, deposit, and approved-credit rules; monthly/30-day/7-day reminders; Confirm Service Order only after the payment gate; and Work Order creation only after Service Order confirmation.
+6. **Full operational E2E:** complete Customer → Boat → Berth Assignment → Haul-out → Service Request → Quotation → Payment → Service Order → Work Order → Invoice → Launch, including Ocean Rover, boat-owner contractor/insurance, and Ocean Rover subcontractor/cost-plus-markup paths.
+7. **Accounting evidence:** verify labor, material, and subcontractor actual costs; Job Margin; revenue/cost/gross-profit reports; accounting snapshots; and CSV export against staging rows.
+8. **Preview readiness:** rerun focused and full gates, preserve unrelated dirty files, review the deployment diff, commit/push only the intended V1 scope, deploy Vercel Preview against staging, and smoke-test desktop/mobile with real customer messaging, real-money actions, and AI/automation writes disabled.
+9. **Controlled pilot and sign-off:** only after V1 staging acceptance and separate action-time production approvals, run the controlled pilot for 2–4 weeks, record defects and actual operating data, obtain Accounting sign-off, and then define Accounting V2 from evidence.
+
+Current execution position: **Gate 4 — Role permissions**.
+
+Gate 1 completed on 2026-09-21 against staging project `zanlunbgupdtqznruzok` only. The two workflow migrations applied successfully, the read-only verifier returned `service_workflow_schema_ready`, both new tables have enabled and forced RLS, `anon` and `authenticated` have no direct SELECT privilege, `service_role` has CRUD access, and REST checks returned HTTP 200 for service-role workflow reads while anonymous reads returned HTTP 401. Production was not touched.
+
+Gate 2 completed on 2026-09-21 with rendered UI and staging-row evidence for all three operator paths. Storage/Daily created `SR-116163` with `STORE_SB_L_D` at ฿700/day, direct cost ฿78.75, discount `0%`, an ordered Draft quotation, and a locked Work Order. Ocean Rover subcontractor created `SR-749884`; direct cost ฿5,850 plus the configured 10% markup produced a ฿6,435 customer unit price and `NEEDS_SOURCING`. Boat-owner contractor created `SR-806086`; insurance started at `REQUESTED`, the item discount remained `0%`, and Service Order confirmation stayed blocked until insurance and payment clearance. During this gate a browser validation defect was fixed by allowing `0.01` steps for direct cost and discount inputs; the focused workflow tests passed after the fix.
+
+Gate 3 completed on 2026-09-21 for the staged workflow. Draft quotation `DRAFT-1789982806799` was editable, submitted for Manager approval, and approved internally by the staging Super Admin. Customer-delivery controls were absent before approval; after approval the UI exposed `Send Approved Quotation` while Preview safe mode remained active. No customer message was sent. The authority-tier and no-charge/over-20% rules remain covered by the focused quotation workflow tests and must be repeated with the named pilot roles during Gate 4.
+
+Gate 5 has partial evidence only and is not complete. On the staged owner-contractor path, insurance was verified, a fake full-prepayment gate was marked `PAID`, Service Order confirmation became available, and only then was Work Order `WO-924106` created. Deposit, approved-credit, 30-day-cycle, monthly reminder, and seven-day post-launch cases still require focused UI/database evidence. No real payment was made.
+
+Gate 4 is in progress. A read-only staging account audit confirmed the active pilot mappings: Full Access = `SUPER_ADMIN`, FC = `FINANCE`, Reservation Officer = `STAFF`, and Chief Technician = `BOAT_YARD_MANAGER`. Source enforcement now separates quotation price/cost editing (Admin/Finance), Manager approval, Finance payment clearance, Manager/Chief Engineer insurance verification, operations Service Order confirmation, and Chief Engineer/operations-manager Work Order creation. Staff discount input is capped at 10%, Manager/Finance at 20%, and GM/Super Admin at 100% with the existing approval escalation still applied. The sidebar and workflow controls now hide finance/admin actions from operational roles. Focused role/workflow/security tests passed 29/29; the post-change full suite passed 104/104, TypeScript passed, lint has 0 errors (22 existing warnings), `git diff --check` passed, and the staging-configured production build passed with 80/80 static pages. Account-by-account rendered UI allow/deny evidence is still required before Gate 4 can be marked complete.
 
 ## Implemented in the current working tree
 
@@ -64,13 +90,14 @@ Supabase advisory note: pricing history and operations tables are service-role o
 
 ## Last-known validation results
 
-These results were rerun after the 2026-09-10 Operations/Accounting isolation:
+These results were rerun on 2026-09-21 after the Service Request decimal-cost fix and staged workflow checks:
 
 - Accounting-focused tests: **passed**
-- Full test suite: **81/81 passed**
+- Full test suite: **104/104 passed**
 - TypeScript: **passed**
 - ESLint: **0 errors, 22 warnings**
-- Production build: **passed, 79/79 static pages**
+- `git diff --check`: **passed** (line-ending warnings only)
+- Staging-configured production build: **passed, 80/80 static pages**
 
 Final gates:
 

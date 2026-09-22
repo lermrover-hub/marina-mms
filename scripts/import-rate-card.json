@@ -5,7 +5,7 @@
     "service_th": "แรมป์เจ็ทสกี+น้ำจืด",
     "category": "Ramp",
     "unit": "trip",
-    "rate": "225",
+    "rate": "300",
     "full_rate": "300",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -22,8 +22,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Jet Ski | GL: 4100 | P&L: A.Access & Ramp | Source unit: THB/trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Unchanged v3.2 | Full rate: 300 | Current rate: 225 | Source opening discount: 25.00% | Direct cost: 45 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Jet Ski | GL: 4100 | P&L: A.Access & Ramp | Source unit: THB/trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Unchanged v3.2 | Full rate: 300 | Source current rate (reference only): 225 | Source opening discount: 25.00% | Direct cost: 45 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "RAMP_1OB",
@@ -31,7 +31,7 @@
     "service_th": "เรือสปีดโบ๊ท 1 เครื่อง / 15–27 ฟุต ใช้แรมป์",
     "category": "Ramp",
     "unit": "trip",
-    "rate": "750",
+    "rate": "1000",
     "full_rate": "1000",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -48,8 +48,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Speedboat | GL: 4100 | P&L: A.Access & Ramp | Source unit: THB/trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "FIXED v3.4R engine-based speedboat class | Full rate: 1000 | Current rate: 750 | Source opening discount: 25.00% | Direct cost: 150 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Speedboat | GL: 4100 | P&L: A.Access & Ramp | Source unit: THB/trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "FIXED v3.4R engine-based speedboat class | Full rate: 1000 | Source current rate (reference only): 750 | Source opening discount: 25.00% | Direct cost: 150 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "RAMP_2OB",
@@ -57,7 +57,7 @@
     "service_th": "เรือสปีดโบ๊ท 2 เครื่อง / >27–40 ฟุต ใช้แรมป์",
     "category": "Ramp",
     "unit": "trip",
-    "rate": "1125",
+    "rate": "1500",
     "full_rate": "1500",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -74,8 +74,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Speedboat | GL: 4100 | P&L: A.Access & Ramp | Source unit: THB/trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "FIXED v3.4R engine-based speedboat class | Full rate: 1500 | Current rate: 1125 | Source opening discount: 25.00% | Direct cost: 225 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Speedboat | GL: 4100 | P&L: A.Access & Ramp | Source unit: THB/trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "FIXED v3.4R engine-based speedboat class | Full rate: 1500 | Source current rate (reference only): 1125 | Source opening discount: 25.00% | Direct cost: 225 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "RAMP_3OB",
@@ -83,7 +83,7 @@
     "service_th": "เรือสปีดโบ๊ท 3 เครื่อง / >40–47 ฟุต ใช้แรมป์",
     "category": "Ramp",
     "unit": "trip",
-    "rate": "1500",
+    "rate": "2000",
     "full_rate": "2000",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -100,8 +100,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Speedboat | GL: 4100 | P&L: A.Access & Ramp | Source unit: THB/trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "FIXED v3.4R engine-based speedboat class | Full rate: 2000 | Current rate: 1500 | Source opening discount: 25.00% | Direct cost: 300 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Speedboat | GL: 4100 | P&L: A.Access & Ramp | Source unit: THB/trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "FIXED v3.4R engine-based speedboat class | Full rate: 2000 | Source current rate (reference only): 1500 | Source opening discount: 25.00% | Direct cost: 300 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "RAMP_FISHING",
@@ -126,8 +126,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Fishing | GL: 4100 | P&L: A.Access & Ramp | Source unit: THB/trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Complimentary | Full rate: 0 | Current rate: 0 | Source opening discount: 25.00% | Direct cost: 0 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Fishing | GL: 4100 | P&L: A.Access & Ramp | Source unit: THB/trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Complimentary | Full rate: 0 | Source current rate (reference only): 0 | Source opening discount: 25.00% | Direct cost: 0 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "RAMP_SMALL_TRUCK",
@@ -135,7 +135,7 @@
     "service_th": "รถขนาดเล็กใช้แรมป์",
     "category": "Ramp",
     "unit": "trip",
-    "rate": "750",
+    "rate": "1000",
     "full_rate": "1000",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -152,8 +152,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Truck | GL: 4100 | P&L: A.Access & Ramp | Source unit: THB/trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "From MasterPriceBook v3 | Full rate: 1000 | Current rate: 750 | Source opening discount: 25.00% | Direct cost: 150 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Truck | GL: 4100 | P&L: A.Access & Ramp | Source unit: THB/trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "From MasterPriceBook v3 | Full rate: 1000 | Source current rate (reference only): 750 | Source opening discount: 25.00% | Direct cost: 150 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "RAMP_BIG_TRUCK",
@@ -161,7 +161,7 @@
     "service_th": "รถใหญ่/รถบดใช้แรมป์",
     "category": "Ramp",
     "unit": "trip",
-    "rate": "2625",
+    "rate": "3500",
     "full_rate": "3500",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -178,8 +178,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Truck | GL: 4100 | P&L: A.Access & Ramp | Source unit: THB/trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "From MasterPriceBook v3 | Full rate: 3500 | Current rate: 2625 | Source opening discount: 25.00% | Direct cost: 525 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Truck | GL: 4100 | P&L: A.Access & Ramp | Source unit: THB/trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "From MasterPriceBook v3 | Full rate: 3500 | Source current rate (reference only): 2625 | Source opening discount: 25.00% | Direct cost: 525 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "RAMP_SB_1ENG_15_27",
@@ -187,7 +187,7 @@
     "service_th": "สปีดโบ๊ท 1 เครื่อง 15–27 ฟุต ใช้แรมป์",
     "category": "Ramp",
     "unit": "trip",
-    "rate": "900",
+    "rate": "1200",
     "full_rate": "1200",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -204,8 +204,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Speedboat 1 Engine | GL: 4100 | P&L: A.Access & Ramp | Source unit: THB/trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "ADDED v3.4R engine-based policy | Full rate: 1200 | Current rate: 900 | Source opening discount: 25.00% | Direct cost: 180"
+    "description": "Vessel: Speedboat 1 Engine | GL: 4100 | P&L: A.Access & Ramp | Source unit: THB/trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "ADDED v3.4R engine-based policy | Full rate: 1200 | Source current rate (reference only): 900 | Source opening discount: 25.00% | Direct cost: 180"
   },
   {
     "code": "RAMP_SB_2ENG_28_40",
@@ -213,7 +213,7 @@
     "service_th": "สปีดโบ๊ท 2 เครื่อง >27–40 ฟุต ใช้แรมป์",
     "category": "Ramp",
     "unit": "trip",
-    "rate": "1500",
+    "rate": "2000",
     "full_rate": "2000",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -230,8 +230,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Speedboat 2 Engines | GL: 4100 | P&L: A.Access & Ramp | Source unit: THB/trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "ADDED v3.4R engine-based policy | Full rate: 2000 | Current rate: 1500 | Source opening discount: 25.00% | Direct cost: 300"
+    "description": "Vessel: Speedboat 2 Engines | GL: 4100 | P&L: A.Access & Ramp | Source unit: THB/trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "ADDED v3.4R engine-based policy | Full rate: 2000 | Source current rate (reference only): 1500 | Source opening discount: 25.00% | Direct cost: 300"
   },
   {
     "code": "RAMP_SB_3ENG_41_47",
@@ -239,7 +239,7 @@
     "service_th": "สปีดโบ๊ท 3 เครื่อง >40–47 ฟุต ใช้แรมป์",
     "category": "Ramp",
     "unit": "trip",
-    "rate": "2250",
+    "rate": "3000",
     "full_rate": "3000",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -256,8 +256,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Speedboat 3 Engines | GL: 4100 | P&L: A.Access & Ramp | Source unit: THB/trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "ADDED v3.4R engine-based policy | Full rate: 3000 | Current rate: 2250 | Source opening discount: 25.00% | Direct cost: 450"
+    "description": "Vessel: Speedboat 3 Engines | GL: 4100 | P&L: A.Access & Ramp | Source unit: THB/trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "ADDED v3.4R engine-based policy | Full rate: 3000 | Source current rate (reference only): 2250 | Source opening discount: 25.00% | Direct cost: 450"
   },
   {
     "code": "RAMP_SB_4ENG_48_55",
@@ -265,7 +265,7 @@
     "service_th": "สปีดโบ๊ท 4 เครื่อง >47–51 ฟุต ใช้แรมป์",
     "category": "Ramp",
     "unit": "trip",
-    "rate": "3375",
+    "rate": "4500",
     "full_rate": "4500",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -282,8 +282,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Speedboat 4 Engines | GL: 4100 | P&L: A.Access & Ramp | Source unit: THB/trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "ADDED v3.4R engine-based policy | Full rate: 4500 | Current rate: 3375 | Source opening discount: 25.00% | Direct cost: 675"
+    "description": "Vessel: Speedboat 4 Engines | GL: 4100 | P&L: A.Access & Ramp | Source unit: THB/trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "ADDED v3.4R engine-based policy | Full rate: 4500 | Source current rate (reference only): 3375 | Source opening discount: 25.00% | Direct cost: 675"
   },
   {
     "code": "RAMP_SB_SPECIAL",
@@ -308,8 +308,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Special Handling | GL: 4100 | P&L: A.Access & Ramp | Source unit: Quotation | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "ADDED v3.4R special approval | Full rate: 0 | Current rate: 0 | Source opening discount: 0% | Direct cost: 0"
+    "description": "Vessel: Special Handling | GL: 4100 | P&L: A.Access & Ramp | Source unit: Quotation | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "ADDED v3.4R special approval | Full rate: 0 | Source current rate (reference only): 0 | Source opening discount: 0% | Direct cost: 0"
   },
   {
     "code": "HAUL_SB_S",
@@ -317,7 +317,7 @@
     "service_th": "ยกสปีดโบ๊ท<24ฟุต (ขึ้น+ลง รวม)",
     "category": "Haul",
     "unit": "round trip",
-    "rate": "3375",
+    "rate": "4500",
     "full_rate": "4500",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -334,8 +334,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Speedboat | GL: 4110 | P&L: B.Haul-out | Source unit: THB/round trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "NEW v3.2 flat rate SB | Full rate: 4500 | Current rate: 3375 | Source opening discount: 25.00% | Direct cost: 1350 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Speedboat | GL: 4110 | P&L: B.Haul-out | Source unit: THB/round trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "NEW v3.2 flat rate SB | Full rate: 4500 | Source current rate (reference only): 3375 | Source opening discount: 25.00% | Direct cost: 1350 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "HAUL_SB_M",
@@ -343,7 +343,7 @@
     "service_th": "ยกสปีดโบ๊ท24-30ฟุต (ขึ้น+ลง รวม)",
     "category": "Haul",
     "unit": "round trip",
-    "rate": "4500",
+    "rate": "6000",
     "full_rate": "6000",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -360,8 +360,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Speedboat | GL: 4110 | P&L: B.Haul-out | Source unit: THB/round trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "NEW v3.2 | Full rate: 6000 | Current rate: 4500 | Source opening discount: 25.00% | Direct cost: 1800 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Speedboat | GL: 4110 | P&L: B.Haul-out | Source unit: THB/round trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "NEW v3.2 | Full rate: 6000 | Source current rate (reference only): 4500 | Source opening discount: 25.00% | Direct cost: 1800 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "HAUL_SB_L",
@@ -369,7 +369,7 @@
     "service_th": "ยกสปีดโบ๊ท>30ฟุต (ขึ้น+ลง รวม)",
     "category": "Haul",
     "unit": "round trip",
-    "rate": "6000",
+    "rate": "8000",
     "full_rate": "8000",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -386,8 +386,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Speedboat | GL: 4110 | P&L: B.Haul-out | Source unit: THB/round trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "NEW v3.2 | Full rate: 8000 | Current rate: 6000 | Source opening discount: 25.00% | Direct cost: 2400 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Speedboat | GL: 4110 | P&L: B.Haul-out | Source unit: THB/round trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "NEW v3.2 | Full rate: 8000 | Source current rate (reference only): 6000 | Source opening discount: 25.00% | Direct cost: 2400 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "YACHT_MONO_FT",
@@ -395,7 +395,7 @@
     "service_th": "ยอชต์โมโนฮัลล์ยก ขึ้น+ลง รวม",
     "category": "Haul",
     "unit": "ft/round trip",
-    "rate": "315",
+    "rate": "420",
     "full_rate": "420",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -412,8 +412,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Monohull | GL: 4110 | P&L: B.Haul-out | Source unit: THB/ft/round trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "REVISED +20% v3.2 | Full rate: 420 | Current rate: 315 | Source opening discount: 25.00% | Direct cost: 126 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Monohull | GL: 4110 | P&L: B.Haul-out | Source unit: THB/ft/round trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "REVISED +20% v3.2 | Full rate: 420 | Source current rate (reference only): 315 | Source opening discount: 25.00% | Direct cost: 126 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "YACHT_PCAT_FT",
@@ -421,7 +421,7 @@
     "service_th": "คาตามารันเครื่อง ขึ้น+ลง รวม",
     "category": "Haul",
     "unit": "ft/round trip",
-    "rate": "525",
+    "rate": "700",
     "full_rate": "700",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -438,8 +438,8 @@
     "quote_allowed": "CONTACT",
     "price_status": "CONTACT_ONLY",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Power Cat | GL: 4110 | P&L: B.Haul-out | Source unit: THB/ft/round trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "REVISED +8% | Full rate: 700 | Current rate: 525 | Source opening discount: 25.00% | Direct cost: 210 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Power Cat | GL: 4110 | P&L: B.Haul-out | Source unit: THB/ft/round trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "REVISED +8% | Full rate: 700 | Source current rate (reference only): 525 | Source opening discount: 25.00% | Direct cost: 210 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "YACHT_SCAT_FT",
@@ -447,7 +447,7 @@
     "service_th": "คาตามารันใบ ขึ้น+ลง รวม",
     "category": "Haul",
     "unit": "ft/round trip",
-    "rate": "562.5",
+    "rate": "750",
     "full_rate": "750",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -464,8 +464,8 @@
     "quote_allowed": "MANAGER_REVIEW",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Sail Cat | GL: 4110 | P&L: B.Haul-out | Source unit: THB/ft/round trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "REVISED +11% | Full rate: 750 | Current rate: 562.5 | Source opening discount: 25.00% | Direct cost: 225 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Sail Cat | GL: 4110 | P&L: B.Haul-out | Source unit: THB/ft/round trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "REVISED +11% | Full rate: 750 | Source current rate (reference only): 562.5 | Source opening discount: 25.00% | Direct cost: 225 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "HAUL_SB_1ENG_15_27",
@@ -473,7 +473,7 @@
     "service_th": "ยกสปีดโบ๊ท 1 เครื่อง 15–27 ฟุต ขึ้น+ลง",
     "category": "Haul",
     "unit": "round trip",
-    "rate": "4125",
+    "rate": "5500",
     "full_rate": "5500",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -490,8 +490,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Speedboat 1 Engine | GL: 4110 | P&L: B.Haul-out | Source unit: THB/round trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "ADDED v3.4R engine-based policy | Full rate: 5500 | Current rate: 4125 | Source opening discount: 25.00% | Direct cost: 1650"
+    "description": "Vessel: Speedboat 1 Engine | GL: 4110 | P&L: B.Haul-out | Source unit: THB/round trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "ADDED v3.4R engine-based policy | Full rate: 5500 | Source current rate (reference only): 4125 | Source opening discount: 25.00% | Direct cost: 1650"
   },
   {
     "code": "HAUL_SB_2ENG_28_40",
@@ -499,7 +499,7 @@
     "service_th": "ยกสปีดโบ๊ท 2 เครื่อง >27–40 ฟุต ขึ้น+ลง",
     "category": "Haul",
     "unit": "round trip",
-    "rate": "6375",
+    "rate": "8500",
     "full_rate": "8500",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -516,8 +516,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Speedboat 2 Engines | GL: 4110 | P&L: B.Haul-out | Source unit: THB/round trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "ADDED v3.4R engine-based policy | Full rate: 8500 | Current rate: 6375 | Source opening discount: 25.00% | Direct cost: 2550"
+    "description": "Vessel: Speedboat 2 Engines | GL: 4110 | P&L: B.Haul-out | Source unit: THB/round trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "ADDED v3.4R engine-based policy | Full rate: 8500 | Source current rate (reference only): 6375 | Source opening discount: 25.00% | Direct cost: 2550"
   },
   {
     "code": "HAUL_SB_3ENG_41_47",
@@ -525,7 +525,7 @@
     "service_th": "ยกสปีดโบ๊ท 3 เครื่อง >40–47 ฟุต ขึ้น+ลง",
     "category": "Haul",
     "unit": "round trip",
-    "rate": "9375",
+    "rate": "12500",
     "full_rate": "12500",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -542,8 +542,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Speedboat 3 Engines | GL: 4110 | P&L: B.Haul-out | Source unit: THB/round trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "ADDED v3.4R engine-based policy | Full rate: 12500 | Current rate: 9375 | Source opening discount: 25.00% | Direct cost: 3750"
+    "description": "Vessel: Speedboat 3 Engines | GL: 4110 | P&L: B.Haul-out | Source unit: THB/round trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "ADDED v3.4R engine-based policy | Full rate: 12500 | Source current rate (reference only): 9375 | Source opening discount: 25.00% | Direct cost: 3750"
   },
   {
     "code": "HAUL_SB_4ENG_48_55",
@@ -551,7 +551,7 @@
     "service_th": "ยกสปีดโบ๊ท 4 เครื่อง >47–51 ฟุต ขึ้น+ลง",
     "category": "Haul",
     "unit": "round trip",
-    "rate": "13500",
+    "rate": "18000",
     "full_rate": "18000",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -568,8 +568,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Speedboat 4 Engines | GL: 4110 | P&L: B.Haul-out | Source unit: THB/round trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "ADDED v3.4R engine-based policy | Full rate: 18000 | Current rate: 13500 | Source opening discount: 25.00% | Direct cost: 5400"
+    "description": "Vessel: Speedboat 4 Engines | GL: 4110 | P&L: B.Haul-out | Source unit: THB/round trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "ADDED v3.4R engine-based policy | Full rate: 18000 | Source current rate (reference only): 13500 | Source opening discount: 25.00% | Direct cost: 5400"
   },
   {
     "code": "HAUL_SB_SPECIAL",
@@ -594,8 +594,8 @@
     "quote_allowed": "CONTACT",
     "price_status": "CONTACT_ONLY",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Special Handling | GL: 4110 | P&L: B.Haul-out | Source unit: Quotation | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "ADDED v3.4R special approval | Full rate: 0 | Current rate: 0 | Source opening discount: 0% | Direct cost: 0"
+    "description": "Vessel: Special Handling | GL: 4110 | P&L: B.Haul-out | Source unit: Quotation | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "ADDED v3.4R special approval | Full rate: 0 | Source current rate (reference only): 0 | Source opening discount: 0% | Direct cost: 0"
   },
   {
     "code": "HAUL_POWER_CAT_CONTACT",
@@ -620,8 +620,8 @@
     "quote_allowed": "CONTACT",
     "price_status": "CONTACT_ONLY",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Power Catamaran | GL: 4110 | P&L: B.Haul-out | Source unit: Quotation | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "NEW v2 service grouping | Full rate: 0 | Current rate: 0 | Source opening discount: 0% | Direct cost: 0"
+    "description": "Vessel: Power Catamaran | GL: 4110 | P&L: B.Haul-out | Source unit: Quotation | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "NEW v2 service grouping | Full rate: 0 | Source current rate (reference only): 0 | Source opening discount: 0% | Direct cost: 0"
   },
   {
     "code": "HAUL_SAIL_MONO_CONTACT",
@@ -646,8 +646,8 @@
     "quote_allowed": "CONTACT",
     "price_status": "CONTACT_ONLY",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Sail Monohull | GL: 4110 | P&L: B.Haul-out | Source unit: Quotation | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "NEW v2 service grouping | Full rate: 0 | Current rate: 0 | Source opening discount: 0% | Direct cost: 0"
+    "description": "Vessel: Sail Monohull | GL: 4110 | P&L: B.Haul-out | Source unit: Quotation | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "NEW v2 service grouping | Full rate: 0 | Source current rate (reference only): 0 | Source opening discount: 0% | Direct cost: 0"
   },
   {
     "code": "TRUCK_MINI_DAY",
@@ -672,8 +672,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Cost ref NEW v3.2 | Full rate: 1500 | Current rate: 1500 | Source opening discount: 0% | Direct cost: 1500 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Cost ref NEW v3.2 | Full rate: 1500 | Source current rate (reference only): 1500 | Source opening discount: 0% | Direct cost: 1500 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "TRUCK_MINI_NIGHT",
@@ -698,8 +698,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Cost ref NEW v3.2 | Full rate: 2000 | Current rate: 2000 | Source opening discount: 0% | Direct cost: 2000 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Cost ref NEW v3.2 | Full rate: 2000 | Source current rate (reference only): 2000 | Source opening discount: 0% | Direct cost: 2000 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "TRUCK_MINI_LATE",
@@ -724,8 +724,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Cost ref NEW v3.2 | Full rate: 2500 | Current rate: 2500 | Source opening discount: 0% | Direct cost: 2500 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Cost ref NEW v3.2 | Full rate: 2500 | Source current rate (reference only): 2500 | Source opening discount: 0% | Direct cost: 2500 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "TRUCK_BIG_DAY",
@@ -750,8 +750,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Cost ref NEW v3.2 | Full rate: 2500 | Current rate: 2500 | Source opening discount: 0% | Direct cost: 2500 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Cost ref NEW v3.2 | Full rate: 2500 | Source current rate (reference only): 2500 | Source opening discount: 0% | Direct cost: 2500 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "TRUCK_BIG_BEFORE_MID",
@@ -776,8 +776,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Cost ref NEW v3.2 | Full rate: 3000 | Current rate: 3000 | Source opening discount: 0% | Direct cost: 3000 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Cost ref NEW v3.2 | Full rate: 3000 | Source current rate (reference only): 3000 | Source opening discount: 0% | Direct cost: 3000 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "TRUCK_BIG_AFTER_MID",
@@ -802,8 +802,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Cost ref NEW v3.2 | Full rate: 3500 | Current rate: 3500 | Source opening discount: 0% | Direct cost: 3500 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/trip | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Cost ref NEW v3.2 | Full rate: 3500 | Source current rate (reference only): 3500 | Source opening discount: 0% | Direct cost: 3500 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "LIFT_HYD_12T",
@@ -828,8 +828,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: ≤12T vessel | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/event | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "From haul-out section → Yard Service v3.2 | Full rate: 6000 | Current rate: 6000 | Source opening discount: 0% | Direct cost: 1800 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: ≤12T vessel | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/event | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "From haul-out section → Yard Service v3.2 | Full rate: 6000 | Source current rate (reference only): 6000 | Source opening discount: 0% | Direct cost: 1800 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "LIFT_CRANE_12_18",
@@ -854,8 +854,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: 12–18T vessel | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/event | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "REVISED +13% → Yard Service v3.2 | Full rate: 13500 | Current rate: 13500 | Source opening discount: 0% | Direct cost: 10000 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: 12–18T vessel | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/event | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "REVISED +13% → Yard Service v3.2 | Full rate: 13500 | Source current rate (reference only): 13500 | Source opening discount: 0% | Direct cost: 10000 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "LIFT_CRANE_OVER18",
@@ -880,8 +880,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: ≥18T vessel | GL: 4140 | P&L: E.Equipment & Yard | Source unit: Quotation | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Floor 28,000 THB | Full rate: 28000 | Current rate: 28000 | Source opening discount: 0% | Direct cost: 22000 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: ≥18T vessel | GL: 4140 | P&L: E.Equipment & Yard | Source unit: Quotation | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Floor 28,000 THB | Full rate: 28000 | Source current rate (reference only): 28000 | Source opening discount: 0% | Direct cost: 22000 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "TRAILER_GENERAL",
@@ -889,7 +889,7 @@
     "service_th": "เช่าพ่วงทั่วไป",
     "category": "Service & Equipment",
     "unit": "day",
-    "rate": "1875",
+    "rate": "2500",
     "full_rate": "2500",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -906,8 +906,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/day | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Unchanged | Full rate: 2500 | Current rate: 1875 | Source opening discount: 25.00% | Direct cost: 468.75 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/day | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Unchanged | Full rate: 2500 | Source current rate (reference only): 1875 | Source opening discount: 25.00% | Direct cost: 468.75 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "TRAILER_REPAIR",
@@ -915,7 +915,7 @@
     "service_th": "เช่าพ่วงงานซ่อม",
     "category": "Service & Equipment",
     "unit": "day",
-    "rate": "2250",
+    "rate": "3000",
     "full_rate": "3000",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -932,8 +932,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/day | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Unchanged | Full rate: 3000 | Current rate: 2250 | Source opening discount: 25.00% | Direct cost: 562.5 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/day | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Unchanged | Full rate: 3000 | Source current rate (reference only): 2250 | Source opening discount: 25.00% | Direct cost: 562.5 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "YARD_MOVE",
@@ -941,7 +941,7 @@
     "service_th": "เคลื่อนย้ายในลาน (แทรกเตอร์)",
     "category": "Service & Equipment",
     "unit": "event",
-    "rate": "750",
+    "rate": "1000",
     "full_rate": "1000",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -958,8 +958,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/event | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Unchanged | Full rate: 1000 | Current rate: 750 | Source opening discount: 25.00% | Direct cost: 187.5 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/event | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Unchanged | Full rate: 1000 | Source current rate (reference only): 750 | Source opening discount: 25.00% | Direct cost: 187.5 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "YARD_BIG_TRUCK",
@@ -967,7 +967,7 @@
     "service_th": "รถบดใหญ่เคลื่อนย้าย",
     "category": "Service & Equipment",
     "unit": "event",
-    "rate": "2625",
+    "rate": "3500",
     "full_rate": "3500",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -984,8 +984,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/event | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Unchanged | Full rate: 3500 | Current rate: 2625 | Source opening discount: 25.00% | Direct cost: 656.25 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/event | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Unchanged | Full rate: 3500 | Source current rate (reference only): 2625 | Source opening discount: 25.00% | Direct cost: 656.25 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "YARD_EMERGENCY",
@@ -993,7 +993,7 @@
     "service_th": "เคลื่อนย้ายฉุกเฉินนอกเวลา",
     "category": "Service & Equipment",
     "unit": "event",
-    "rate": "3750",
+    "rate": "5000",
     "full_rate": "5000",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -1010,8 +1010,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/event | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "NEW v3.2 | Full rate: 5000 | Current rate: 3750 | Source opening discount: 25.00% | Direct cost: 937.5 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/event | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "NEW v3.2 | Full rate: 5000 | Source current rate (reference only): 3750 | Source opening discount: 25.00% | Direct cost: 937.5 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "FOAM_FT",
@@ -1019,7 +1019,7 @@
     "service_th": "ล้างโฟม",
     "category": "Service & Equipment",
     "unit": "ft",
-    "rate": "75",
+    "rate": "100",
     "full_rate": "100",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -1036,8 +1036,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: All | GL: 4150 | P&L: F.Wash | Source unit: THB/ft | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Unchanged | Full rate: 100 | Current rate: 75 | Source opening discount: 25.00% | Direct cost: 30 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: All | GL: 4150 | P&L: F.Wash | Source unit: THB/ft | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Unchanged | Full rate: 100 | Source current rate (reference only): 75 | Source opening discount: 25.00% | Direct cost: 30 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "BOTTOM_FT",
@@ -1045,7 +1045,7 @@
     "service_th": "ล้างท้องเรือแรงดัน",
     "category": "Service & Equipment",
     "unit": "ft",
-    "rate": "90",
+    "rate": "120",
     "full_rate": "120",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -1062,8 +1062,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: All | GL: 4150 | P&L: F.Wash | Source unit: THB/ft | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "×2 cat | Full rate: 120 | Current rate: 90 | Source opening discount: 25.00% | Direct cost: 36 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: All | GL: 4150 | P&L: F.Wash | Source unit: THB/ft | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "×2 cat | Full rate: 120 | Source current rate (reference only): 90 | Source opening discount: 25.00% | Direct cost: 36 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "WATER_1000L",
@@ -1088,8 +1088,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: All | GL: 4160 | P&L: G.Utilities | Source unit: THB/1000L | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Min 80 THB | Full rate: 80 | Current rate: 80 | Source opening discount: 0% | Direct cost: 45 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: All | GL: 4160 | P&L: G.Utilities | Source unit: THB/1000L | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Min 80 THB | Full rate: 80 | Source current rate (reference only): 80 | Source opening discount: 0% | Direct cost: 45 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "FUEL_LT200",
@@ -1114,8 +1114,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: All | GL: 4160 | P&L: G.Utilities | Source unit: THB/litre | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "REVISED +33% | Full rate: 2 | Current rate: 2 | Source opening discount: 0% | Direct cost: 0.5 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: All | GL: 4160 | P&L: G.Utilities | Source unit: THB/litre | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "REVISED +33% | Full rate: 2 | Source current rate (reference only): 2 | Source opening discount: 0% | Direct cost: 0.5 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "FUEL_GE200",
@@ -1140,8 +1140,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: All | GL: 4160 | P&L: G.Utilities | Source unit: THB/litre | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "REVISED +50% | Full rate: 1.5 | Current rate: 1.5 | Source opening discount: 0% | Direct cost: 0.5 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: All | GL: 4160 | P&L: G.Utilities | Source unit: THB/litre | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "REVISED +50% | Full rate: 1.5 | Source current rate (reference only): 1.5 | Source opening discount: 0% | Direct cost: 0.5 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "SHORE_16A",
@@ -1166,8 +1166,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: All | GL: 4160 | P&L: G.Utilities | Source unit: THB/kWh | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "NEW metered | Full rate: 9 | Current rate: 9 | Source opening discount: 0% | Direct cost: 6.5 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: All | GL: 4160 | P&L: G.Utilities | Source unit: THB/kWh | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "NEW metered | Full rate: 9 | Source current rate (reference only): 9 | Source opening discount: 0% | Direct cost: 6.5 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "SHORE_32A",
@@ -1192,8 +1192,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: All | GL: 4160 | P&L: G.Utilities | Source unit: THB/kWh | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "NEW metered | Full rate: 9 | Current rate: 9 | Source opening discount: 0% | Direct cost: 6.5 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: All | GL: 4160 | P&L: G.Utilities | Source unit: THB/kWh | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "NEW metered | Full rate: 9 | Source current rate (reference only): 9 | Source opening discount: 0% | Direct cost: 6.5 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "SHORE_MIN",
@@ -1218,8 +1218,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: All | GL: 4160 | P&L: G.Utilities | Source unit: THB/invoice | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "If <11kWh | Full rate: 100 | Current rate: 100 | Source opening discount: 0% | Direct cost: 6.5 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: All | GL: 4160 | P&L: G.Utilities | Source unit: THB/invoice | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "If <11kWh | Full rate: 100 | Source current rate (reference only): 100 | Source opening discount: 0% | Direct cost: 6.5 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "OT_MONO_H1_2",
@@ -1227,7 +1227,7 @@
     "service_th": "ค่าแรงชั่วคราว โมโนฮัลล์ ชั่วโมงที่ 1-2",
     "category": "Service & Equipment",
     "unit": "event",
-    "rate": "225",
+    "rate": "300",
     "full_rate": "300",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -1244,8 +1244,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Monohull | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/event | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Per Ref.ADM 003/2568 | Full rate: 300 | Current rate: 225 | Source opening discount: 25.00% | Direct cost: 146.25 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Monohull | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/event | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Per Ref.ADM 003/2568 | Full rate: 300 | Source current rate (reference only): 225 | Source opening discount: 25.00% | Direct cost: 146.25 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "OT_MULTI_H1_2",
@@ -1253,7 +1253,7 @@
     "service_th": "ค่าแรงชั่วคราว มัลติฮัลล์ ชั่วโมงที่ 1-2",
     "category": "Service & Equipment",
     "unit": "event",
-    "rate": "262.5",
+    "rate": "350",
     "full_rate": "350",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -1270,8 +1270,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Multihull | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/event | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Per Ref.ADM 003/2568 | Full rate: 350 | Current rate: 262.5 | Source opening discount: 25.00% | Direct cost: 170.63 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Multihull | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/event | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Per Ref.ADM 003/2568 | Full rate: 350 | Source current rate (reference only): 262.5 | Source opening discount: 25.00% | Direct cost: 170.63 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "OT_MONO_H3",
@@ -1279,7 +1279,7 @@
     "service_th": "ค่าแรงชั่วคราว โมโน ชั่วโมงที่ 3",
     "category": "Service & Equipment",
     "unit": "hr add-on",
-    "rate": "37.5",
+    "rate": "50",
     "full_rate": "50",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -1296,8 +1296,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Monohull | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/hr add-on | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Per Ref.ADM 003/2568 | Full rate: 50 | Current rate: 37.5 | Source opening discount: 25.00% | Direct cost: 24.38 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Monohull | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/hr add-on | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Per Ref.ADM 003/2568 | Full rate: 50 | Source current rate (reference only): 37.5 | Source opening discount: 25.00% | Direct cost: 24.38 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "OT_MONO_H4",
@@ -1305,7 +1305,7 @@
     "service_th": "ค่าแรงชั่วคราว โมโน ชั่วโมงที่ 4",
     "category": "Service & Equipment",
     "unit": "hr add-on",
-    "rate": "52.5",
+    "rate": "70",
     "full_rate": "70",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -1322,8 +1322,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Monohull | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/hr add-on | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Per Ref.ADM 003/2568 | Full rate: 70 | Current rate: 52.5 | Source opening discount: 25.00% | Direct cost: 34.13 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Monohull | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/hr add-on | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Per Ref.ADM 003/2568 | Full rate: 70 | Source current rate (reference only): 52.5 | Source opening discount: 25.00% | Direct cost: 34.13 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "OT_MONO_H5",
@@ -1331,7 +1331,7 @@
     "service_th": "ค่าแรงชั่วคราว โมโน ชั่วโมงที่ 5",
     "category": "Service & Equipment",
     "unit": "hr add-on",
-    "rate": "67.5",
+    "rate": "90",
     "full_rate": "90",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -1348,8 +1348,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Monohull | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/hr add-on | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Per Ref.ADM 003/2568 | Full rate: 90 | Current rate: 67.5 | Source opening discount: 25.00% | Direct cost: 43.88 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Monohull | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/hr add-on | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Per Ref.ADM 003/2568 | Full rate: 90 | Source current rate (reference only): 67.5 | Source opening discount: 25.00% | Direct cost: 43.88 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "OT_MULTI_H3",
@@ -1357,7 +1357,7 @@
     "service_th": "ค่าแรงชั่วคราว มัลติ ชั่วโมงที่ 3",
     "category": "Service & Equipment",
     "unit": "hr add-on",
-    "rate": "37.5",
+    "rate": "50",
     "full_rate": "50",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -1374,8 +1374,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Multihull | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/hr add-on | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Per Ref.ADM 003/2568 | Full rate: 50 | Current rate: 37.5 | Source opening discount: 25.00% | Direct cost: 24.38 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Multihull | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/hr add-on | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Per Ref.ADM 003/2568 | Full rate: 50 | Source current rate (reference only): 37.5 | Source opening discount: 25.00% | Direct cost: 24.38 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "OT_MULTI_H4",
@@ -1383,7 +1383,7 @@
     "service_th": "ค่าแรงชั่วคราว มัลติ ชั่วโมงที่ 4",
     "category": "Service & Equipment",
     "unit": "hr add-on",
-    "rate": "52.5",
+    "rate": "70",
     "full_rate": "70",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -1400,8 +1400,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Multihull | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/hr add-on | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Per Ref.ADM 003/2568 | Full rate: 70 | Current rate: 52.5 | Source opening discount: 25.00% | Direct cost: 34.13 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Multihull | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/hr add-on | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Per Ref.ADM 003/2568 | Full rate: 70 | Source current rate (reference only): 52.5 | Source opening discount: 25.00% | Direct cost: 34.13 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "OT_MULTI_H5",
@@ -1409,7 +1409,7 @@
     "service_th": "ค่าแรงชั่วคราว มัลติ ชั่วโมงที่ 5",
     "category": "Service & Equipment",
     "unit": "hr add-on",
-    "rate": "67.5",
+    "rate": "90",
     "full_rate": "90",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -1426,8 +1426,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Multihull | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/hr add-on | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Per Ref.ADM 003/2568 | Full rate: 90 | Current rate: 67.5 | Source opening discount: 25.00% | Direct cost: 43.88 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Multihull | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/hr add-on | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Per Ref.ADM 003/2568 | Full rate: 90 | Source current rate (reference only): 67.5 | Source opening discount: 25.00% | Direct cost: 43.88 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "OT_MANPOWER_MAX_MONO",
@@ -1452,8 +1452,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Monohull | GL: 4140 | P&L: E.Equipment & Yard | Source unit: persons | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Per Ref.ADM 003/2568 | Full rate: 3 | Current rate: 3 | Source opening discount: 0% | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Monohull | GL: 4140 | P&L: E.Equipment & Yard | Source unit: persons | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Per Ref.ADM 003/2568 | Full rate: 3 | Source current rate (reference only): 3 | Source opening discount: 0% | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "OT_MANPOWER_MAX_MULTI",
@@ -1478,8 +1478,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Multihull | GL: 4140 | P&L: E.Equipment & Yard | Source unit: persons | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Per Ref.ADM 003/2568 | Full rate: 5 | Current rate: 5 | Source opening discount: 0% | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Multihull | GL: 4140 | P&L: E.Equipment & Yard | Source unit: persons | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Per Ref.ADM 003/2568 | Full rate: 5 | Source current rate (reference only): 5 | Source opening discount: 0% | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "VAT_RATE",
@@ -1504,8 +1504,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: All | GL: 2100 | P&L: VAT Payable | Source unit: % | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Unchanged | Full rate: 0.07 | Current rate: 0.07 | Source opening discount: 0% | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: All | GL: 2100 | P&L: VAT Payable | Source unit: % | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Unchanged | Full rate: 0.07 | Source current rate (reference only): 0.07 | Source opening discount: 0% | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "DISC_ANNUAL",
@@ -1530,8 +1530,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: All | GL: 4900 | P&L: Discount | Source unit: % off | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "NEW | Full rate: 0.08 | Current rate: 0.08 | Source opening discount: 0% | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: All | GL: 4900 | P&L: Discount | Source unit: % off | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "NEW | Full rate: 0.08 | Source current rate (reference only): 0.08 | Source opening discount: 0% | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "DISC_LOW",
@@ -1556,8 +1556,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: All | GL: 4900 | P&L: Discount | Source unit: % off | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "NEW | Full rate: 0.1 | Current rate: 0.1 | Source opening discount: 0% | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: All | GL: 4900 | P&L: Discount | Source unit: % off | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "NEW | Full rate: 0.1 | Source current rate (reference only): 0.1 | Source opening discount: 0% | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "SURCHARGE_HI",
@@ -1582,8 +1582,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: All | GL: 4900 | P&L: Discount | Source unit: % | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "No surcharge currently — maintain occupancy | Full rate: 0 | Current rate: 0 | Source opening discount: 0% | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: All | GL: 4900 | P&L: Discount | Source unit: % | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "No surcharge currently — maintain occupancy | Full rate: 0 | Source current rate (reference only): 0 | Source opening discount: 0% | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "STORE_SB_S_D",
@@ -1591,7 +1591,7 @@
     "service_th": "สปีดโบ๊ท<24ฟุต จอดลาน รายวัน",
     "category": "Storage",
     "unit": "day",
-    "rate": "300",
+    "rate": "400",
     "full_rate": "400",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -1608,8 +1608,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Speedboat | GL: 4120 | P&L: C.Storage | Source unit: THB/day | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "v3.4 official full rate; current opening rate applies discount | Full rate: 400 | Current rate: 300 | Source opening discount: 25.00% | Direct cost: 45 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Speedboat | GL: 4120 | P&L: C.Storage | Source unit: THB/day | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "v3.4 official full rate; current opening rate applies discount | Full rate: 400 | Source current rate (reference only): 300 | Source opening discount: 25.00% | Direct cost: 45 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "STORE_SB_S_W",
@@ -1617,7 +1617,7 @@
     "service_th": "สปีดโบ๊ท<24ฟุต จอดลาน รายสัปดาห์",
     "category": "Storage",
     "unit": "week",
-    "rate": "1800",
+    "rate": "2400",
     "full_rate": "2400",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -1634,8 +1634,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Speedboat | GL: 4120 | P&L: C.Storage | Source unit: THB/week | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "v3.4 official full rate; current opening rate applies discount | Full rate: 2400 | Current rate: 1800 | Source opening discount: 25.00% | Direct cost: 270 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Speedboat | GL: 4120 | P&L: C.Storage | Source unit: THB/week | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "v3.4 official full rate; current opening rate applies discount | Full rate: 2400 | Source current rate (reference only): 1800 | Source opening discount: 25.00% | Direct cost: 270 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "STORE_SB_S_M",
@@ -1643,7 +1643,7 @@
     "service_th": "สปีดโบ๊ท<24ฟุต จอดลาน รายเดือน",
     "category": "Storage",
     "unit": "month",
-    "rate": "6000",
+    "rate": "8000",
     "full_rate": "8000",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -1660,8 +1660,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Speedboat | GL: 4120 | P&L: C.Storage | Source unit: THB/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "v3.4 official full rate 8,000; current opening rate 6,000 at 25% off | Full rate: 8000 | Current rate: 6000 | Source opening discount: 25.00% | Direct cost: 900 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Speedboat | GL: 4120 | P&L: C.Storage | Source unit: THB/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "v3.4 official full rate 8,000; current opening rate 6,000 at 25% off | Full rate: 8000 | Source current rate (reference only): 6000 | Source opening discount: 25.00% | Direct cost: 900 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "STORE_SB_M_D",
@@ -1669,7 +1669,7 @@
     "service_th": "สปีดโบ๊ท24-30ฟุต จอดลาน รายวัน",
     "category": "Storage",
     "unit": "day",
-    "rate": "412.5",
+    "rate": "550",
     "full_rate": "550",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -1686,8 +1686,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Speedboat | GL: 4120 | P&L: C.Storage | Source unit: THB/day | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "v3.4 synced official rate order | Full rate: 550 | Current rate: 412.5 | Source opening discount: 25.00% | Direct cost: 61.88 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Speedboat | GL: 4120 | P&L: C.Storage | Source unit: THB/day | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "v3.4 synced official rate order | Full rate: 550 | Source current rate (reference only): 412.5 | Source opening discount: 25.00% | Direct cost: 61.88 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "STORE_SB_M_M",
@@ -1695,7 +1695,7 @@
     "service_th": "สปีดโบ๊ท24-30ฟุต จอดลาน รายเดือน",
     "category": "Storage",
     "unit": "month",
-    "rate": "7500",
+    "rate": "10000",
     "full_rate": "10000",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -1712,8 +1712,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Speedboat | GL: 4120 | P&L: C.Storage | Source unit: THB/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "v3.4 official full rate; current opening rate applies discount | Full rate: 10000 | Current rate: 7500 | Source opening discount: 25.00% | Direct cost: 1125 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Speedboat | GL: 4120 | P&L: C.Storage | Source unit: THB/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "v3.4 official full rate; current opening rate applies discount | Full rate: 10000 | Source current rate (reference only): 7500 | Source opening discount: 25.00% | Direct cost: 1125 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "STORE_SB_L_D",
@@ -1721,7 +1721,7 @@
     "service_th": "สปีดโบ๊ท>30ฟุต จอดลาน รายวัน",
     "category": "Storage",
     "unit": "day",
-    "rate": "525",
+    "rate": "700",
     "full_rate": "700",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -1738,8 +1738,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Speedboat | GL: 4120 | P&L: C.Storage | Source unit: THB/day | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "v3.4 synced official rate order | Full rate: 700 | Current rate: 525 | Source opening discount: 25.00% | Direct cost: 78.75 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Speedboat | GL: 4120 | P&L: C.Storage | Source unit: THB/day | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "v3.4 synced official rate order | Full rate: 700 | Source current rate (reference only): 525 | Source opening discount: 25.00% | Direct cost: 78.75 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "STORE_SB_L_M",
@@ -1747,7 +1747,7 @@
     "service_th": "สปีดโบ๊ท>30ฟุต จอดลาน รายเดือน",
     "category": "Storage",
     "unit": "month",
-    "rate": "9000",
+    "rate": "12000",
     "full_rate": "12000",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -1764,8 +1764,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Speedboat | GL: 4120 | P&L: C.Storage | Source unit: THB/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "v3.4 official full rate; current opening rate applies discount | Full rate: 12000 | Current rate: 9000 | Source opening discount: 25.00% | Direct cost: 1350 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Speedboat | GL: 4120 | P&L: C.Storage | Source unit: THB/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "v3.4 official full rate; current opening rate applies discount | Full rate: 12000 | Source current rate (reference only): 9000 | Source opening discount: 25.00% | Direct cost: 1350 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "STORE_JETSKI_D",
@@ -1773,7 +1773,7 @@
     "service_th": "จอดเจ็ทสกีรายวัน",
     "category": "Storage",
     "unit": "day",
-    "rate": "187.5",
+    "rate": "250",
     "full_rate": "250",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -1790,8 +1790,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Jet Ski | GL: 4120 | P&L: C.Storage | Source unit: THB/day | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "v3.4 corrected: smaller craft below speedboat <24 ft | Full rate: 250 | Current rate: 187.5 | Source opening discount: 25.00% | Direct cost: 28.13 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Jet Ski | GL: 4120 | P&L: C.Storage | Source unit: THB/day | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "v3.4 corrected: smaller craft below speedboat <24 ft | Full rate: 250 | Source current rate (reference only): 187.5 | Source opening discount: 25.00% | Direct cost: 28.13 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "STORE_JETSKI_M",
@@ -1799,7 +1799,7 @@
     "service_th": "จอดเจ็ทสกีรายเดือน",
     "category": "Storage",
     "unit": "month",
-    "rate": "3000",
+    "rate": "4000",
     "full_rate": "4000",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -1816,8 +1816,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Jet Ski | GL: 4120 | P&L: C.Storage | Source unit: THB/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "v3.4 corrected: monthly reduced from 6,500 to 4,000 | Full rate: 4000 | Current rate: 3000 | Source opening discount: 25.00% | Direct cost: 450 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Jet Ski | GL: 4120 | P&L: C.Storage | Source unit: THB/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "v3.4 corrected: monthly reduced from 6,500 to 4,000 | Full rate: 4000 | Source current rate (reference only): 3000 | Source opening discount: 25.00% | Direct cost: 450 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "STORE_DINGHY_M",
@@ -1825,7 +1825,7 @@
     "service_th": "เรือเล็กรายเดือน",
     "category": "Storage",
     "unit": "month",
-    "rate": "4125",
+    "rate": "5500",
     "full_rate": "5500",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -1842,8 +1842,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Dinghy | GL: 4120 | P&L: C.Storage | Source unit: THB/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "v3.4 corrected: monthly reduced from 7,000 to 5,500 | Full rate: 5500 | Current rate: 4125 | Source opening discount: 25.00% | Direct cost: 618.75 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Dinghy | GL: 4120 | P&L: C.Storage | Source unit: THB/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "v3.4 corrected: monthly reduced from 7,000 to 5,500 | Full rate: 5500 | Source current rate (reference only): 4125 | Source opening discount: 25.00% | Direct cost: 618.75 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "BERTH_JETSKI_M",
@@ -1851,7 +1851,7 @@
     "service_th": "ท่าจอดเจ็ทสกีรายเดือน",
     "category": "Storage",
     "unit": "month",
-    "rate": "4200",
+    "rate": "6000",
     "full_rate": "6000",
     "discount_pct": "0",
     "source_discount_pct": "30.0",
@@ -1868,8 +1868,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Jet Ski | GL: 4200 | P&L: H.Wet Berth | Source unit: THB/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "NEW | Full rate: 6000 | Current rate: 4200 | Source opening discount: 30.0% | Direct cost: 840 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Jet Ski | GL: 4200 | P&L: H.Wet Berth | Source unit: THB/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "NEW | Full rate: 6000 | Source current rate (reference only): 4200 | Source opening discount: 30.0% | Direct cost: 840 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "BERTH_SB1_M",
@@ -1877,7 +1877,7 @@
     "service_th": "ท่าจอดสปีดโบ๊ท<24ฟุต",
     "category": "Storage",
     "unit": "ft/month",
-    "rate": "245",
+    "rate": "350",
     "full_rate": "350",
     "discount_pct": "0",
     "source_discount_pct": "30.0",
@@ -1894,8 +1894,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Speedboat | GL: 4200 | P&L: H.Wet Berth | Source unit: THB/ft/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "NEW SB-specific | Full rate: 350 | Current rate: 245 | Source opening discount: 30.0% | Direct cost: 49 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Speedboat | GL: 4200 | P&L: H.Wet Berth | Source unit: THB/ft/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "NEW SB-specific | Full rate: 350 | Source current rate (reference only): 245 | Source opening discount: 30.0% | Direct cost: 49 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "BERTH_SB2_M",
@@ -1903,7 +1903,7 @@
     "service_th": "ท่าจอดสปีดโบ๊ท24-30ฟุต",
     "category": "Storage",
     "unit": "ft/month",
-    "rate": "266",
+    "rate": "380",
     "full_rate": "380",
     "discount_pct": "0",
     "source_discount_pct": "30.0",
@@ -1920,8 +1920,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Speedboat | GL: 4200 | P&L: H.Wet Berth | Source unit: THB/ft/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "NEW SB-specific | Full rate: 380 | Current rate: 266 | Source opening discount: 30.0% | Direct cost: 53.2 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Speedboat | GL: 4200 | P&L: H.Wet Berth | Source unit: THB/ft/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "NEW SB-specific | Full rate: 380 | Source current rate (reference only): 266 | Source opening discount: 30.0% | Direct cost: 53.2 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "BERTH_YACHT_M",
@@ -1929,7 +1929,7 @@
     "service_th": "ท่าจอดยอชต์30-50ฟุต",
     "category": "Storage",
     "unit": "ft/month",
-    "rate": "315",
+    "rate": "450",
     "full_rate": "450",
     "discount_pct": "0",
     "source_discount_pct": "30.0",
@@ -1946,8 +1946,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Yacht | GL: 4200 | P&L: H.Wet Berth | Source unit: THB/ft/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "NEW Yacht | Full rate: 450 | Current rate: 315 | Source opening discount: 30.0% | Direct cost: 63 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Yacht | GL: 4200 | P&L: H.Wet Berth | Source unit: THB/ft/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "NEW Yacht | Full rate: 450 | Source current rate (reference only): 315 | Source opening discount: 30.0% | Direct cost: 63 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "BERTH_LARGE_M",
@@ -1955,7 +1955,7 @@
     "service_th": "ท่าจอดยอชต์>50ฟุต",
     "category": "Storage",
     "unit": "ft/month",
-    "rate": "385",
+    "rate": "550",
     "full_rate": "550",
     "discount_pct": "0",
     "source_discount_pct": "30.0",
@@ -1972,8 +1972,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Large Yacht | GL: 4200 | P&L: H.Wet Berth | Source unit: THB/ft/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "NEW | Full rate: 550 | Current rate: 385 | Source opening discount: 30.0% | Direct cost: 77 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Large Yacht | GL: 4200 | P&L: H.Wet Berth | Source unit: THB/ft/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "NEW | Full rate: 550 | Source current rate (reference only): 385 | Source opening discount: 30.0% | Direct cost: 77 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "BERTH_TRANS_D",
@@ -1981,7 +1981,7 @@
     "service_th": "ท่าจอดชั่วคราว<30ฟุต",
     "category": "Storage",
     "unit": "ft/day",
-    "rate": "12.6",
+    "rate": "18",
     "full_rate": "18",
     "discount_pct": "0",
     "source_discount_pct": "30.0",
@@ -1998,8 +1998,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: All | GL: 4200 | P&L: H.Wet Berth | Source unit: THB/ft/day | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "NEW | Full rate: 18 | Current rate: 12.6 | Source opening discount: 30.0% | Direct cost: 2.52 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: All | GL: 4200 | P&L: H.Wet Berth | Source unit: THB/ft/day | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "NEW | Full rate: 18 | Source current rate (reference only): 12.6 | Source opening discount: 30.0% | Direct cost: 2.52 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "BERTH_TRANS_D2",
@@ -2007,7 +2007,7 @@
     "service_th": "ท่าจอดชั่วคราว30-50ฟุต",
     "category": "Storage",
     "unit": "ft/day",
-    "rate": "15.4",
+    "rate": "22",
     "full_rate": "22",
     "discount_pct": "0",
     "source_discount_pct": "30.0",
@@ -2024,8 +2024,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: All | GL: 4200 | P&L: H.Wet Berth | Source unit: THB/ft/day | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "NEW | Full rate: 22 | Current rate: 15.4 | Source opening discount: 30.0% | Direct cost: 3.08 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: All | GL: 4200 | P&L: H.Wet Berth | Source unit: THB/ft/day | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "NEW | Full rate: 22 | Source current rate (reference only): 15.4 | Source opening discount: 30.0% | Direct cost: 3.08 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "BERTH_TRANS_D3",
@@ -2033,7 +2033,7 @@
     "service_th": "ท่าจอดชั่วคราว>50ฟุต",
     "category": "Storage",
     "unit": "ft/day",
-    "rate": "19.6",
+    "rate": "28",
     "full_rate": "28",
     "discount_pct": "0",
     "source_discount_pct": "30.0",
@@ -2050,8 +2050,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: All | GL: 4200 | P&L: H.Wet Berth | Source unit: THB/ft/day | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "NEW | Full rate: 28 | Current rate: 19.6 | Source opening discount: 30.0% | Direct cost: 3.92 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: All | GL: 4200 | P&L: H.Wet Berth | Source unit: THB/ft/day | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "NEW | Full rate: 28 | Source current rate (reference only): 19.6 | Source opening discount: 30.0% | Direct cost: 3.92 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "STORE_JETSKI_W",
@@ -2059,7 +2059,7 @@
     "service_th": "จอดเจ็ทสกีรายสัปดาห์",
     "category": "Storage",
     "unit": "week",
-    "rate": "1125",
+    "rate": "1500",
     "full_rate": "1500",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -2076,8 +2076,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Jet Ski | GL: 4120 | P&L: C.Storage | Source unit: THB/week | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "v3.4 corrected: smaller craft below speedboat <24 ft | Full rate: 1500 | Current rate: 1125 | Source opening discount: 25.00% | Direct cost: 168.75 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Jet Ski | GL: 4120 | P&L: C.Storage | Source unit: THB/week | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "v3.4 corrected: smaller craft below speedboat <24 ft | Full rate: 1500 | Source current rate (reference only): 1125 | Source opening discount: 25.00% | Direct cost: 168.75 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "STORE_DINGHY_D",
@@ -2085,7 +2085,7 @@
     "service_th": "เรือเล็กรายวัน",
     "category": "Storage",
     "unit": "day",
-    "rate": "225",
+    "rate": "300",
     "full_rate": "300",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -2102,8 +2102,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Dinghy | GL: 4120 | P&L: C.Storage | Source unit: THB/day | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "v3.4 corrected: smaller craft below speedboat <24 ft | Full rate: 300 | Current rate: 225 | Source opening discount: 25.00% | Direct cost: 33.75 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Dinghy | GL: 4120 | P&L: C.Storage | Source unit: THB/day | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "v3.4 corrected: smaller craft below speedboat <24 ft | Full rate: 300 | Source current rate (reference only): 225 | Source opening discount: 25.00% | Direct cost: 33.75 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "STORE_DINGHY_W",
@@ -2111,7 +2111,7 @@
     "service_th": "เรือเล็กรายสัปดาห์",
     "category": "Storage",
     "unit": "week",
-    "rate": "1350",
+    "rate": "1800",
     "full_rate": "1800",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -2128,8 +2128,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Dinghy | GL: 4120 | P&L: C.Storage | Source unit: THB/week | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "v3.4 corrected: smaller craft below speedboat <24 ft | Full rate: 1800 | Current rate: 1350 | Source opening discount: 25.00% | Direct cost: 202.5 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Dinghy | GL: 4120 | P&L: C.Storage | Source unit: THB/week | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "v3.4 corrected: smaller craft below speedboat <24 ft | Full rate: 1800 | Source current rate (reference only): 1350 | Source opening discount: 25.00% | Direct cost: 202.5 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "STORE_SB1_W",
@@ -2137,7 +2137,7 @@
     "service_th": "สปีดโบ๊ท<24ฟุต จอดลาน รายสัปดาห์",
     "category": "Storage",
     "unit": "week",
-    "rate": "1800",
+    "rate": "2400",
     "full_rate": "2400",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -2154,8 +2154,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Speedboat | GL: 4120 | P&L: C.Storage | Source unit: THB/week | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "v3.4 synced with STORE_SB_S_W | Full rate: 2400 | Current rate: 1800 | Source opening discount: 25.00% | Direct cost: 270 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Speedboat | GL: 4120 | P&L: C.Storage | Source unit: THB/week | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "v3.4 synced with STORE_SB_S_W | Full rate: 2400 | Source current rate (reference only): 1800 | Source opening discount: 25.00% | Direct cost: 270 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "STORE_SB2_D",
@@ -2163,7 +2163,7 @@
     "service_th": "สปีดโบ๊ท24-30ฟุต จอดลาน รายวัน",
     "category": "Storage",
     "unit": "day",
-    "rate": "412.5",
+    "rate": "550",
     "full_rate": "550",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -2180,8 +2180,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Speedboat | GL: 4120 | P&L: C.Storage | Source unit: THB/day | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "v3.4 synced with STORE_SB_M_D | Full rate: 550 | Current rate: 412.5 | Source opening discount: 25.00% | Direct cost: 61.88 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Speedboat | GL: 4120 | P&L: C.Storage | Source unit: THB/day | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "v3.4 synced with STORE_SB_M_D | Full rate: 550 | Source current rate (reference only): 412.5 | Source opening discount: 25.00% | Direct cost: 61.88 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "STORE_SB2_W",
@@ -2189,7 +2189,7 @@
     "service_th": "สปีดโบ๊ท24-30ฟุต จอดลาน รายสัปดาห์",
     "category": "Storage",
     "unit": "week",
-    "rate": "2475",
+    "rate": "3300",
     "full_rate": "3300",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -2206,8 +2206,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Speedboat | GL: 4120 | P&L: C.Storage | Source unit: THB/week | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "v3.4 weekly rate for 24–30 ft | Full rate: 3300 | Current rate: 2475 | Source opening discount: 25.00% | Direct cost: 371.25 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Speedboat | GL: 4120 | P&L: C.Storage | Source unit: THB/week | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "v3.4 weekly rate for 24–30 ft | Full rate: 3300 | Source current rate (reference only): 2475 | Source opening discount: 25.00% | Direct cost: 371.25 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "STORE_SB3_D",
@@ -2215,7 +2215,7 @@
     "service_th": "สปีดโบ๊ท>30ฟุต จอดลาน รายวัน",
     "category": "Storage",
     "unit": "day",
-    "rate": "525",
+    "rate": "700",
     "full_rate": "700",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -2232,8 +2232,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Speedboat | GL: 4120 | P&L: C.Storage | Source unit: THB/day | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "v3.4 synced with STORE_SB_L_D | Full rate: 700 | Current rate: 525 | Source opening discount: 25.00% | Direct cost: 78.75 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Speedboat | GL: 4120 | P&L: C.Storage | Source unit: THB/day | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "v3.4 synced with STORE_SB_L_D | Full rate: 700 | Source current rate (reference only): 525 | Source opening discount: 25.00% | Direct cost: 78.75 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "STORE_SB3_W",
@@ -2241,7 +2241,7 @@
     "service_th": "สปีดโบ๊ท>30ฟุต จอดลาน รายสัปดาห์",
     "category": "Storage",
     "unit": "week",
-    "rate": "3375",
+    "rate": "4500",
     "full_rate": "4500",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -2258,8 +2258,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Speedboat | GL: 4120 | P&L: C.Storage | Source unit: THB/week | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "v3.4 weekly rate for >30 ft | Full rate: 4500 | Current rate: 3375 | Source opening discount: 25.00% | Direct cost: 506.25 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Speedboat | GL: 4120 | P&L: C.Storage | Source unit: THB/week | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "v3.4 weekly rate for >30 ft | Full rate: 4500 | Source current rate (reference only): 3375 | Source opening discount: 25.00% | Direct cost: 506.25 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "BERTH_SY_M",
@@ -2267,7 +2267,7 @@
     "service_th": "ท่าจอดซุปเปอร์ยอชต์>80ฟุต (ราคาขั้นต่ำ)",
     "category": "Storage",
     "unit": "ft/month",
-    "rate": "1750",
+    "rate": "2500",
     "full_rate": "2500",
     "discount_pct": "0",
     "source_discount_pct": "30.0",
@@ -2284,8 +2284,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Superyacht | GL: 4200 | P&L: H.Wet Berth | Source unit: THB/ft/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Floor 2,500/ft/mo. Separate SY agreement | Full rate: 2500 | Current rate: 1750 | Source opening discount: 30.0% | Direct cost: 350 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Superyacht | GL: 4200 | P&L: H.Wet Berth | Source unit: THB/ft/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Floor 2,500/ft/mo. Separate SY agreement | Full rate: 2500 | Source current rate (reference only): 1750 | Source opening discount: 30.0% | Direct cost: 350 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "STORE_SB_1ENG_15_27_M",
@@ -2293,7 +2293,7 @@
     "service_th": "สปีดโบ๊ท 1 เครื่อง 15–27 ฟุต จอดเก็บรายเดือน",
     "category": "Storage",
     "unit": "month",
-    "rate": "6375",
+    "rate": "8500",
     "full_rate": "8500",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -2310,8 +2310,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Speedboat 1 Engine | GL: 4120 | P&L: C.Storage | Source unit: THB/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "ADDED v3.4R passive storage | Full rate: 8500 | Current rate: 6375 | Source opening discount: 25.00% | Direct cost: 956.25"
+    "description": "Vessel: Speedboat 1 Engine | GL: 4120 | P&L: C.Storage | Source unit: THB/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "ADDED v3.4R passive storage | Full rate: 8500 | Source current rate (reference only): 6375 | Source opening discount: 25.00% | Direct cost: 956.25"
   },
   {
     "code": "STORE_SB_2ENG_28_40_M",
@@ -2319,7 +2319,7 @@
     "service_th": "สปีดโบ๊ท 2 เครื่อง >27–40 ฟุต จอดเก็บรายเดือน",
     "category": "Storage",
     "unit": "month",
-    "rate": "10500",
+    "rate": "14000",
     "full_rate": "14000",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -2336,8 +2336,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Speedboat 2 Engines | GL: 4120 | P&L: C.Storage | Source unit: THB/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "ADDED v3.4R passive storage | Full rate: 14000 | Current rate: 10500 | Source opening discount: 25.00% | Direct cost: 1575"
+    "description": "Vessel: Speedboat 2 Engines | GL: 4120 | P&L: C.Storage | Source unit: THB/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "ADDED v3.4R passive storage | Full rate: 14000 | Source current rate (reference only): 10500 | Source opening discount: 25.00% | Direct cost: 1575"
   },
   {
     "code": "STORE_SB_3ENG_41_47_M",
@@ -2345,7 +2345,7 @@
     "service_th": "สปีดโบ๊ท 3 เครื่อง >40–47 ฟุต จอดเก็บรายเดือน",
     "category": "Storage",
     "unit": "month",
-    "rate": "14250",
+    "rate": "19000",
     "full_rate": "19000",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -2362,8 +2362,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Speedboat 3 Engines | GL: 4120 | P&L: C.Storage | Source unit: THB/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "ADDED v3.4R passive storage | Full rate: 19000 | Current rate: 14250 | Source opening discount: 25.00% | Direct cost: 2137.5"
+    "description": "Vessel: Speedboat 3 Engines | GL: 4120 | P&L: C.Storage | Source unit: THB/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "ADDED v3.4R passive storage | Full rate: 19000 | Source current rate (reference only): 14250 | Source opening discount: 25.00% | Direct cost: 2137.5"
   },
   {
     "code": "STORE_SB_4ENG_48_55_M",
@@ -2371,7 +2371,7 @@
     "service_th": "สปีดโบ๊ท 4 เครื่อง >47–55 ฟุต จอดเก็บรายเดือน",
     "category": "Storage",
     "unit": "month",
-    "rate": "19500",
+    "rate": "26000",
     "full_rate": "26000",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -2388,8 +2388,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Speedboat 4 Engines | GL: 4120 | P&L: C.Storage | Source unit: THB/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "ADDED v3.4R passive storage | Full rate: 26000 | Current rate: 19500 | Source opening discount: 25.00% | Direct cost: 2925"
+    "description": "Vessel: Speedboat 4 Engines | GL: 4120 | P&L: C.Storage | Source unit: THB/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "ADDED v3.4R passive storage | Full rate: 26000 | Source current rate (reference only): 19500 | Source opening discount: 25.00% | Direct cost: 2925"
   },
   {
     "code": "STAND_DAY",
@@ -2397,7 +2397,7 @@
     "service_th": "ขาตั้งเรือรายวัน",
     "category": "Hardstand & Boat Stand",
     "unit": "stand/day",
-    "rate": "112.5",
+    "rate": "150",
     "full_rate": "150",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -2414,8 +2414,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/stand/day | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Unchanged | Full rate: 150 | Current rate: 112.5 | Source opening discount: 25.00% | Direct cost: 28.13 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/stand/day | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Unchanged | Full rate: 150 | Source current rate (reference only): 112.5 | Source opening discount: 25.00% | Direct cost: 28.13 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "STAND_WEEK",
@@ -2423,7 +2423,7 @@
     "service_th": "ขาตั้งเรือรายสัปดาห์",
     "category": "Hardstand & Boat Stand",
     "unit": "stand/wk",
-    "rate": "375",
+    "rate": "500",
     "full_rate": "500",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -2440,8 +2440,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/stand/wk | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Unchanged | Full rate: 500 | Current rate: 375 | Source opening discount: 25.00% | Direct cost: 93.75 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/stand/wk | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Unchanged | Full rate: 500 | Source current rate (reference only): 375 | Source opening discount: 25.00% | Direct cost: 93.75 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "STAND_MONTH",
@@ -2449,7 +2449,7 @@
     "service_th": "ขาตั้งเรือรายเดือน",
     "category": "Hardstand & Boat Stand",
     "unit": "stand/mo",
-    "rate": "525",
+    "rate": "700",
     "full_rate": "700",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -2466,8 +2466,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/stand/mo | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Unchanged | Full rate: 700 | Current rate: 525 | Source opening discount: 25.00% | Direct cost: 131.25 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: All | GL: 4140 | P&L: E.Equipment & Yard | Source unit: THB/stand/mo | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Unchanged | Full rate: 700 | Source current rate (reference only): 525 | Source opening discount: 25.00% | Direct cost: 131.25 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "REPAIR_MONO_D",
@@ -2475,7 +2475,7 @@
     "service_th": "อู่ซ่อมโมโนฮัลล์รายวัน",
     "category": "Hardstand & Boat Stand",
     "unit": "ft/day",
-    "rate": "30",
+    "rate": "40",
     "full_rate": "40",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -2492,8 +2492,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Monohull | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/ft/day | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "REVISED +14% | Full rate: 40 | Current rate: 30 | Source opening discount: 25.00% | Direct cost: 6 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Monohull | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/ft/day | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "REVISED +14% | Full rate: 40 | Source current rate (reference only): 30 | Source opening discount: 25.00% | Direct cost: 6 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "REPAIR_MONO_W",
@@ -2501,7 +2501,7 @@
     "service_th": "อู่ซ่อมโมโนฮัลล์รายสัปดาห์",
     "category": "Hardstand & Boat Stand",
     "unit": "ft/week",
-    "rate": "180",
+    "rate": "240",
     "full_rate": "240",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -2518,8 +2518,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Monohull | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/ft/week | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "REVISED +14% | Full rate: 240 | Current rate: 180 | Source opening discount: 25.00% | Direct cost: 36 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Monohull | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/ft/week | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "REVISED +14% | Full rate: 240 | Source current rate (reference only): 180 | Source opening discount: 25.00% | Direct cost: 36 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "REPAIR_MONO_M",
@@ -2527,7 +2527,7 @@
     "service_th": "อู่ซ่อมโมโนฮัลล์รายเดือน",
     "category": "Hardstand & Boat Stand",
     "unit": "ft/month",
-    "rate": "600",
+    "rate": "800",
     "full_rate": "800",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -2544,8 +2544,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Monohull | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/ft/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "REVISED +14% | Full rate: 800 | Current rate: 600 | Source opening discount: 25.00% | Direct cost: 120 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Monohull | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/ft/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "REVISED +14% | Full rate: 800 | Source current rate (reference only): 600 | Source opening discount: 25.00% | Direct cost: 120 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "REPAIR_CAT_D",
@@ -2553,7 +2553,7 @@
     "service_th": "อู่ซ่อมคาตามารันรายวัน",
     "category": "Hardstand & Boat Stand",
     "unit": "ft/day",
-    "rate": "45",
+    "rate": "60",
     "full_rate": "60",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -2570,8 +2570,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Catamaran | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/ft/day | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "REVISED +14% | Full rate: 60 | Current rate: 45 | Source opening discount: 25.00% | Direct cost: 9 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Catamaran | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/ft/day | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "REVISED +14% | Full rate: 60 | Source current rate (reference only): 45 | Source opening discount: 25.00% | Direct cost: 9 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "REPAIR_CAT_W",
@@ -2579,7 +2579,7 @@
     "service_th": "อู่ซ่อมคาตามารันรายสัปดาห์",
     "category": "Hardstand & Boat Stand",
     "unit": "ft/week",
-    "rate": "270",
+    "rate": "360",
     "full_rate": "360",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -2596,8 +2596,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Catamaran | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/ft/week | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "REVISED +14% | Full rate: 360 | Current rate: 270 | Source opening discount: 25.00% | Direct cost: 54 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Catamaran | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/ft/week | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "REVISED +14% | Full rate: 360 | Source current rate (reference only): 270 | Source opening discount: 25.00% | Direct cost: 54 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "REPAIR_CAT_M",
@@ -2605,7 +2605,7 @@
     "service_th": "อู่ซ่อมคาตามารันรายเดือน",
     "category": "Hardstand & Boat Stand",
     "unit": "ft/month",
-    "rate": "900",
+    "rate": "1200",
     "full_rate": "1200",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -2622,8 +2622,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Catamaran | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/ft/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "REVISED +14% | Full rate: 1200 | Current rate: 900 | Source opening discount: 25.00% | Direct cost: 180 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Catamaran | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/ft/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "REVISED +14% | Full rate: 1200 | Source current rate (reference only): 900 | Source opening discount: 25.00% | Direct cost: 180 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "HARDSTAND_SB_1ENG_15_27_M",
@@ -2631,7 +2631,7 @@
     "service_th": "สปีดโบ๊ท 1 เครื่อง 15–27 ฟุต พื้นที่ซ่อมรายเดือน",
     "category": "Hardstand & Boat Stand",
     "unit": "month",
-    "rate": "8250",
+    "rate": "11000",
     "full_rate": "11000",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -2648,8 +2648,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Speedboat 1 Engine | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "ADDED v3.4R hardstand premium | Full rate: 11000 | Current rate: 8250 | Source opening discount: 25.00% | Direct cost: 1650"
+    "description": "Vessel: Speedboat 1 Engine | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "ADDED v3.4R hardstand premium | Full rate: 11000 | Source current rate (reference only): 8250 | Source opening discount: 25.00% | Direct cost: 1650"
   },
   {
     "code": "HARDSTAND_SB_2ENG_28_40_M",
@@ -2657,7 +2657,7 @@
     "service_th": "สปีดโบ๊ท 2 เครื่อง >27–40 ฟุต พื้นที่ซ่อมรายเดือน",
     "category": "Hardstand & Boat Stand",
     "unit": "month",
-    "rate": "13500",
+    "rate": "18000",
     "full_rate": "18000",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -2674,8 +2674,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Speedboat 2 Engines | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "ADDED v3.4R hardstand premium | Full rate: 18000 | Current rate: 13500 | Source opening discount: 25.00% | Direct cost: 2700"
+    "description": "Vessel: Speedboat 2 Engines | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "ADDED v3.4R hardstand premium | Full rate: 18000 | Source current rate (reference only): 13500 | Source opening discount: 25.00% | Direct cost: 2700"
   },
   {
     "code": "HARDSTAND_SB_3ENG_41_47_M",
@@ -2683,7 +2683,7 @@
     "service_th": "สปีดโบ๊ท 3 เครื่อง >40–47 ฟุต พื้นที่ซ่อมรายเดือน",
     "category": "Hardstand & Boat Stand",
     "unit": "month",
-    "rate": "18750",
+    "rate": "25000",
     "full_rate": "25000",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -2700,8 +2700,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Speedboat 3 Engines | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "ADDED v3.4R hardstand premium | Full rate: 25000 | Current rate: 18750 | Source opening discount: 25.00% | Direct cost: 3750"
+    "description": "Vessel: Speedboat 3 Engines | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "ADDED v3.4R hardstand premium | Full rate: 25000 | Source current rate (reference only): 18750 | Source opening discount: 25.00% | Direct cost: 3750"
   },
   {
     "code": "HARDSTAND_SB_4ENG_48_55_M",
@@ -2709,7 +2709,7 @@
     "service_th": "สปีดโบ๊ท 4 เครื่อง >47–55 ฟุต พื้นที่ซ่อมรายเดือน",
     "category": "Hardstand & Boat Stand",
     "unit": "month",
-    "rate": "26250",
+    "rate": "35000",
     "full_rate": "35000",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -2726,8 +2726,8 @@
     "quote_allowed": "YES",
     "price_status": "ACTIVE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Speedboat 4 Engines | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "ADDED v3.4R hardstand premium | Full rate: 35000 | Current rate: 26250 | Source opening discount: 25.00% | Direct cost: 5250"
+    "description": "Vessel: Speedboat 4 Engines | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/month | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "ADDED v3.4R hardstand premium | Full rate: 35000 | Source current rate (reference only): 26250 | Source opening discount: 25.00% | Direct cost: 5250"
   },
   {
     "code": "PAINT_COMPOUND",
@@ -2735,7 +2735,7 @@
     "service_th": "ขัดเงาสปีดโบ๊ท ผิวไฟเบอร์",
     "category": "Contractor For Boat Paint",
     "unit": "sqm",
-    "rate": "112.5",
+    "rate": "150",
     "full_rate": "150",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -2752,8 +2752,8 @@
     "quote_allowed": "NO",
     "price_status": "PENDING_PAINT_TEAM",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Speedboat | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/sqm | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Min 5,000 THB | Added v3.3 | Full rate: 150 | Current rate: 112.5 | Source opening discount: 25.00% | Direct cost: 61.88 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Speedboat | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/sqm | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Min 5,000 THB | Added v3.3 | Full rate: 150 | Source current rate (reference only): 112.5 | Source opening discount: 25.00% | Direct cost: 61.88 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "PAINT_COMPOUND_Y",
@@ -2761,7 +2761,7 @@
     "service_th": "ขัดเงายอชต์/มอเตอร์โบ๊ท≥30ฟุต",
     "category": "Contractor For Boat Paint",
     "unit": "sqm",
-    "rate": "150",
+    "rate": "200",
     "full_rate": "200",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -2778,8 +2778,8 @@
     "quote_allowed": "NO",
     "price_status": "PENDING_PAINT_TEAM",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Yacht | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/sqm | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Min 5,000 THB | Added v3.3 | Full rate: 200 | Current rate: 150 | Source opening discount: 25.00% | Direct cost: 82.5 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Yacht | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/sqm | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Min 5,000 THB | Added v3.3 | Full rate: 200 | Source current rate (reference only): 150 | Source opening discount: 25.00% | Direct cost: 82.5 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "PAINT_ANTIFOUL_L",
@@ -2787,7 +2787,7 @@
     "service_th": "แรงงานทาสีกันเพรียง – ประหยัด (ไม่รวมสี)",
     "category": "Contractor For Boat Paint",
     "unit": "sqm",
-    "rate": "120",
+    "rate": "160",
     "full_rate": "160",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -2804,8 +2804,8 @@
     "quote_allowed": "NO",
     "price_status": "PENDING_PAINT_TEAM",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: All | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/sqm | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Sand light + 2 coats | Added v3.3 | Full rate: 160 | Current rate: 120 | Source opening discount: 25.00% | Direct cost: 66 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: All | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/sqm | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Sand light + 2 coats | Added v3.3 | Full rate: 160 | Source current rate (reference only): 120 | Source opening discount: 25.00% | Direct cost: 66 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "PAINT_ANTIFOUL_M",
@@ -2813,7 +2813,7 @@
     "service_th": "แรงงานทาสีกันเพรียง – มาตรฐาน (ไม่รวมสี)",
     "category": "Contractor For Boat Paint",
     "unit": "sqm",
-    "rate": "187.5",
+    "rate": "250",
     "full_rate": "250",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -2830,8 +2830,8 @@
     "quote_allowed": "NO",
     "price_status": "PENDING_PAINT_TEAM",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: All | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/sqm | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Strip+sand+prime+2 coats | Added v3.3 | Full rate: 250 | Current rate: 187.5 | Source opening discount: 25.00% | Direct cost: 103.13 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: All | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/sqm | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Strip+sand+prime+2 coats | Added v3.3 | Full rate: 250 | Source current rate (reference only): 187.5 | Source opening discount: 25.00% | Direct cost: 103.13 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "PAINT_ANTIFOUL_H",
@@ -2839,7 +2839,7 @@
     "service_th": "แรงงานระบบสีกันเพรียงเต็มระบบ (ไม่รวมสี)",
     "category": "Contractor For Boat Paint",
     "unit": "sqm",
-    "rate": "285",
+    "rate": "380",
     "full_rate": "380",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -2856,8 +2856,8 @@
     "quote_allowed": "NO",
     "price_status": "PENDING_PAINT_TEAM",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: All | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/sqm | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Full strip+epoxy barrier+2 coats | v3.3 | Full rate: 380 | Current rate: 285 | Source opening discount: 25.00% | Direct cost: 156.75 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: All | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/sqm | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Full strip+epoxy barrier+2 coats | v3.3 | Full rate: 380 | Source current rate (reference only): 285 | Source opening discount: 25.00% | Direct cost: 156.75 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "PAINT_TOPSIDE_2K",
@@ -2865,7 +2865,7 @@
     "service_th": "แรงงานพ่นสี 2K PU ด้านบน",
     "category": "Contractor For Boat Paint",
     "unit": "sqm",
-    "rate": "562.5",
+    "rate": "750",
     "full_rate": "750",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -2882,8 +2882,8 @@
     "quote_allowed": "NO",
     "price_status": "PENDING_PAINT_TEAM",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: All | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/sqm | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Subcontract; spray booth required | v3.3 | Full rate: 750 | Current rate: 562.5 | Source opening discount: 25.00% | Direct cost: 309.38 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: All | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/sqm | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Subcontract; spray booth required | v3.3 | Full rate: 750 | Source current rate (reference only): 562.5 | Source opening discount: 25.00% | Direct cost: 309.38 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "PAINT_GELCOAT_PT",
@@ -2891,7 +2891,7 @@
     "service_th": "ซ่อมเจลโค้ตจุด (ต่อจุด≤0.1ตรม.)",
     "category": "Contractor For Boat Paint",
     "unit": "zone",
-    "rate": "1125",
+    "rate": "1500",
     "full_rate": "1500",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -2908,8 +2908,8 @@
     "quote_allowed": "NO",
     "price_status": "PENDING_PAINT_TEAM",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: All | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/zone | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Colour match+sand+polish | v3.3 | Full rate: 1500 | Current rate: 1125 | Source opening discount: 25.00% | Direct cost: 618.75 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: All | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/zone | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Colour match+sand+polish | v3.3 | Full rate: 1500 | Source current rate (reference only): 1125 | Source opening discount: 25.00% | Direct cost: 618.75 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "PAINT_GELCOAT_FH",
@@ -2917,7 +2917,7 @@
     "service_th": "ซ่อมเจลโค้ตทั้งส่วน",
     "category": "Contractor For Boat Paint",
     "unit": "sqm",
-    "rate": "750",
+    "rate": "1000",
     "full_rate": "1000",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -2934,8 +2934,8 @@
     "quote_allowed": "NO",
     "price_status": "PENDING_PAINT_TEAM",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: All | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/sqm | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Grind+laminate+gelcoat+polish | v3.3 | Full rate: 1000 | Current rate: 750 | Source opening discount: 25.00% | Direct cost: 412.5 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: All | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/sqm | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Grind+laminate+gelcoat+polish | v3.3 | Full rate: 1000 | Source current rate (reference only): 750 | Source opening discount: 25.00% | Direct cost: 412.5 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "PAINT_STRIP",
@@ -2943,7 +2943,7 @@
     "service_th": "ลอกสีกันเพรียงเก่า (ต่อชั้น)",
     "category": "Contractor For Boat Paint",
     "unit": "sqm",
-    "rate": "165",
+    "rate": "220",
     "full_rate": "220",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -2960,8 +2960,8 @@
     "quote_allowed": "NO",
     "price_status": "PENDING_PAINT_TEAM",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: All | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/sqm | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "+80 THB/sqm per extra layer | v3.3 | Full rate: 220 | Current rate: 165 | Source opening discount: 25.00% | Direct cost: 90.75 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: All | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/sqm | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "+80 THB/sqm per extra layer | v3.3 | Full rate: 220 | Source current rate (reference only): 165 | Source opening discount: 25.00% | Direct cost: 90.75 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "PAINT_PRIMER_EP",
@@ -2969,7 +2969,7 @@
     "service_th": "แรงงานทารองพื้น Epoxy (ต่อชั้น)",
     "category": "Contractor For Boat Paint",
     "unit": "sqm",
-    "rate": "150",
+    "rate": "200",
     "full_rate": "200",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -2986,8 +2986,8 @@
     "quote_allowed": "NO",
     "price_status": "PENDING_PAINT_TEAM",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: All | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/sqm | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Typically 2 coats required | v3.3 | Full rate: 200 | Current rate: 150 | Source opening discount: 25.00% | Direct cost: 82.5 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: All | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/sqm | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Typically 2 coats required | v3.3 | Full rate: 200 | Source current rate (reference only): 150 | Source opening discount: 25.00% | Direct cost: 82.5 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "PAINT_NONSKID",
@@ -2995,7 +2995,7 @@
     "service_th": "แรงงานทาพื้นผิว Non-Skid",
     "category": "Contractor For Boat Paint",
     "unit": "sqm",
-    "rate": "300",
+    "rate": "400",
     "full_rate": "400",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -3012,8 +3012,8 @@
     "quote_allowed": "NO",
     "price_status": "PENDING_PAINT_TEAM",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: All | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/sqm | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Deck prep+epoxy+texture | v3.3 | Full rate: 400 | Current rate: 300 | Source opening discount: 25.00% | Direct cost: 165 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: All | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/sqm | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Deck prep+epoxy+texture | v3.3 | Full rate: 400 | Source current rate (reference only): 300 | Source opening discount: 25.00% | Direct cost: 165 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "PAINT_SPEEDBOAT_PKG",
@@ -3021,7 +3021,7 @@
     "service_th": "แพ็กเกจสีก้นเรือสปีดโบ๊ท<30ฟุต (แรง+สีประหยัด)",
     "category": "Contractor For Boat Paint",
     "unit": "package",
-    "rate": "9000",
+    "rate": "12000",
     "full_rate": "12000",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -3038,8 +3038,8 @@
     "quote_allowed": "NO",
     "price_status": "PENDING_PAINT_TEAM",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Speedboat | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/package | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Excl. haul-out fee | v3.3 | Full rate: 12000 | Current rate: 9000 | Source opening discount: 25.00% | Direct cost: 5850 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Speedboat | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/package | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Excl. haul-out fee | v3.3 | Full rate: 12000 | Source current rate (reference only): 9000 | Source opening discount: 25.00% | Direct cost: 5850 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "PAINT_YACHT_PKG",
@@ -3047,7 +3047,7 @@
     "service_th": "แพ็กเกจสีก้นเรือยอชต์ 35-45ฟุต (แรง+สีกลาง)",
     "category": "Contractor For Boat Paint",
     "unit": "package",
-    "rate": "21000",
+    "rate": "28000",
     "full_rate": "28000",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -3064,8 +3064,8 @@
     "quote_allowed": "NO",
     "price_status": "PENDING_PAINT_TEAM",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Yacht | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/package | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Jotun Active equiv. Excl. haul-out | v3.3 | Full rate: 28000 | Current rate: 21000 | Source opening discount: 25.00% | Direct cost: 13650 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Yacht | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/package | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Jotun Active equiv. Excl. haul-out | v3.3 | Full rate: 28000 | Source current rate (reference only): 21000 | Source opening discount: 25.00% | Direct cost: 13650 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "PAINT_CAT_PKG",
@@ -3073,7 +3073,7 @@
     "service_th": "แพ็กเกจสีก้นเรือคาตามารัน 40-50ฟุต",
     "category": "Contractor For Boat Paint",
     "unit": "package",
-    "rate": "36000",
+    "rate": "48000",
     "full_rate": "48000",
     "discount_pct": "0",
     "source_discount_pct": "25.00",
@@ -3090,8 +3090,8 @@
     "quote_allowed": "NO",
     "price_status": "PENDING_PAINT_TEAM",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Catamaran | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/package | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "Cat hull factor 1.5-2x | v3.3 | Full rate: 48000 | Current rate: 36000 | Source opening discount: 25.00% | Direct cost: 23400 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
+    "description": "Vessel: Catamaran | GL: 4130 | P&L: D.Repair Yard | Source unit: THB/package | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "Cat hull factor 1.5-2x | v3.3 | Full rate: 48000 | Source current rate (reference only): 36000 | Source opening discount: 25.00% | Direct cost: 23400 | Cost metadata reference: ORM_Quote_Tidal_v3_4_Rate_Audit_Updated repair.xlsx"
   },
   {
     "code": "PAINT_ALL_PENDING",
@@ -3116,8 +3116,8 @@
     "quote_allowed": "NO",
     "price_status": "PENDING_PAINT_TEAM",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Paint Work | GL: 4130 | P&L: D.Repair Yard | Source unit: Quotation | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "NEW v2 pending paint price | Full rate: 0 | Current rate: 0 | Source opening discount: 0% | Direct cost: 0"
+    "description": "Vessel: Paint Work | GL: 4130 | P&L: D.Repair Yard | Source unit: Quotation | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "NEW v2 pending paint price | Full rate: 0 | Source current rate (reference only): 0 | Source opening discount: 0% | Direct cost: 0"
   },
   {
     "code": "PAINT_POLISH_PENDING",
@@ -3142,8 +3142,8 @@
     "quote_allowed": "NO",
     "price_status": "PENDING_PAINT_TEAM",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Polishing | GL: 4130 | P&L: D.Repair Yard | Source unit: Quotation | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "NEW v2 pending paint price | Full rate: 0 | Current rate: 0 | Source opening discount: 0% | Direct cost: 0"
+    "description": "Vessel: Polishing | GL: 4130 | P&L: D.Repair Yard | Source unit: Quotation | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "NEW v2 pending paint price | Full rate: 0 | Source current rate (reference only): 0 | Source opening discount: 0% | Direct cost: 0"
   },
   {
     "code": "PAINT_ANTIFOUL_PENDING",
@@ -3168,8 +3168,8 @@
     "quote_allowed": "NO",
     "price_status": "PENDING_PAINT_TEAM",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Antifouling | GL: 4130 | P&L: D.Repair Yard | Source unit: Quotation | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "NEW v2 pending paint price | Full rate: 0 | Current rate: 0 | Source opening discount: 0% | Direct cost: 0"
+    "description": "Vessel: Antifouling | GL: 4130 | P&L: D.Repair Yard | Source unit: Quotation | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "NEW v2 pending paint price | Full rate: 0 | Source current rate (reference only): 0 | Source opening discount: 0% | Direct cost: 0"
   },
   {
     "code": "PAINT_GELCOAT_PENDING",
@@ -3194,8 +3194,8 @@
     "quote_allowed": "NO",
     "price_status": "PENDING_PAINT_TEAM",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Gelcoat | GL: 4130 | P&L: D.Repair Yard | Source unit: Quotation | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "NEW v2 pending paint price | Full rate: 0 | Current rate: 0 | Source opening discount: 0% | Direct cost: 0"
+    "description": "Vessel: Gelcoat | GL: 4130 | P&L: D.Repair Yard | Source unit: Quotation | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "NEW v2 pending paint price | Full rate: 0 | Source current rate (reference only): 0 | Source opening discount: 0% | Direct cost: 0"
   },
   {
     "code": "MECH_ENGINE",
@@ -3220,8 +3220,8 @@
     "quote_allowed": "MANUAL",
     "price_status": "MANUAL_QUOTE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Engine | GL: 4170 | P&L: G.Specialist Services | Source unit: Quotation | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "NEW v2 mechanic specialist | Full rate: 0 | Current rate: 0 | Source opening discount: 0% | Direct cost: 0"
+    "description": "Vessel: Engine | GL: 4170 | P&L: G.Specialist Services | Source unit: Quotation | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "NEW v2 mechanic specialist | Full rate: 0 | Source current rate (reference only): 0 | Source opening discount: 0% | Direct cost: 0"
   },
   {
     "code": "MECH_MOTOR",
@@ -3246,8 +3246,8 @@
     "quote_allowed": "MANUAL",
     "price_status": "MANUAL_QUOTE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Motor | GL: 4170 | P&L: G.Specialist Services | Source unit: Quotation | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "NEW v2 mechanic specialist | Full rate: 0 | Current rate: 0 | Source opening discount: 0% | Direct cost: 0"
+    "description": "Vessel: Motor | GL: 4170 | P&L: G.Specialist Services | Source unit: Quotation | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "NEW v2 mechanic specialist | Full rate: 0 | Source current rate (reference only): 0 | Source opening discount: 0% | Direct cost: 0"
   },
   {
     "code": "MECH_ELEC_GEN",
@@ -3272,8 +3272,8 @@
     "quote_allowed": "MANUAL",
     "price_status": "MANUAL_QUOTE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Electrical / Generator | GL: 4170 | P&L: G.Specialist Services | Source unit: Quotation | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "NEW v2 mechanic specialist | Full rate: 0 | Current rate: 0 | Source opening discount: 0% | Direct cost: 0"
+    "description": "Vessel: Electrical / Generator | GL: 4170 | P&L: G.Specialist Services | Source unit: Quotation | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "NEW v2 mechanic specialist | Full rate: 0 | Source current rate (reference only): 0 | Source opening discount: 0% | Direct cost: 0"
   },
   {
     "code": "MECH_EQUIP_INSTALL",
@@ -3298,7 +3298,7 @@
     "quote_allowed": "MANUAL",
     "price_status": "MANUAL_QUOTE",
     "source_version": "ORM-PRICE-2026-v3.5",
-    "description": "Vessel: Equipment Installation | GL: 4170 | P&L: G.Specialist Services | Source unit: Quotation | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Imported from CURRENT RATE (THB)",
-    "notes": "NEW v2 mechanic specialist | Full rate: 0 | Current rate: 0 | Source opening discount: 0% | Direct cost: 0"
+    "description": "Vessel: Equipment Installation | GL: 4170 | P&L: G.Specialist Services | Source unit: Quotation | Source workbook: ORM_Quote_Tidal_v3_5_Updated.xlsx | Operational rate imported from FULL RATE (THB), column F",
+    "notes": "NEW v2 mechanic specialist | Full rate: 0 | Source current rate (reference only): 0 | Source opening discount: 0% | Direct cost: 0"
   }
 ]

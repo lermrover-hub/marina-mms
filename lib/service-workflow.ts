@@ -2,6 +2,10 @@ export const SERVICE_REQUEST_TYPES = ["RAMP_SERVICE", "SERVICE_TYPE"] as const
 export const RAMP_OPERATION_PLANS = [
   "HAUL_OUT_AND_LAUNCH_CONFIRMED",
   "HAUL_OUT_CONFIRMED_LAUNCH_OPEN",
+  "HAUL_OUT_AND_TOW_OUT_CONFIRMED",
+  "TOW_IN_AND_LAUNCH_CONFIRMED",
+  "TOW_IN_AND_TOW_OUT_CONFIRMED",
+  "TOW_IN_CONFIRMED_EXIT_OPEN",
 ] as const
 export const SERVICE_TYPES = ["STORAGE", "YARD_SERVICE"] as const
 export const SERVICE_OPERATORS = [
@@ -19,6 +23,52 @@ export type PaymentGateStatus =
   | "OVERDUE"
   | "CREDIT_HOLD"
   | "CANCELLED"
+
+export type RampMovementInput = {
+  haulOut: boolean
+  haulOutDate?: string | null
+  towIn: boolean
+  towInDate?: string | null
+  launch: boolean
+  launchDate?: string | null
+  towOut: boolean
+  towOutDate?: string | null
+}
+
+export function deriveRampMovementPlan(input: RampMovementInput) {
+  if (input.haulOut === input.towIn) {
+    return { error: "Choose exactly one arrival method: Haul-out or Tow in." } as const
+  }
+  if (input.launch && input.towOut) {
+    return { error: "Choose only one departure method: Launch or Tow out." } as const
+  }
+
+  const yardStartDate = input.haulOut ? input.haulOutDate : input.towInDate
+  const exitDate = input.launch ? input.launchDate : input.towOut ? input.towOutDate : null
+  if (!yardStartDate) {
+    return { error: `Enter the confirmed ${input.haulOut ? "haul-out" : "tow-in"} date.` } as const
+  }
+  if ((input.launch || input.towOut) && !exitDate) {
+    return { error: `Enter the confirmed ${input.launch ? "launch" : "tow-out"} date.` } as const
+  }
+  if (exitDate && exitDate < yardStartDate) {
+    return { error: "Departure date cannot be before the arrival date." } as const
+  }
+
+  const rampOperationPlan = input.haulOut
+    ? input.launch
+      ? "HAUL_OUT_AND_LAUNCH_CONFIRMED"
+      : input.towOut
+        ? "HAUL_OUT_AND_TOW_OUT_CONFIRMED"
+        : "HAUL_OUT_CONFIRMED_LAUNCH_OPEN"
+    : input.launch
+      ? "TOW_IN_AND_LAUNCH_CONFIRMED"
+      : input.towOut
+        ? "TOW_IN_AND_TOW_OUT_CONFIRMED"
+        : "TOW_IN_CONFIRMED_EXIT_OPEN"
+
+  return { error: null, rampOperationPlan, yardStartDate, exitDate } as const
+}
 
 export function defaultPaymentMode(serviceType: string, operatorType: string): PaymentMode {
   return serviceType === "YARD_SERVICE" && operatorType === "OCEAN_ROVER"

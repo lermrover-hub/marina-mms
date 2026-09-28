@@ -6,6 +6,7 @@ import {
   canConfirmServiceOrder,
   defaultPaymentMode,
   deriveCreditSchedule,
+  deriveRampMovementPlan,
   minimumQuotationApprover,
   validateDiscount,
 } from "../lib/service-workflow.ts"
@@ -18,6 +19,7 @@ import {
   roleAllowed,
 } from "../lib/workflow-access.ts"
 import { readLegacyWorkflowMetadata, writeLegacyWorkflowMetadata } from "../lib/service-workflow-compat.ts"
+import { rateCardItemsForSection, serviceCategories, storagePeriodMatches, workflowSectionForRate } from "../lib/service-rate-card.ts"
 
 test("payment mode follows the approved service policy", () => {
   assert.equal(defaultPaymentMode("STORAGE", "OCEAN_ROVER"), "FULL_PREPAYMENT")
@@ -42,6 +44,30 @@ test("credit cycle is 30 days and good customers receive at most 7 post-launch d
     finalDueDate: "2026-10-01",
   })
   assert.equal(deriveCreditSchedule("2026-09-01", "2026-09-20", true)?.finalDueDate, "2026-09-27")
+})
+
+test("vessel movement supports road tow without requiring haul-out or launch", () => {
+  assert.deepEqual(deriveRampMovementPlan({
+    haulOut: false,
+    towIn: true,
+    towInDate: "2026-09-29",
+    launch: false,
+    towOut: false,
+  }), {
+    error: null,
+    rampOperationPlan: "TOW_IN_CONFIRMED_EXIT_OPEN",
+    yardStartDate: "2026-09-29",
+    exitDate: null,
+  })
+  assert.equal(deriveRampMovementPlan({
+    haulOut: false,
+    towIn: true,
+    towInDate: "2026-09-29",
+    launch: false,
+    towOut: true,
+    towOutDate: "2026-10-03",
+  }).rampOperationPlan, "TOW_IN_AND_TOW_OUT_CONFIRMED")
+  assert.match(deriveRampMovementPlan({ haulOut: false, towIn: false, launch: false, towOut: false }).error ?? "", /arrival method/)
 })
 
 test("discount authority and contractor exclusions are deterministic", () => {
@@ -79,6 +105,31 @@ test("service request is created before payment while work order remains server-
   assert.match(workOrderRoute, /clear its payment gate before creating a Work Order/)
   assert.match(detailPage, /Work Order is locked until payment clearance/)
   assert.match(detailPage, /HelpHint/)
+  const workOrderPage = readFileSync("app/(dashboard)/work-orders/new/page.tsx", "utf8")
+  assert.match(workOrderPage, /Paid &amp; Confirmed Service Order/)
+  assert.match(workOrderPage, /service_request_id: serviceRequestId/)
+  assert.doesNotMatch(workOrderPage, /service_request_id: null/)
+  assert.doesNotMatch(workOrderPage, /Markup % on Contractor|Required Deposit %|Sell Price/)
+  assert.match(workOrderRoute, /body\.total_revenue = Math\.max/)
+})
+
+test("staff ramp schedules are children of the unified service request workflow", () => {
+  const requestRoute = readFileSync("app/api/db/service-requests/route.ts", "utf8")
+  const rampRoute = readFileSync("app/api/db/ramp-bookings/route.ts", "utf8")
+  const rampNewPage = readFileSync("app/(dashboard)/ramp-bookings/new/page.tsx", "utf8")
+  const rampLinkMigration = readFileSync("supabase/migrations/20260926191614_link_ramp_bookings_to_service_workflow.sql", "utf8")
+  assert.match(rampNewPage, /redirect\("\/service-requests\/new\?workflow=ramp"\)/)
+  assert.match(requestRoute, /service_request_id: serviceRequest\.id/)
+  assert.match(requestRoute, /quotation_id: quotation\.id/)
+  assert.match(requestRoute, /operation_type: "HAUL_OUT"/)
+  assert.match(requestRoute, /operation_type: "TOW_IN"/)
+  assert.match(requestRoute, /operation_type: "TOW_OUT"/)
+  assert.match(rampRoute, /Staff ramp schedules must be created from a Service Request/)
+  assert.match(rampRoute, /financial_status: isCustomer \? "UNPRICED_REQUEST" : "QUOTATION_LINKED"/)
+  assert.match(rampLinkMigration, /ADD COLUMN IF NOT EXISTS service_request_id text/)
+  assert.match(rampLinkMigration, /ADD COLUMN IF NOT EXISTS quotation_id text/)
+  assert.match(rampLinkMigration, /FOREIGN KEY \(service_request_id\)/)
+  assert.match(rampLinkMigration, /FOREIGN KEY \(quotation_id\)/)
 })
 
 test("legacy staging can preserve workflow state until the migration is installed", () => {
@@ -110,9 +161,31 @@ test("service workflow migration protects integrity and server-only access", () 
   assert.match(migration, /mms_service_payment_plans FORCE ROW LEVEL SECURITY/)
 })
 
-test("service request form accepts two-decimal cost and discount snapshots", () => {
+test("service request form uses cascading Rate Card selection and restricts Open Rate", () => {
   const page = readFileSync("app/(dashboard)/service-requests/new/page.tsx", "utf8")
-  assert.match(page, /<Label>Direct cost<\/Label><Input type="number" min="0" step="0\.01"/)
-  assert.match(page, /<Label>Discount %<\/Label><Input type="number" min="0" max=\{maximumDiscount\} step="0\.01"/)
-  assert.match(page, /disabled=\{!canEditCost\}/)
+  const route = readFileSync("app/api/db/service-requests/route.ts", "utf8")
+  assert.match(page, /Service category/)
+  assert.match(page, /Service item/)
+  assert.match(page, /Others \/ Open Rate/)
+  assert.match(page, /Tow in/i)
+  assert.match(page, /Tow out/i)
+  assert.match(route, /tow_in_date/)
+  assert.match(route, /tow_out_date/)
+  assert.match(route, /Open Rate may be entered only by Admin/)
+  assert.match(route, /price\?\.direct_cost_thb \?\? 0/)
+  assert.match(route, /canonicalGroup === "YARD"[^\n]+: "OCEAN_ROVER"/)
+})
+
+test("rate card items are routed to the approved workflow sections", () => {
+  const rows = [
+    { code: "HAUL", serviceNameEn: "Haul out", category: "Haul", unit: "trip", rateThb: 1, directCostThb: 0, serviceGroup: "2. Haul-out", subgroup: "Haul" },
+    { code: "TRUCK", serviceNameEn: "Tow truck", category: "Equipment", unit: "trip", rateThb: 1, directCostThb: 0, serviceGroup: "3. Service & Equipment", subgroup: "Tow truck" },
+    { code: "STORE", serviceNameEn: "Storage", category: "Storage", unit: "month", rateThb: 1, directCostThb: 0, serviceGroup: "4. Storage", subgroup: "Storage" },
+    { code: "WASH", serviceNameEn: "Boat wash", category: "Equipment", unit: "ft", rateThb: 1, directCostThb: 0, serviceGroup: "3. Service & Equipment", subgroup: "Wash" },
+  ]
+  assert.equal(workflowSectionForRate(rows[1]), "RAMP")
+  assert.deepEqual(rateCardItemsForSection(rows, "STORAGE").map((row) => row.code), ["STORE"])
+  assert.deepEqual(serviceCategories(rateCardItemsForSection(rows, "YARD")), ["Wash"])
+  assert.equal(storagePeriodMatches(rows[2], "MONTHLY"), true)
+  assert.equal(storagePeriodMatches(rows[2], "DAILY"), false)
 })

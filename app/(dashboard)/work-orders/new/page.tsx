@@ -41,8 +41,16 @@ interface PartLine {
   unit: string
   qty: number
   unitCost: number
-  markup: number
-  chargeToCustomer: boolean
+}
+
+interface EligibleServiceRequest {
+  id: string
+  reference: string
+  customer_id: string | null
+  boat_id: string | null
+  title: string | null
+  status: string
+  service_order_confirmed_at?: string | null
 }
 
 function genId() { return Math.random().toString(36).slice(2, 9) }
@@ -54,16 +62,21 @@ export default function NewWorkOrderPage() {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [boats,     setBoats]     = useState<Boat[]>([])
   const [staffList, setStaffList] = useState<Staff[]>([])
+  const [serviceRequests, setServiceRequests] = useState<EligibleServiceRequest[]>([])
+  const [serviceRequestId, setServiceRequestId] = useState("")
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   useEffect(() => {
     Promise.all([
       fetch("/api/db/customers").then(r => r.json()),
       fetch("/api/db/boats").then(r => r.json()),
       fetch("/api/db/staff").then(r => r.json()),
-    ]).then(([c, b, s]) => {
+      fetch("/api/db/service-requests").then(r => r.json()),
+    ]).then(([c, b, s, requests]) => {
       if (Array.isArray(c)) setCustomers(c)
       if (Array.isArray(b)) setBoats(b)
       if (Array.isArray(s)) setStaffList(s)
+      if (Array.isArray(requests)) setServiceRequests(requests.filter((request) => request.status === "SERVICE_ORDER_CONFIRMED"))
     }).catch(() => {})
   }, [])
 
@@ -76,9 +89,6 @@ export default function NewWorkOrderPage() {
   const [startDate, setStartDate]    = useState("")
   const [endDate, setEndDate]        = useState("")
   const [scopeOfWork, setScope]      = useState("")
-  const [depositPct, setDepositPct]  = useState("50")
-  const [vatRate]                    = useState(7)
-  const [contractorMarkup, setMarkup] = useState("15")
   const [internalNote, setInternalNote] = useState("")
 
   // ── tasks ────────────────────────────────────────────────────────────────
@@ -107,15 +117,10 @@ export default function NewWorkOrderPage() {
   // ── costing calculations ─────────────────────────────────────────────────
   const laborTotal = tasks.reduce((sum, t) => sum + t.estHours * t.laborRate, 0)
 
-  const partsWithMarkup = parts.reduce((sum, p) => sum + p.qty * p.unitCost * (1 + p.markup / 100), 0)
+  const partsCost = parts.reduce((sum, p) => sum + p.qty * p.unitCost, 0)
 
   const contractorNum = parseFloat(contractorCost) || 0
-  const contractorWithMarkup = contractorNum * (1 + parseFloat(contractorMarkup) / 100)
-
-  const subtotal = laborTotal + partsWithMarkup + contractorWithMarkup
-  const vatAmount = subtotal * (vatRate / 100)
-  const grandTotal = subtotal + vatAmount
-  const depositAmount = grandTotal * (parseFloat(depositPct) / 100)
+  const totalExecutionCost = laborTotal + partsCost + contractorNum
 
   // ── task helpers ─────────────────────────────────────────────────────────
   function addTask() {
@@ -138,7 +143,7 @@ export default function NewWorkOrderPage() {
   function addPart() {
     setParts((prev) => [
       ...prev,
-      { id: genId(), itemCode: "", description: "", unit: "pc", qty: 1, unitCost: 0, markup: 0, chargeToCustomer: true },
+      { id: genId(), itemCode: "", description: "", unit: "pc", qty: 1, unitCost: 0 },
     ])
   }
 
@@ -154,6 +159,7 @@ export default function NewWorkOrderPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
+    setSaveError(null)
     try {
       const selectedC = customers.find(c => c.id === customerId)
       const selectedB = boats.find(b => b.id === boatId)
@@ -163,21 +169,19 @@ export default function NewWorkOrderPage() {
         boat_id:           boatId || null,
         boat_name:         selectedB?.name ?? null,
         service_request_ref: srRef || null,
-        service_request_id: null,
+        service_request_id: serviceRequestId,
         execution_type: executionType,
         category,
         start_date:        startDate || null,
         estimated_end_date: endDate || null,
         scope_of_work:     scopeOfWork || null,
-        deposit_pct:       depositPct ? parseFloat(depositPct) : null,
-        contractor_markup: contractorMarkup ? parseFloat(contractorMarkup) : null,
+        contractor_markup: 0,
         notes:             internalNote || null,
         status:            "NEW_REQUEST",
         reference:         `WO-${Date.now().toString().slice(-6)}`,
         total_labor_cost:  laborTotal,
-        total_material_cost: partsWithMarkup,
-        total_contractor_cost: contractorWithMarkup,
-        total_revenue:     grandTotal,
+        total_material_cost: partsCost,
+        total_contractor_cost: contractorNum,
       }
       const res = await fetch("/api/db/work-orders", {
         method: "POST",
@@ -187,12 +191,13 @@ export default function NewWorkOrderPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error ?? "Save failed")
       router.push(data?.id ? `/work-orders/${data.id}` : "/work-orders")
-    } catch {
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : String(error))
       setSaving(false)
     }
   }
 
-  const isValid = customerId && boatId && category && scopeOfWork.trim().length > 5
+  const isValid = serviceRequestId && customerId && boatId && category && scopeOfWork.trim().length > 5
 
   // ── render ────────────────────────────────────────────────────────────────
   return (
@@ -210,6 +215,7 @@ export default function NewWorkOrderPage() {
       />
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        {saveError && <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{saveError}</div>}
 
         {/* ── Header Info ─────────────────────────────────────────────────── */}
         <Card>
@@ -217,6 +223,7 @@ export default function NewWorkOrderPage() {
             <CardTitle className="text-base">Work Order Header</CardTitle>
           </CardHeader>
           <CardContent className="space-y-5">
+            <div className="rounded-lg border border-teal-200 bg-teal-50 p-4"><Label>Paid &amp; Confirmed Service Order <span className="text-red-500">*</span></Label><select required className="mt-1 w-full rounded-md border border-teal-300 bg-white px-3 py-2 text-sm" value={serviceRequestId} onChange={(e) => { const id = e.target.value; const request = serviceRequests.find((row) => row.id === id); setServiceRequestId(id); setSrRef(request?.reference ?? ""); setCustomerId(request?.customer_id ?? ""); setBoatId(request?.boat_id ?? ""); setScope(request?.title ?? "") }}><option value="">— Select service order cleared for execution —</option>{serviceRequests.map((request) => <option key={request.id} value={request.id}>{request.reference} — {request.title ?? "Service"}</option>)}</select><p className="mt-2 text-xs text-teal-800">Only Service Requests whose payment gate passed and Service Order was confirmed are available. Pricing remains in the approved quotation; this page assigns execution work, staff/subcontractor and dates.</p></div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {/* Customer */}
@@ -224,7 +231,7 @@ export default function NewWorkOrderPage() {
                 <Label>Customer <span className="text-red-500">*</span></Label>
                 <select
                   value={customerId}
-                  onChange={(e) => { setCustomerId(e.target.value); setBoatId("") }}
+                  disabled
                   className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
                   required
                 >
@@ -242,8 +249,7 @@ export default function NewWorkOrderPage() {
                 <Label>Boat <span className="text-red-500">*</span></Label>
                 <select
                   value={boatId}
-                  onChange={(e) => setBoatId(e.target.value)}
-                  disabled={!customerId}
+                  disabled
                   className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:bg-gray-100"
                   required
                 >
@@ -262,15 +268,11 @@ export default function NewWorkOrderPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               {/* SR Reference */}
               <div className="space-y-1.5">
                 <Label>Service Request Ref.</Label>
-                <Input
-                  value={srRef}
-                  onChange={(e) => setSrRef(e.target.value)}
-                  placeholder="SR-2026-041"
-                />
+                <Input value={srRef} readOnly placeholder="Select a confirmed service order above" />
               </div>
 
               {/* Category */}
@@ -303,20 +305,6 @@ export default function NewWorkOrderPage() {
                 </select>
               </div>
 
-              {/* Deposit % */}
-              <div className="space-y-1.5">
-                <Label>Required Deposit %</Label>
-                <div className="relative">
-                  <Input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={depositPct}
-                    onChange={(e) => setDepositPct(e.target.value)}
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
-                </div>
-              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -478,9 +466,7 @@ export default function NewWorkOrderPage() {
                   <span className="col-span-1 text-center">Unit</span>
                   <span className="col-span-1 text-center">Qty</span>
                   <span className="col-span-2 text-right">Unit Cost</span>
-                  <span className="col-span-1 text-center">Markup%</span>
-                  <span className="col-span-2 text-right">Sell Price</span>
-                  <span className="col-span-1 text-center">Bill?</span>
+                  <span className="col-span-4 text-right">Actual Cost</span>
                   <span className="col-span-1" />
                 </div>
 
@@ -520,25 +506,8 @@ export default function NewWorkOrderPage() {
                         className="text-xs text-right"
                       />
                     </div>
-                    <div className="col-span-1">
-                      <Input
-                        type="number"
-                        min="0"
-                        value={p.markup}
-                        onChange={(e) => updatePart(p.id, "markup", parseFloat(e.target.value) || 0)}
-                        className="text-xs text-center"
-                      />
-                    </div>
-                    <div className="col-span-2 text-right text-sm font-medium text-gray-700">
-                      {formatTHB(p.qty * p.unitCost * (1 + p.markup / 100))}
-                    </div>
-                    <div className="col-span-1 flex justify-center">
-                      <input
-                        type="checkbox"
-                        checked={p.chargeToCustomer}
-                        onChange={(e) => updatePart(p.id, "chargeToCustomer", e.target.checked)}
-                        className="h-4 w-4 rounded text-teal-600"
-                      />
+                    <div className="col-span-4 text-right text-sm font-medium text-gray-700">
+                      {formatTHB(p.qty * p.unitCost)}
                     </div>
                     <div className="col-span-1 flex justify-center">
                       <button type="button" onClick={() => removePart(p.id)} className="text-red-400 hover:text-red-600">
@@ -550,8 +519,8 @@ export default function NewWorkOrderPage() {
 
                 <div className="flex justify-end pt-2">
                   <div className="text-sm text-gray-600">
-                    Parts total (with markup):{" "}
-                    <span className="font-bold text-gray-900">{formatTHB(partsWithMarkup)}</span>
+                    Actual parts cost:{" "}
+                    <span className="font-bold text-gray-900">{formatTHB(partsCost)}</span>
                   </div>
                 </div>
               </div>
@@ -564,7 +533,7 @@ export default function NewWorkOrderPage() {
           <CardHeader>
             <CardTitle className="text-base">Contractor / Subcontractor</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="space-y-1.5 md:col-span-1">
               <Label>Contractor Name</Label>
               <Input
@@ -583,28 +552,13 @@ export default function NewWorkOrderPage() {
                 placeholder="0"
               />
             </div>
-            <div className="space-y-1.5">
-              <Label>Markup % on Contractor</Label>
-              <div className="relative">
-                <Input
-                  type="number"
-                  min="0"
-                  value={contractorMarkup}
-                  onChange={(e) => setMarkup(e.target.value)}
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
-              </div>
-              <p className="text-xs text-gray-400">
-                Billed to customer: {formatTHB(contractorWithMarkup)}
-              </p>
-            </div>
           </CardContent>
         </Card>
 
         {/* ── Cost Summary ─────────────────────────────────────────────────── */}
         <Card className="border-teal-200 bg-teal-50/30">
           <CardHeader>
-            <CardTitle className="text-base text-teal-800">Cost &amp; Revenue Summary</CardTitle>
+            <CardTitle className="text-base text-teal-800">Execution Cost Summary</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="max-w-sm ml-auto space-y-2">
@@ -614,28 +568,17 @@ export default function NewWorkOrderPage() {
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Parts &amp; Materials</span>
-                <span className="font-medium">{formatTHB(partsWithMarkup)}</span>
+                <span className="font-medium">{formatTHB(partsCost)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Contractor (incl. {contractorMarkup}% markup)</span>
-                <span className="font-medium">{formatTHB(contractorWithMarkup)}</span>
+                <span className="text-gray-600">Contractor actual cost</span>
+                <span className="font-medium">{formatTHB(contractorNum)}</span>
               </div>
               <div className="flex justify-between text-sm border-t border-gray-200 pt-2">
-                <span className="text-gray-600">Subtotal</span>
-                <span className="font-medium">{formatTHB(subtotal)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">VAT {vatRate}%</span>
-                <span className="font-medium">{formatTHB(vatAmount)}</span>
-              </div>
-              <div className="flex justify-between text-base font-bold border-t border-teal-300 pt-2 text-teal-800">
-                <span>Grand Total</span>
-                <span>{formatTHB(grandTotal)}</span>
-              </div>
-              <div className="flex justify-between text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 mt-2">
-                <span>Required Deposit ({depositPct}%)</span>
-                <span className="font-bold">{formatTHB(depositAmount)}</span>
-              </div>
+                 <span className="font-semibold text-gray-700">Total execution cost</span>
+                 <span className="font-bold text-teal-800">{formatTHB(totalExecutionCost)}</span>
+               </div>
+               <p className="border-t pt-2 text-xs text-gray-500">Customer revenue and discount come from the approved quotation and cannot be edited in the Work Order.</p>
             </div>
           </CardContent>
         </Card>

@@ -56,6 +56,18 @@ export async function POST(req: Request) {
       }
       body.service_request_id = serviceRequestId
       body.sr_id = serviceRequestId
+      const quotationId = serviceRequest.quotation_id ?? legacy.quotation_id ?? null
+      if (!quotationId) {
+        return NextResponse.json({ error: "The confirmed Service Order has no linked quotation." }, { status: 409 })
+      }
+      const { data: quotation, error: quotationError } = await supabase
+        .from("mms_quotations")
+        .select("id,subtotal,discount,status,internal_approval_status")
+        .eq("id", quotationId)
+        .single()
+      if (quotationError) return NextResponse.json({ error: quotationError.message }, { status: 404 })
+      body.quotation_id = quotation.id
+      body.total_revenue = Math.max(0, Number(quotation.subtotal ?? 0) - Number(quotation.discount ?? 0))
     }
     const now = new Date().toISOString()
     const { data, error } = await supabase

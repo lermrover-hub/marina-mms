@@ -99,7 +99,8 @@ export default function ServiceRequestDetailPage() {
     <div className="grid gap-6 lg:grid-cols-3"><div className="space-y-5 lg:col-span-2">
       <Card><CardHeader><CardTitle>Request & Operation</CardTitle></CardHeader><CardContent className="grid gap-4 text-sm md:grid-cols-2">
         <Info label="Customer" value={request.customer_name ?? "—"} /><Info label="Boat" value={request.boat_name ?? "—"} /><Info label="Request menu" value={request.request_type?.replaceAll("_", " ") ?? request.category} /><Info label="Operator" value={request.operator_type?.replaceAll("_", " ") ?? request.execution_type} />
-        <Info label="Haul-out" value={request.confirmed_haul_out_date ? formatDate(request.confirmed_haul_out_date) : "—"} /><Info label="Launch" value={request.confirmed_launch_date ? formatDate(request.confirmed_launch_date) : "Open / not confirmed"} />
+        <Info label="Haul-out" value={request.confirmed_haul_out_date ? formatDate(request.confirmed_haul_out_date) : "Not selected"} /><Info label="Tow in" value={request.tow_in_date ? formatDate(request.tow_in_date) : "Not selected"} />
+        <Info label="Launch" value={request.confirmed_launch_date ? formatDate(request.confirmed_launch_date) : "Not selected / open"} /><Info label="Tow out" value={request.tow_out_date ? formatDate(request.tow_out_date) : "Not selected / open"} />
         {request.operator_type === "BOAT_OWNER_CONTRACTOR" && <Info label="Contractor insurance" value={request.insurance_status ?? "REQUESTED"} />}
       </CardContent></Card>
 

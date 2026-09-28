@@ -2,10 +2,10 @@ import { NextResponse } from "next/server"
 import { isProductionBookingsEnabled, safeModeResponse } from "@/lib/safe-mode"
 import { createServerClient } from "@/lib/supabase-server"
 import { customerScope, PORTAL_READ_ROLES, requireApiActor } from "@/lib/api-auth"
-import { calculateRampCustomerCharge, deriveRampServicePlan } from "@/lib/ramp-booking-service"
+import { deriveRampServicePlan } from "@/lib/ramp-booking-service"
 
 const supabase = createServerClient()
-const OPERATION_TYPES = new Set(["LAUNCH", "HAUL_OUT", "MOVE_BOAT", "WASH", "FUEL", "INSPECTION"])
+const OPERATION_TYPES = new Set(["LAUNCH", "HAUL_OUT", "TOW_IN", "TOW_OUT", "MOVE_BOAT", "WASH", "FUEL", "INSPECTION"])
 
 export const dynamic = "force-dynamic"
 
@@ -61,17 +61,15 @@ export async function POST(req: Request) {
     const scope = customerScope(access.actor, body.customer_id ?? null)
     if ("error" in scope) return scope.error
     const isCustomer = access.actor.role === "CUSTOMER"
-    const requestedRevenueAmount = Number(isCustomer ? 0 : (body.revenue_amount ?? 0))
-    const estimatedCostAmount = Number(isCustomer ? 0 : (body.estimated_cost_amount ?? 0))
-    if (!Number.isFinite(requestedRevenueAmount) || requestedRevenueAmount < 0) {
-      return NextResponse.json({ error: "Revenue amount must be zero or greater" }, { status: 400 })
+    if (!isCustomer && !body.service_request_id) {
+      return NextResponse.json({ error: "Staff ramp schedules must be created from a Service Request." }, { status: 409 })
     }
-    if (!Number.isFinite(estimatedCostAmount) || estimatedCostAmount < 0) {
-      return NextResponse.json({ error: "Estimated cost must be zero or greater" }, { status: 400 })
+    let linkedRequest: Record<string, unknown> | null = null
+    if (!isCustomer) {
+      const result = await supabase.from("mms_service_requests").select("id,quotation_id,customer_id,customer_name,boat_id,boat_name").eq("id", body.service_request_id).single()
+      if (result.error) return NextResponse.json({ error: result.error.message }, { status: 404 })
+      linkedRequest = result.data
     }
-    const revenueAmount = !isCustomer && servicePlan.pricing_adjustment_pct > 0
-      ? calculateRampCustomerCharge(estimatedCostAmount, servicePlan.pricing_adjustment_pct)
-      : requestedRevenueAmount
 
     if (isCustomer) {
       if (!body.boat_id) {
@@ -95,10 +93,12 @@ export async function POST(req: Request) {
         operation_type: body.operation_type,
         requested_date: requestedDate,
         requested_time: body.requested_time ?? null,
-        customer_id: scope.customerId,
-        customer_name: body.customer_name ?? null,
-        boat_id: body.boat_id ?? null,
-        boat_name: body.boat_name ?? null,
+        service_request_id: isCustomer ? null : body.service_request_id,
+        quotation_id: isCustomer ? null : linkedRequest?.quotation_id ?? null,
+        customer_id: isCustomer ? scope.customerId : linkedRequest?.customer_id ?? null,
+        customer_name: isCustomer ? body.customer_name ?? null : linkedRequest?.customer_name ?? null,
+        boat_id: isCustomer ? body.boat_id ?? null : linkedRequest?.boat_id ?? null,
+        boat_name: isCustomer ? body.boat_name ?? null : linkedRequest?.boat_name ?? null,
         boat_draft_ft: body.boat_draft_ft ?? null,
         trailer_height_ft: body.trailer_height_ft ?? null,
         safety_clearance_ft: body.safety_clearance_ft ?? null,
@@ -107,11 +107,11 @@ export async function POST(req: Request) {
         notes: body.notes ?? null,
         ...servicePlan,
         status: isCustomer ? "REQUESTED" : (body.status ?? "REQUESTED"),
-        revenue_amount: revenueAmount,
-        estimated_cost_amount: estimatedCostAmount,
-        revenue_account_code: isCustomer ? "4100-RAMP" : (body.revenue_account_code ?? "4100-RAMP"),
-        cost_account_code: isCustomer ? "5100-RAMP" : (body.cost_account_code ?? "5100-RAMP"),
-        financial_status: isCustomer ? "ESTIMATED" : (body.financial_status ?? "ESTIMATED"),
+        revenue_amount: 0,
+        estimated_cost_amount: 0,
+        revenue_account_code: null,
+        cost_account_code: null,
+        financial_status: isCustomer ? "UNPRICED_REQUEST" : "QUOTATION_LINKED",
         created_at: now,
         updated_at: now,
       })

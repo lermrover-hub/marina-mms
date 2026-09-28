@@ -5,6 +5,8 @@ export type LegacyWorkflowMetadata = {
   ramp_operation_plan?: string | null
   confirmed_haul_out_date?: string | null
   confirmed_launch_date?: string | null
+  tow_in_date?: string | null
+  tow_out_date?: string | null
   service_type?: string | null
   storage_period?: string | null
   operator_type?: string | null

@@ -40,7 +40,8 @@ export default function NewServiceRequestPage() {
   const [launchDate, setLaunchDate] = useState("")
   const [towOut, setTowOut] = useState(false)
   const [towOutDate, setTowOutDate] = useState("")
-  const [serviceType, setServiceType] = useState("STORAGE")
+  const [includeStorage, setIncludeStorage] = useState(true)
+  const [includeYardService, setIncludeYardService] = useState(false)
   const [storagePeriod, setStoragePeriod] = useState("DAILY")
   const [operatorType, setOperatorType] = useState("OCEAN_ROVER")
   const [trade, setTrade] = useState("Paint")
@@ -73,8 +74,8 @@ export default function NewServiceRequestPage() {
   }, [])
 
   useEffect(() => {
-    setPaymentMode(serviceType === "YARD_SERVICE" && operatorType === "OCEAN_ROVER" ? "DEPOSIT" : "FULL_PREPAYMENT")
-  }, [serviceType, operatorType])
+    setPaymentMode(includeYardService && operatorType === "OCEAN_ROVER" ? "DEPOSIT" : "FULL_PREPAYMENT")
+  }, [includeYardService, operatorType])
 
   const boatsForCustomer = useMemo(() => boats.filter((boat) => boat.owner_id === customerId), [boats, customerId])
   const selectedCustomer = customers.find((customer) => customer.id === customerId)
@@ -85,7 +86,11 @@ export default function NewServiceRequestPage() {
   const filteredPrices = useMemo(() => sectionPrices.filter((price) => (price.subgroup || price.category) === selectedCategory), [sectionPrices, selectedCategory])
   const movement = deriveRampMovementPlan({ haulOut, haulOutDate, towIn, towInDate, launch, launchDate, towOut, towOutDate })
   const movementRateRequired = haulOut || launch
-  const serviceSection: ServiceWorkflowSection = serviceType === "STORAGE" ? "STORAGE" : "YARD"
+  const selectedSections = useMemo<ServiceWorkflowSection[]>(() => [
+    "RAMP",
+    ...(includeStorage ? ["STORAGE" as const] : []),
+    ...(includeYardService ? ["YARD" as const] : []),
+  ], [includeStorage, includeYardService])
 
   useEffect(() => {
     setSelectedCategory("")
@@ -132,14 +137,18 @@ export default function NewServiceRequestPage() {
     }))
   }
 
-  function changeServiceType(nextServiceType: string) {
-    setServiceType(nextServiceType)
-    if (nextServiceType === "STORAGE") {
-      setOperatorType("OCEAN_ROVER")
-      setItems((rows) => rows.filter((row) => row.service_group !== "YARD"))
+  function toggleServiceSection(section: "STORAGE" | "YARD") {
+    if (section === "STORAGE") {
+      setIncludeStorage((selected) => {
+        if (selected) setItems((rows) => rows.filter((row) => row.service_group !== "STORAGE"))
+        return !selected
+      })
       return
     }
-    setItems((rows) => rows.filter((row) => row.service_group !== "STORAGE"))
+    setIncludeYardService((selected) => {
+      if (selected) setItems((rows) => rows.filter((row) => row.service_group !== "YARD"))
+      return !selected
+    })
   }
 
   function changeStoragePeriod(nextPeriod: string) {
@@ -165,8 +174,16 @@ export default function NewServiceRequestPage() {
       setError("Add at least one Ramp / Haul-out / Launch rate-card item.")
       return
     }
-    if (!items.some((item) => item.service_group === (serviceType === "STORAGE" ? "STORAGE" : "YARD"))) {
-      setError(`Add at least one ${serviceType === "STORAGE" ? "Storage" : "Yard Service"} item.`)
+    if (!includeStorage && !includeYardService) {
+      setError("Select Storage, Yard Service, or both before continuing.")
+      return
+    }
+    if (includeStorage && !items.some((item) => item.service_group === "STORAGE")) {
+      setError("Add at least one Storage rate-card item.")
+      return
+    }
+    if (includeYardService && !items.some((item) => item.service_group === "YARD")) {
+      setError("Add at least one Yard Service rate-card item.")
       return
     }
     setSaving(true)
@@ -180,7 +197,7 @@ export default function NewServiceRequestPage() {
           customer_name: selectedCustomer?.company_name ?? [selectedCustomer?.first_name, selectedCustomer?.last_name].filter(Boolean).join(" "),
           boat_id: boatId,
           boat_name: selectedBoat?.name,
-          title: title || `${requestType === "RAMP_SERVICE" ? "Ramp service" : serviceType} — ${selectedBoat?.name ?? "boat"}`,
+          title: title || `Ramp service — ${selectedBoat?.name ?? "boat"}`,
           description: notes,
           request_type: requestType,
           ramp_operation_plan: movement.error ? null : movement.rampOperationPlan,
@@ -192,8 +209,9 @@ export default function NewServiceRequestPage() {
           confirmed_launch_date: launch ? launchDate || null : null,
           tow_out: towOut,
           tow_out_date: towOut ? towOutDate || null : null,
-          service_type: serviceType,
-          storage_period: serviceType === "STORAGE" ? storagePeriod : null,
+          service_type: includeYardService ? "YARD_SERVICE" : "STORAGE",
+          service_types: [includeStorage ? "STORAGE" : null, includeYardService ? "YARD_SERVICE" : null].filter(Boolean),
+          storage_period: includeStorage ? storagePeriod : null,
           operator_type: operatorType,
           subcontractor_trade: operatorType === "OCEAN_ROVER_SUBCONTRACTOR" ? trade : null,
           markup_pct: operatorType === "OCEAN_ROVER_SUBCONTRACTOR" ? markupPct : 0,
@@ -245,18 +263,19 @@ export default function NewServiceRequestPage() {
               </MovementOption>
             </div>
           </div>
-          <div><Label>Service after arrival *</Label><p className="mt-1 text-xs text-gray-600">Choose one main service path. Storage ends with its daily, weekly or monthly rate. Yard Service continues to work items and operator selection.</p><div className="mt-2 grid gap-3 md:grid-cols-2"><button type="button" onClick={() => changeServiceType("STORAGE")} className={`rounded-lg border p-4 text-left ${serviceType === "STORAGE" ? "border-teal-500 bg-teal-50" : "border-gray-200"}`}><b>A. Storage</b><p className="text-sm text-gray-500">Daily, weekly or monthly boat storage</p></button><button type="button" onClick={() => changeServiceType("YARD_SERVICE")} className={`rounded-lg border p-4 text-left ${serviceType === "YARD_SERVICE" ? "border-teal-500 bg-teal-50" : "border-gray-200"}`}><b>B. Yard Service</b><p className="text-sm text-gray-500">Ocean Rover, owner contractor or Ocean Rover subcontractor work</p></button></div></div>
-          {serviceType === "STORAGE" ? <div className="rounded-lg border bg-gray-50 p-4"><Label>Storage billing period</Label><div className="mt-2 grid grid-cols-3 gap-2">{["DAILY", "WEEKLY", "MONTHLY"].map((period) => <button type="button" key={period} onClick={() => changeStoragePeriod(period)} className={`rounded-md border px-3 py-2 text-sm font-medium ${storagePeriod === period ? "border-teal-500 bg-white text-teal-700" : "border-gray-200 bg-white text-gray-600"}`}>{period[0] + period.slice(1).toLowerCase()}</button>)}</div>{storagePeriod === "MONTHLY" && <p className="mt-2 text-xs text-amber-700">Monthly storage creates an officer billing reminder.</p>}</div> : <div className="space-y-4 rounded-lg border bg-gray-50 p-4"><div><Label>Who performs the Yard Service? <HelpHint title="Operator affects price and approval">Ocean Rover work may receive an authorised discount. Boat-owner contractor work requires verified insurance. Ocean Rover subcontractor work uses direct cost plus markup and cannot receive a Marina discount.</HelpHint></Label><div className="mt-2 grid gap-2 md:grid-cols-3">{[{ value: "OCEAN_ROVER", label: "Ocean Rover" }, { value: "BOAT_OWNER_CONTRACTOR", label: "Boat owner / contractor" }, { value: "OCEAN_ROVER_SUBCONTRACTOR", label: "Ocean Rover subcontractor" }].map((operator) => <button type="button" key={operator.value} onClick={() => changeYardOperator(operator.value)} className={`rounded-md border p-3 text-sm font-semibold ${operatorType === operator.value ? "border-teal-500 bg-white text-teal-700" : "border-gray-200 bg-white"}`}>{operator.label}</button>)}</div></div>
+          <div><Label>Service after arrival *</Label><p className="mt-1 text-xs text-gray-600">Select Storage, Yard Service, or both. All selected services and Rate Card items are collected before the Draft quotation is generated.</p><div className="mt-2 grid gap-3 md:grid-cols-2"><button type="button" aria-pressed={includeStorage} onClick={() => toggleServiceSection("STORAGE")} className={`rounded-lg border p-4 text-left ${includeStorage ? "border-teal-500 bg-teal-50" : "border-gray-200"}`}><b>{includeStorage ? "✓ " : ""}A. Storage</b><p className="text-sm text-gray-500">Daily, weekly or monthly boat storage</p></button><button type="button" aria-pressed={includeYardService} onClick={() => toggleServiceSection("YARD")} className={`rounded-lg border p-4 text-left ${includeYardService ? "border-teal-500 bg-teal-50" : "border-gray-200"}`}><b>{includeYardService ? "✓ " : ""}B. Yard Service / Other Services</b><p className="text-sm text-gray-500">Ocean Rover, owner contractor or Ocean Rover subcontractor work</p></button></div></div>
+          {includeStorage && <div className="rounded-lg border bg-gray-50 p-4"><Label>Storage billing period</Label><div className="mt-2 grid grid-cols-3 gap-2">{["DAILY", "WEEKLY", "MONTHLY"].map((period) => <button type="button" key={period} onClick={() => changeStoragePeriod(period)} className={`rounded-md border px-3 py-2 text-sm font-medium ${storagePeriod === period ? "border-teal-500 bg-white text-teal-700" : "border-gray-200 bg-white text-gray-600"}`}>{period[0] + period.slice(1).toLowerCase()}</button>)}</div>{storagePeriod === "MONTHLY" && <p className="mt-2 text-xs text-amber-700">Monthly storage creates an officer billing reminder.</p>}</div>}
+          {includeYardService && <div className="space-y-4 rounded-lg border bg-gray-50 p-4"><div><Label>Who performs the Yard Service? <HelpHint title="Operator affects price and approval">Ocean Rover work may receive an authorised discount. Boat-owner contractor work requires verified insurance. Ocean Rover subcontractor work uses direct cost plus markup and cannot receive a Marina discount.</HelpHint></Label><div className="mt-2 grid gap-2 md:grid-cols-3">{[{ value: "OCEAN_ROVER", label: "Ocean Rover" }, { value: "BOAT_OWNER_CONTRACTOR", label: "Boat owner / contractor" }, { value: "OCEAN_ROVER_SUBCONTRACTOR", label: "Ocean Rover subcontractor" }].map((operator) => <button type="button" key={operator.value} onClick={() => changeYardOperator(operator.value)} className={`rounded-md border p-3 text-sm font-semibold ${operatorType === operator.value ? "border-teal-500 bg-white text-teal-700" : "border-gray-200 bg-white"}`}>{operator.label}</button>)}</div></div>
           {operatorType === "BOAT_OWNER_CONTRACTOR" && <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-800">Enter the contractor scope in Internal Notes. Insurance starts as Requested and must be verified before confirming the Service Order.</p>}
           {operatorType === "OCEAN_ROVER_SUBCONTRACTOR" && <div className="grid gap-4 md:grid-cols-2"><div><Label>Trade</Label><select className="mt-1 w-full rounded-md border p-2" value={trade} onChange={(e) => setTrade(e.target.value)}><option>Paint</option><option>Mechanic</option><option>Electrical</option><option>Other</option></select></div><div><Label>Markup %</Label><Input type="number" min="0" max="100" value={markupPct} onChange={(e) => changeMarkup(Number(e.target.value))} /><p className="mt-1 text-xs text-gray-500">Selling price = direct cost + markup. Existing Yard items are recalculated automatically.</p></div></div>}</div>}
         </CardContent></Card>
-        <div className="flex justify-end"><Button type="button" variant="teal" onClick={() => { setError(null); if (!customerId || !boatId) { setError("Select the customer and vessel before continuing."); return } if (movement.error) { setError(movement.error); return } setActiveSection(movementRateRequired ? "RAMP" : serviceSection); setCurrentStep(2) }}>Continue to Service Items →</Button></div>
+        <div className="flex justify-end"><Button type="button" variant="teal" onClick={() => { setError(null); if (!customerId || !boatId) { setError("Select the customer and vessel before continuing."); return } if (movement.error) { setError(movement.error); return } if (!includeStorage && !includeYardService) { setError("Select Storage, Yard Service, or both before continuing."); return } setActiveSection(movementRateRequired ? "RAMP" : includeStorage ? "STORAGE" : "YARD"); setCurrentStep(2) }}>Continue to Service Items →</Button></div>
         </>}
 
         {currentStep === 2 && <>
         <Card><CardHeader><CardTitle>3. Service Items & Rate Card <HelpHint title="Cascading service menu">Choose the workflow section, then a service category, then the exact Rate Card item. Price, unit, direct cost and accounting codes are filled automatically. Only quantity or duration is entered by the officer.</HelpHint></CardTitle></CardHeader><CardContent className="space-y-4">
           <div className="rounded-md border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900"><b>Movement:</b> {haulOut ? `Haul-out on ${haulOutDate}` : `Tow in on ${towInDate}`} · {launch ? `Launch on ${launchDate}` : towOut ? `Tow out on ${towOutDate}` : "Departure open"}<br /><span className="text-xs">{movementRateRequired ? "Add the required Ramp operation item, then add the main service." : "Tow charge is optional. Add a Tow item only when the customer is charged; otherwise continue with the main service."}</span></div>
-          <div className="grid grid-cols-2 gap-2">{(["RAMP", serviceSection] as ServiceWorkflowSection[]).map((section) => <button type="button" key={section} onClick={() => setActiveSection(section)} className={`rounded-lg border px-3 py-3 text-sm font-semibold ${activeSection === section ? "border-teal-500 bg-teal-50 text-teal-800" : "border-gray-200 bg-white text-gray-600"}`}>{section === "RAMP" ? (movementRateRequired ? "Ramp Operation (required)" : "Tow Charge (optional)") : section === "STORAGE" ? "Storage (required)" : "Yard Service (required)"}</button>)}</div>
+          <div className={`grid gap-2 ${selectedSections.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>{selectedSections.map((section) => <button type="button" key={section} onClick={() => setActiveSection(section)} className={`rounded-lg border px-3 py-3 text-sm font-semibold ${activeSection === section ? "border-teal-500 bg-teal-50 text-teal-800" : "border-gray-200 bg-white text-gray-600"}`}>{section === "RAMP" ? (movementRateRequired ? "Ramp Operation (required)" : "Tow Charge (optional)") : section === "STORAGE" ? "Storage (required)" : "Yard / Other Services (required)"}</button>)}</div>
           <div className="grid gap-3 md:grid-cols-[1fr_1.5fr_auto]">
             <div><Label>Service category</Label><select className="mt-1 w-full rounded-md border p-2" value={selectedCategory} onChange={(e) => { setSelectedCategory(e.target.value); setSelectedPrice("") }}><option value="">Select category</option>{categories.map((category) => <option key={category} value={category}>{category}</option>)}</select></div>
             <div><Label>Service item</Label><select disabled={!selectedCategory} className="mt-1 w-full rounded-md border p-2 disabled:bg-gray-100" value={selectedPrice} onChange={(e) => setSelectedPrice(e.target.value)}><option value="">Select rate-card item</option>{filteredPrices.map((price) => <option key={price.id} value={price.code}>{price.serviceNameEn} — {formatTHB(price.rateThb)}/{price.unit}</option>)}</select></div>
@@ -267,12 +286,12 @@ export default function NewServiceRequestPage() {
           {!items.length && <p className="py-6 text-center text-sm text-gray-400">Add services in the order they should appear on the quotation.</p>}
           <p className="text-right font-semibold">Preview subtotal: {formatTHB(total)}</p>
         </CardContent></Card>
-        <div className="flex justify-between"><Button type="button" variant="outline" onClick={() => setCurrentStep(1)}>← Back</Button><Button type="button" variant="teal" onClick={() => { const nextGroup = serviceType === "STORAGE" ? "STORAGE" : "YARD"; if ((haulOut || launch) && !items.some((item) => item.service_group === "RAMP")) { setError("Add at least one Ramp / Haul-out / Launch rate-card item."); return } if (!items.some((item) => item.service_group === nextGroup)) { setError(`Add at least one ${serviceType === "STORAGE" ? "Storage" : "Yard Service"} item.`); return } setError(null); setCurrentStep(3) }}>Review Draft Quote →</Button></div>
+        <div className="flex justify-between"><Button type="button" variant="outline" onClick={() => setCurrentStep(1)}>← Back</Button><Button type="button" variant="teal" onClick={() => { if ((haulOut || launch) && !items.some((item) => item.service_group === "RAMP")) { setError("Add at least one Ramp / Haul-out / Launch rate-card item."); return } if (includeStorage && !items.some((item) => item.service_group === "STORAGE")) { setError("Add at least one Storage rate-card item."); return } if (includeYardService && !items.some((item) => item.service_group === "YARD")) { setError("Add at least one Yard / Other Service rate-card item."); return } setError(null); setCurrentStep(3) }}>Review Draft Quote →</Button></div>
         </>}
 
         {currentStep === 3 && <>
         <Card><CardHeader><CardTitle>4. Payment Rule <HelpHint title="Service Request vs Work Order">You can save the Service Request before payment. A Work Order is created only after Finance clears full payment, the required deposit, or approved credit, and an officer confirms the Service Order.</HelpHint></CardTitle></CardHeader><CardContent className="space-y-4"><div><Label>Payment mode <HelpHint title="Payment options">Full pre-payment is standard for ramp/storage. Deposit defaults to 50/40/10 for Ocean Rover yard work, with the first payment never below committed material/subcontractor cost. Credit needs Finance/GM approval and uses a maximum 30-day first cycle.</HelpHint></Label><select className="mt-1 w-full rounded-md border p-2" value={paymentMode} onChange={(e) => setPaymentMode(e.target.value)}><option value="FULL_PREPAYMENT">Full pre-payment — must be Paid before service</option><option value="DEPOSIT">Deposit — 50/40/10 (initial amount covers committed cost)</option><option value="CREDIT">Credit — maximum first 30-day cycle</option></select></div>{paymentMode === "CREDIT" && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={goodCredit} onChange={(e) => setGoodCredit(e.target.checked)} />Existing good-credit customer (Finance/GM approval still required; max 7 days after launch)</label>}<div><Label>Title</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Optional; generated automatically if blank" /></div><div><Label>Internal notes</Label><textarea className="mt-1 min-h-24 w-full rounded-md border p-2 text-sm" value={notes} onChange={(e) => setNotes(e.target.value)} /></div></CardContent></Card>
-        <Card><CardHeader><CardTitle>Draft quotation summary</CardTitle></CardHeader><CardContent className="space-y-3"><div className="rounded-md bg-gray-50 p-3 text-sm"><p><b>Customer:</b> {selectedCustomer?.company_name ?? [selectedCustomer?.first_name, selectedCustomer?.last_name].filter(Boolean).join(" ")} · <b>Vessel:</b> {selectedBoat?.name}</p><p><b>Arrival:</b> {haulOut ? `Haul-out ${haulOutDate}` : `Tow in ${towInDate}`} · <b>Departure:</b> {launch ? `Launch ${launchDate}` : towOut ? `Tow out ${towOutDate}` : "Open"}</p><p><b>Main service:</b> {serviceType === "STORAGE" ? `Storage — ${storagePeriod.toLowerCase()}` : `Yard Service — ${operatorType.replaceAll("_", " ")}`}</p></div>{items.map((item, index) => <div key={`${item.pricing_code ?? "OPEN"}-review-${index}`} className="flex justify-between gap-4 border-b py-2 text-sm"><span>{item.description} × {item.qty}</span><span className="font-medium">{formatTHB(item.qty * item.unit_price * (1 - item.discount_pct / 100))}</span></div>)}<div className="flex justify-between pt-2 font-semibold"><span>Subtotal before VAT</span><span>{formatTHB(total)}</span></div><p className="text-xs text-gray-500">Discount starts at 0%. VAT and deposit are calculated and snapshotted by the server when the Draft is created.</p></CardContent></Card>
+        <Card><CardHeader><CardTitle>Draft quotation summary</CardTitle></CardHeader><CardContent className="space-y-3"><div className="rounded-md bg-gray-50 p-3 text-sm"><p><b>Customer:</b> {selectedCustomer?.company_name ?? [selectedCustomer?.first_name, selectedCustomer?.last_name].filter(Boolean).join(" ")} · <b>Vessel:</b> {selectedBoat?.name}</p><p><b>Arrival:</b> {haulOut ? `Haul-out ${haulOutDate}` : `Tow in ${towInDate}`} · <b>Departure:</b> {launch ? `Launch ${launchDate}` : towOut ? `Tow out ${towOutDate}` : "Open"}</p><p><b>Selected services:</b> {[includeStorage ? `Storage — ${storagePeriod.toLowerCase()}` : null, includeYardService ? `Yard / Other Services — ${operatorType.replaceAll("_", " ")}` : null].filter(Boolean).join(" + ")}</p></div>{items.map((item, index) => <div key={`${item.pricing_code ?? "OPEN"}-review-${index}`} className="flex justify-between gap-4 border-b py-2 text-sm"><span><span className="mr-2 rounded bg-teal-50 px-1.5 py-0.5 text-xs text-teal-700">{item.service_group}</span>{item.description} × {item.qty}</span><span className="font-medium">{formatTHB(item.qty * item.unit_price * (1 - item.discount_pct / 100))}</span></div>)}<div className="flex justify-between pt-2 font-semibold"><span>Subtotal before VAT</span><span>{formatTHB(total)}</span></div><p className="text-xs text-gray-500">Discount starts at 0%. VAT and deposit are calculated and snapshotted by the server when the Draft is created.</p></CardContent></Card>
         <div className="rounded-lg border border-teal-200 bg-teal-50 p-3 text-sm text-teal-900">Saving creates the Service Request, an ordered Draft quotation, and its payment plan. It does not send anything to the customer. Review the Draft, then use Submit for Approval.</div>
         <div className="flex justify-between"><Button type="button" variant="outline" onClick={() => setCurrentStep(2)}>← Back</Button><Button type="submit" variant="teal" disabled={saving || !customerId || !boatId || !items.length}><Save className="mr-2 h-4 w-4" />{saving ? "Creating workflow…" : "Save & Generate Draft Quotation"}</Button></div>
         </>}

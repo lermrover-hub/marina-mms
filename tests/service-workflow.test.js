@@ -181,6 +181,33 @@ test("service request form uses cascading Rate Card selection and restricts Open
   assert.match(route, /canonicalGroup === "YARD"[^\n]+: "OCEAN_ROVER"/)
 })
 
+test("service request collects storage and yard items before one quotation", () => {
+  const page = readFileSync("app/(dashboard)/service-requests/new/page.tsx", "utf8")
+  const requestRoute = readFileSync("app/api/db/service-requests/route.ts", "utf8")
+  assert.match(page, /includeStorage/)
+  assert.match(page, /includeYardService/)
+  assert.match(page, /Storage, Yard Service, or both/)
+  assert.match(page, /service_types:/)
+  assert.match(page, /selectedSections\.map/)
+  assert.match(requestRoute, /requestedServiceTypes/)
+  assert.match(requestRoute, /includesStorage/)
+  assert.match(requestRoute, /includesYardService/)
+  assert.match(requestRoute, /Add at least one Storage rate-card item/)
+  assert.match(requestRoute, /Add at least one Yard \/ Other Service rate-card item/)
+})
+
+test("approval and customer delivery gate payment and work order creation", () => {
+  const requestDetailRoute = readFileSync("app/api/db/service-requests/[id]/route.ts", "utf8")
+  const workOrderRoute = readFileSync("app/api/db/work-orders/route.ts", "utf8")
+  const detailPage = readFileSync("app/(dashboard)/service-requests/[id]/page.tsx", "utf8")
+  assert.match(requestDetailRoute, /Manager approval and customer delivery are required before Finance/)
+  assert.match(requestDetailRoute, /internal_approval_status !== "APPROVED"/)
+  assert.match(workOrderRoute, /manager-approved quotation that has been sent to the customer/)
+  assert.match(detailPage, /quotationDelivered/)
+  assert.match(detailPage, /Review \/ Approve Quotation/)
+  assert.match(detailPage, /disabled=\{busy \|\| !quotationDelivered\}/)
+})
+
 test("rate card items are routed to the approved workflow sections", () => {
   const rows = [
     { code: "HAUL", serviceNameEn: "Haul out", category: "Haul", unit: "trip", rateThb: 1, directCostThb: 0, serviceGroup: "2. Haul-out", subgroup: "Haul" },

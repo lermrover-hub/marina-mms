@@ -24,10 +24,16 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     if (itemResult.error && !isMissingWorkflowSchema(itemResult.error)) throw itemResult.error
     if (!itemResult.error) items = itemResult.data ?? []
     const quotationId = data.quotation_id ?? legacy.quotation_id ?? null
+    let quotation: Record<string, unknown> | null = null
     if (!items.length && quotationId) {
       const quoteItems = await supabase.from("mms_quotation_items").select("*").eq("quotation_id", quotationId).order("sort_order")
       if (quoteItems.error) throw quoteItems.error
       items = (quoteItems.data ?? []).map((item) => ({ ...item, operator_type: legacy.operator_type ?? data.execution_type, direct_cost: item.direct_cost_snapshot_thb ?? 0 }))
+    }
+    if (quotationId) {
+      const quotationResult = await supabase.from("mms_quotations").select("id,status,internal_approval_status,quote_number").eq("id", quotationId).single()
+      if (quotationResult.error) throw quotationResult.error
+      quotation = quotationResult.data
     }
 
     let paymentPlan: Record<string, unknown> | null = null
@@ -35,7 +41,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     if (planResult.error && !isMissingWorkflowSchema(planResult.error)) throw planResult.error
     if (!planResult.error) paymentPlan = planResult.data
     if (!paymentPlan && legacy.payment_plan) paymentPlan = legacy.payment_plan
-    return NextResponse.json({ ...data, ...legacy, quotation_id: quotationId, items, payment_plan: paymentPlan })
+    const serviceGroups = [...new Set(items.map((item) => String(item.service_group ?? "")).filter(Boolean))]
+    const serviceTypes = [serviceGroups.includes("STORAGE") ? "STORAGE" : null, serviceGroups.includes("YARD") ? "YARD_SERVICE" : null].filter(Boolean)
+    return NextResponse.json({ ...data, ...legacy, service_types: serviceTypes, quotation_id: quotationId, quotation, items, payment_plan: paymentPlan })
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 })
   }
@@ -68,6 +76,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       if (!FINANCE_WRITE_ROLES.includes(access.actor.role as (typeof FINANCE_WRITE_ROLES)[number])) return NextResponse.json({ error: "Only Finance, Managing Director, or Super Admin may update payment clearance." }, { status: 403 })
       const next = String(body.status ?? "")
       if (!["AWAITING_PAYMENT", "DEPOSIT_PAID", "PAID", "CREDIT_APPROVED", "OVERDUE", "CREDIT_HOLD", "CANCELLED"].includes(next)) return NextResponse.json({ error: "Invalid payment gate status." }, { status: 400 })
+      const quotationId = effective.quotation_id
+      if (!quotationId) return NextResponse.json({ error: "Generate and approve the quotation before updating payment clearance." }, { status: 409 })
+      const quotationResult = await supabase.from("mms_quotations").select("status,internal_approval_status").eq("id", quotationId).single()
+      if (quotationResult.error) throw quotationResult.error
+      const quotation = quotationResult.data
+      if (quotation.internal_approval_status !== "APPROVED" || !["SENT", "ACCEPTED", "CONVERTED"].includes(quotation.status)) {
+        return NextResponse.json({ error: "Manager approval and customer delivery are required before Finance may clear payment or credit." }, { status: 409 })
+      }
       if (next === "CREDIT_APPROVED" && effective.payment_mode !== "CREDIT") return NextResponse.json({ error: "Credit approval applies only to a CREDIT payment plan." }, { status: 409 })
       const planUpdate: Record<string, unknown> = { status: next, updated_at: now }
       if (next === "CREDIT_APPROVED") {
@@ -92,6 +108,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (body.action === "confirm_service_order") {
       if (!roleAllowed(access.actor.role, SERVICE_ORDER_CONFIRM_ROLES)) return NextResponse.json({ error: "Operations staff must confirm the Service Order." }, { status: 403 })
       if (!canConfirmServiceOrder(effective.payment_mode, effective.payment_gate_status)) return NextResponse.json({ error: `Payment gate is not cleared (${effective.payment_mode}: ${effective.payment_gate_status}).` }, { status: 409 })
+      const quotationId = effective.quotation_id
+      if (!quotationId) return NextResponse.json({ error: "The Service Request has no linked quotation." }, { status: 409 })
+      const quotationResult = await supabase.from("mms_quotations").select("status,internal_approval_status").eq("id", quotationId).single()
+      if (quotationResult.error) throw quotationResult.error
+      if (quotationResult.data.internal_approval_status !== "APPROVED" || !["SENT", "ACCEPTED", "CONVERTED"].includes(quotationResult.data.status)) return NextResponse.json({ error: "The approved quotation must be sent to the customer before confirming the Service Order." }, { status: 409 })
       if (effective.operator_type === "BOAT_OWNER_CONTRACTOR" && effective.insurance_status !== "VERIFIED") return NextResponse.json({ error: "Verify the boat-owner contractor insurance before confirming service." }, { status: 409 })
       return NextResponse.json(await updateWorkflow({ status: "SERVICE_ORDER_CONFIRMED", service_order_confirmed_at: now }, { service_order_confirmed_at: now }))
     }

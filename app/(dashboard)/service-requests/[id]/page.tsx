@@ -15,7 +15,8 @@ import { INSURANCE_VERIFY_ROLES, PAYMENT_GATE_ROLES, SERVICE_ORDER_CONFIRM_ROLES
 
 type RequestItem = { id: string; description: string; pricing_code: string | null; operator_type: string; qty: number; unit: string; unit_price: number; direct_cost: number; discount_pct: number }
 type PaymentPlan = { payment_mode: string; status: string; total_amount: number; deposit_required_amount: number; first_cycle_due_date: string | null; post_launch_due_date: string | null; good_credit_customer: boolean }
-type Detail = ServiceRequest & { items: RequestItem[]; payment_plan: PaymentPlan | null }
+type QuotationGate = { id: string; quote_number: string; status: string; internal_approval_status: string }
+type Detail = ServiceRequest & { service_types?: string[]; items: RequestItem[]; payment_plan: PaymentPlan | null; quotation: QuotationGate | null }
 
 const stepOrder = ["SERVICE_REQUEST", "DRAFT_QUOTATION", "APPROVAL_PAYMENT", "SERVICE_ORDER", "WORK_ORDER"]
 
@@ -85,6 +86,7 @@ export default function ServiceRequestDetailPage() {
   if (!request) return <div className="py-24 text-center text-red-600">{error ?? "Service request not found"}</div>
 
   const paymentCleared = ["PAID", "DEPOSIT_PAID", "CREDIT_APPROVED"].includes(request.payment_gate_status ?? "")
+  const quotationDelivered = request.quotation?.internal_approval_status === "APPROVED" && ["SENT", "ACCEPTED", "CONVERTED"].includes(request.quotation.status)
   const serviceConfirmed = request.status === "SERVICE_ORDER_CONFIRMED"
   const completedStep = serviceConfirmed ? 3 : paymentCleared ? 2 : request.quotation_id ? 1 : 0
 
@@ -98,7 +100,7 @@ export default function ServiceRequestDetailPage() {
 
     <div className="grid gap-6 lg:grid-cols-3"><div className="space-y-5 lg:col-span-2">
       <Card><CardHeader><CardTitle>Request & Operation</CardTitle></CardHeader><CardContent className="grid gap-4 text-sm md:grid-cols-2">
-        <Info label="Customer" value={request.customer_name ?? "—"} /><Info label="Boat" value={request.boat_name ?? "—"} /><Info label="Request menu" value={request.request_type?.replaceAll("_", " ") ?? request.category} /><Info label="Operator" value={request.operator_type?.replaceAll("_", " ") ?? request.execution_type} />
+        <Info label="Customer" value={request.customer_name ?? "—"} /><Info label="Boat" value={request.boat_name ?? "—"} /><Info label="Request menu" value={request.request_type?.replaceAll("_", " ") ?? request.category} /><Info label="Selected services" value={request.service_types?.map((value) => value.replaceAll("_", " ")).join(" + ") || request.service_type?.replaceAll("_", " ") || "—"} /><Info label="Operator" value={request.operator_type?.replaceAll("_", " ") ?? request.execution_type} />
         <Info label="Haul-out" value={request.confirmed_haul_out_date ? formatDate(request.confirmed_haul_out_date) : "Not selected"} /><Info label="Tow in" value={request.tow_in_date ? formatDate(request.tow_in_date) : "Not selected"} />
         <Info label="Launch" value={request.confirmed_launch_date ? formatDate(request.confirmed_launch_date) : "Not selected / open"} /><Info label="Tow out" value={request.tow_out_date ? formatDate(request.tow_out_date) : "Not selected / open"} />
         {request.operator_type === "BOAT_OWNER_CONTRACTOR" && <Info label="Contractor insurance" value={request.insurance_status ?? "REQUESTED"} />}
@@ -110,13 +112,14 @@ export default function ServiceRequestDetailPage() {
     </div>
 
     <div className="space-y-5">
-      <Card><CardHeader><CardTitle className="text-base">Draft Quotation</CardTitle></CardHeader><CardContent className="space-y-3">{request.quotation_id ? <><p className="text-sm text-gray-600">Created automatically; no customer message has been sent.</p><Button className="w-full" variant="outline" asChild><Link href={`/quotations/${request.quotation_id}`}><ClipboardList className="mr-2 h-4 w-4" />Review Draft</Link></Button></> : <p className="text-sm text-amber-700">Draft not generated.</p>}</CardContent></Card>
+      <Card><CardHeader><CardTitle className="text-base">Quotation Approval</CardTitle></CardHeader><CardContent className="space-y-3">{request.quotation_id ? <><Info label="Internal approval" value={request.quotation?.internal_approval_status?.replaceAll("_", " ") ?? "NOT SUBMITTED"} /><Info label="Customer delivery" value={request.quotation?.status?.replaceAll("_", " ") ?? "DRAFT"} /><Button className="w-full" variant="outline" asChild><Link href={`/quotations/${request.quotation_id}`}><ClipboardList className="mr-2 h-4 w-4" />Review / Approve Quotation</Link></Button></> : <p className="text-sm text-amber-700">Draft not generated.</p>}</CardContent></Card>
 
       <Card><CardHeader><CardTitle className="text-base">Payment Gate <HelpHint title="Finance-controlled step">Only Finance, Managing Director, or Super Admin can mark payment/deposit or approve credit. This does not record a bank transfer; use the Invoice/Payment records for the accounting evidence.</HelpHint></CardTitle></CardHeader><CardContent className="space-y-3">
         <Info label="Mode" value={request.payment_mode?.replaceAll("_", " ") ?? "—"} /><Info label="Status" value={request.payment_gate_status?.replaceAll("_", " ") ?? "AWAITING PAYMENT"} />
         {request.payment_plan && <><Info label="Total" value={formatTHB(request.payment_plan.total_amount)} /><Info label="Initial required" value={formatTHB(request.payment_plan.deposit_required_amount)} />{request.payment_plan.first_cycle_due_date && <Info label="First credit cycle due" value={formatDate(request.payment_plan.first_cycle_due_date)} />}</>}
-        {canUpdatePayment ? <><select className="w-full rounded-md border p-2 text-sm" value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value)}><option value="PAID">Paid in full</option><option value="DEPOSIT_PAID">Required deposit paid</option><option value="CREDIT_APPROVED">Credit approved</option><option value="OVERDUE">Overdue</option><option value="CREDIT_HOLD">Credit hold</option></select>
-        <Button className="w-full" variant="outline" disabled={busy} onClick={() => action({ action: "set_payment_gate", status: paymentStatus })}><CreditCard className="mr-2 h-4 w-4" />Finance: Update Gate</Button></> : <p className="rounded-md bg-gray-50 p-2 text-xs text-gray-600">Finance controls payment, deposit, and credit clearance.</p>}
+        {!quotationDelivered && <p className="rounded-md bg-amber-50 p-3 text-xs text-amber-800"><Lock className="mr-1 inline h-4 w-4" />Manager approval and customer delivery must be completed before Finance updates this gate.</p>}
+        {canUpdatePayment ? <><select disabled={!quotationDelivered} className="w-full rounded-md border p-2 text-sm disabled:bg-gray-100" value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value)}><option value="PAID">Paid in full</option><option value="DEPOSIT_PAID">Required deposit paid</option><option value="CREDIT_APPROVED">Credit approved</option><option value="OVERDUE">Overdue</option><option value="CREDIT_HOLD">Credit hold</option></select>
+        <Button className="w-full" variant="outline" disabled={busy || !quotationDelivered} onClick={() => action({ action: "set_payment_gate", status: paymentStatus })}><CreditCard className="mr-2 h-4 w-4" />Finance: Update Gate</Button></> : <p className="rounded-md bg-gray-50 p-2 text-xs text-gray-600">Finance controls payment, deposit, and credit clearance.</p>}
       </CardContent></Card>
 
       <Card><CardHeader><CardTitle className="text-base">Service / Work Order</CardTitle></CardHeader><CardContent className="space-y-3">

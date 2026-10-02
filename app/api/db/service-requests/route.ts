@@ -94,14 +94,21 @@ export async function POST(req: Request) {
     })
 
     const operatorType = String(body.operator_type ?? "OCEAN_ROVER")
-    const serviceType = String(body.service_type ?? (body.request_type === "RAMP_SERVICE" ? "YARD_SERVICE" : "STORAGE"))
+    const requestedServiceTypes = Array.isArray(body.service_types)
+      ? body.service_types.map(String).filter((value: string) => ["STORAGE", "YARD_SERVICE"].includes(value))
+      : [String(body.service_type ?? (body.request_type === "RAMP_SERVICE" ? "YARD_SERVICE" : "STORAGE"))]
+    const includesStorage = requestedServiceTypes.includes("STORAGE")
+    const includesYardService = requestedServiceTypes.includes("YARD_SERVICE")
+    const serviceType = includesYardService ? "YARD_SERVICE" : "STORAGE"
     if (body.request_type === "RAMP_SERVICE" && (body.haul_out === true || body.launch === true) && !normalizedItems.some((item) => item.service_group === "RAMP")) return NextResponse.json({ error: "Add at least one Ramp, Haul-out, or Launch rate-card item." }, { status: 400 })
-    if (body.request_type === "RAMP_SERVICE" && !normalizedItems.some((item) => item.service_group === (serviceType === "STORAGE" ? "STORAGE" : "YARD"))) return NextResponse.json({ error: `Add at least one ${serviceType === "STORAGE" ? "Storage" : "Yard Service"} item.` }, { status: 400 })
+    if (!includesStorage && !includesYardService) return NextResponse.json({ error: "Select Storage, Yard Service, or both." }, { status: 400 })
+    if (includesStorage && !normalizedItems.some((item) => item.service_group === "STORAGE")) return NextResponse.json({ error: "Add at least one Storage rate-card item." }, { status: 400 })
+    if (includesYardService && !normalizedItems.some((item) => item.service_group === "YARD")) return NextResponse.json({ error: "Add at least one Yard / Other Service rate-card item." }, { status: 400 })
     const paymentMode = String(body.payment_mode ?? defaultPaymentMode(serviceType, operatorType))
     const yardStartDate = movement.error ? null : movement.yardStartDate
     const exitDate = movement.error ? null : movement.exitDate
     const schedule = paymentMode === "CREDIT" && yardStartDate ? deriveCreditSchedule(yardStartDate, exitDate, Boolean(body.good_credit_customer)) : null
-    const storagePlan = serviceType === "STORAGE" && body.storage_period === "MONTHLY" && yardStartDate
+    const storagePlan = includesStorage && body.storage_period === "MONTHLY" && yardStartDate
       ? deriveRampServicePlan("BOAT_STORAGE", "STORAGE_MONTHLY", yardStartDate)
       : null
     const now = new Date().toISOString()
@@ -115,7 +122,8 @@ export async function POST(req: Request) {
       tow_in_date: body.tow_in_date ?? null,
       tow_out_date: body.tow_out_date ?? null,
       service_type: serviceType,
-      storage_period: serviceType === "STORAGE" ? String(body.storage_period ?? "DAILY") : null,
+      service_types: requestedServiceTypes,
+      storage_period: includesStorage ? String(body.storage_period ?? "DAILY") : null,
       operator_type: operatorType,
       insurance_status: operatorType === "BOAT_OWNER_CONTRACTOR" ? "REQUESTED" : "NOT_REQUIRED",
       subcontractor_trade: body.subcontractor_trade ?? null,
@@ -128,7 +136,7 @@ export async function POST(req: Request) {
     }
     const baseRequest = {
       reference: body.reference ?? `SR-${Date.now().toString().slice(-6)}`, customer_id: body.customer_id, customer_name: body.customer_name ?? null, boat_id: body.boat_id, boat_name: body.boat_name ?? null,
-      category: body.request_type === "RAMP_SERVICE" ? "Ramp Service" : serviceType === "STORAGE" ? "Storage" : "Yard Service", title: body.title ?? "Service Request", description: body.description ?? null, priority: body.priority ?? "MEDIUM", status: "QUOTATION_DRAFT",
+      category: body.request_type === "RAMP_SERVICE" ? "Ramp Service" : includesStorage && includesYardService ? "Storage + Yard Service" : includesStorage ? "Storage" : "Yard Service", title: body.title ?? "Service Request", description: body.description ?? null, priority: body.priority ?? "MEDIUM", status: "QUOTATION_DRAFT",
       requested_date: body.requested_date ?? yardStartDate ?? null, notes: visibleNotes,
       execution_type: operatorType === "OCEAN_ROVER" ? "INTERNAL" : operatorType === "OCEAN_ROVER_SUBCONTRACTOR" ? "SUBCONTRACTOR" : "MIXED", subcontractor_required: operatorType !== "OCEAN_ROVER", procurement_status: operatorType === "OCEAN_ROVER_SUBCONTRACTOR" ? "NEEDS_SOURCING" : "NOT_REQUIRED",
       created_at: now, updated_at: now,
@@ -136,7 +144,7 @@ export async function POST(req: Request) {
     const firstRequest = await supabase.from("mms_service_requests").insert({
       ...baseRequest,
       request_type: body.request_type, ramp_operation_plan: movement.error ? null : movement.rampOperationPlan, confirmed_haul_out_date: body.confirmed_haul_out_date ?? null, confirmed_launch_date: body.confirmed_launch_date ?? null, tow_in_date: body.tow_in_date ?? null, tow_out_date: body.tow_out_date ?? null, service_type: serviceType, operator_type: operatorType,
-      storage_period: serviceType === "STORAGE" ? String(body.storage_period ?? "DAILY") : null,
+      storage_period: includesStorage ? String(body.storage_period ?? "DAILY") : null,
       insurance_status: workflowMetadata.insurance_status, subcontractor_trade: body.subcontractor_trade ?? null, contractor_cost: contractorCost, markup_pct: Number(body.markup_pct ?? 0), payment_mode: paymentMode, payment_gate_status: "AWAITING_PAYMENT",
     }).select().single()
     let legacySchema = false

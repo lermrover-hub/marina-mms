@@ -66,6 +66,9 @@ export async function POST(req: Request) {
         .eq("id", quotationId)
         .single()
       if (quotationError) return NextResponse.json({ error: quotationError.message }, { status: 404 })
+      if (quotation.internal_approval_status !== "APPROVED" || !["SENT", "ACCEPTED", "CONVERTED"].includes(quotation.status)) {
+        return NextResponse.json({ error: "Work Order requires a manager-approved quotation that has been sent to the customer." }, { status: 409 })
+      }
       body.quotation_id = quotation.id
       body.total_revenue = Math.max(0, Number(quotation.subtotal ?? 0) - Number(quotation.discount ?? 0))
     }

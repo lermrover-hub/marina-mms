@@ -8,6 +8,7 @@ export type LegacyWorkflowMetadata = {
   tow_in_date?: string | null
   tow_out_date?: string | null
   service_type?: string | null
+  service_types?: string[]
   storage_period?: string | null
   operator_type?: string | null
   insurance_status?: string | null

@@ -22,6 +22,7 @@ type ServiceLine = { pricing_code?: string; description: string; service_group: 
 
 export default function NewServiceRequestPage() {
   const router = useRouter()
+  const [followUpTo, setFollowUpTo] = useState("")
   const { data: session } = useSession()
   const actorRole = (session?.user as { role?: string } | undefined)?.role ?? ""
   const maximumDiscount = maxOperationalDiscountForRole(actorRole)
@@ -40,8 +41,8 @@ export default function NewServiceRequestPage() {
   const [launchDate, setLaunchDate] = useState("")
   const [towOut, setTowOut] = useState(false)
   const [towOutDate, setTowOutDate] = useState("")
-  const [includeStorage, setIncludeStorage] = useState(true)
-  const [includeYardService, setIncludeYardService] = useState(false)
+  const [primaryService, setPrimaryService] = useState<"STORAGE" | "YARD">("STORAGE")
+  const [addYardToStorage, setAddYardToStorage] = useState(false)
   const [storagePeriod, setStoragePeriod] = useState("DAILY")
   const [operatorType, setOperatorType] = useState("OCEAN_ROVER")
   const [trade, setTrade] = useState("Paint")
@@ -60,6 +61,17 @@ export default function NewServiceRequestPage() {
   const [currentStep, setCurrentStep] = useState(1)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const includeStorage = primaryService === "STORAGE"
+  const includeYardService = primaryService === "YARD" || addYardToStorage
+
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search)
+    const parentId = query.get("follow_up_to") ?? ""
+    setFollowUpTo(parentId)
+    setCustomerId(query.get("customer_id") ?? "")
+    setBoatId(query.get("boat_id") ?? "")
+    if (parentId) setPrimaryService("YARD")
+  }, [])
 
   useEffect(() => {
     Promise.all([
@@ -137,18 +149,15 @@ export default function NewServiceRequestPage() {
     }))
   }
 
-  function toggleServiceSection(section: "STORAGE" | "YARD") {
-    if (section === "STORAGE") {
-      setIncludeStorage((selected) => {
-        if (selected) setItems((rows) => rows.filter((row) => row.service_group !== "STORAGE"))
-        return !selected
-      })
-      return
-    }
-    setIncludeYardService((selected) => {
-      if (selected) setItems((rows) => rows.filter((row) => row.service_group !== "YARD"))
-      return !selected
-    })
+  function changePrimaryService(next: "STORAGE" | "YARD") {
+    setPrimaryService(next)
+    setAddYardToStorage(false)
+    setItems((rows) => rows.filter((row) => row.service_group !== (next === "STORAGE" ? "YARD" : "STORAGE")))
+  }
+
+  function toggleAdditionalYardService(checked: boolean) {
+    setAddYardToStorage(checked)
+    if (!checked) setItems((rows) => rows.filter((row) => row.service_group !== "YARD"))
   }
 
   function changeStoragePeriod(nextPeriod: string) {
@@ -172,10 +181,6 @@ export default function NewServiceRequestPage() {
     }
     if ((haulOut || launch) && !items.some((item) => item.service_group === "RAMP")) {
       setError("Add at least one Ramp / Haul-out / Launch rate-card item.")
-      return
-    }
-    if (!includeStorage && !includeYardService) {
-      setError("Select Storage, Yard Service, or both before continuing.")
       return
     }
     if (includeStorage && !items.some((item) => item.service_group === "STORAGE")) {
@@ -217,7 +222,7 @@ export default function NewServiceRequestPage() {
           markup_pct: operatorType === "OCEAN_ROVER_SUBCONTRACTOR" ? markupPct : 0,
           payment_mode: paymentMode,
           good_credit_customer: paymentMode === "CREDIT" && goodCredit,
-          notes,
+          notes: [followUpTo ? `Additional service request for stored vessel. Parent service request: ${followUpTo}` : null, notes].filter(Boolean).join("\n"),
           items: items.map((item) => ({ ...item, markup_pct: item.operator_type === "OCEAN_ROVER_SUBCONTRACTOR" ? markupPct : 0 })),
         }),
       })
@@ -263,13 +268,14 @@ export default function NewServiceRequestPage() {
               </MovementOption>
             </div>
           </div>
-          <div><Label>Service after arrival *</Label><p className="mt-1 text-xs text-gray-600">Select Storage, Yard Service, or both. All selected services and Rate Card items are collected before the Draft quotation is generated.</p><div className="mt-2 grid gap-3 md:grid-cols-2"><button type="button" aria-pressed={includeStorage} onClick={() => toggleServiceSection("STORAGE")} className={`rounded-lg border p-4 text-left ${includeStorage ? "border-teal-500 bg-teal-50" : "border-gray-200"}`}><b>{includeStorage ? "✓ " : ""}A. Storage</b><p className="text-sm text-gray-500">Daily, weekly or monthly boat storage</p></button><button type="button" aria-pressed={includeYardService} onClick={() => toggleServiceSection("YARD")} className={`rounded-lg border p-4 text-left ${includeYardService ? "border-teal-500 bg-teal-50" : "border-gray-200"}`}><b>{includeYardService ? "✓ " : ""}B. Yard Service / Other Services</b><p className="text-sm text-gray-500">Ocean Rover, owner contractor or Ocean Rover subcontractor work</p></button></div></div>
+          <div><Label>Primary service path *</Label><p className="mt-1 text-xs text-gray-600">Choose the normal route. Storage goes from its billing period and Rate Card directly to Draft Quotation. Yard Service continues through operator, category and service item.</p><div className="mt-2 grid gap-3 md:grid-cols-2"><button type="button" aria-pressed={primaryService === "STORAGE"} onClick={() => changePrimaryService("STORAGE")} className={`rounded-lg border p-4 text-left ${primaryService === "STORAGE" ? "border-teal-500 bg-teal-50" : "border-gray-200"}`}><b>{primaryService === "STORAGE" ? "✓ " : ""}A. Storage</b><p className="text-sm text-gray-500">Daily, weekly or monthly → Draft Quotation</p></button><button type="button" aria-pressed={primaryService === "YARD"} onClick={() => changePrimaryService("YARD")} className={`rounded-lg border p-4 text-left ${primaryService === "YARD" ? "border-teal-500 bg-teal-50" : "border-gray-200"}`}><b>{primaryService === "YARD" ? "✓ " : ""}B. Yard Service</b><p className="text-sm text-gray-500">Operator → Category → Service Item → Draft Quotation</p></button></div></div>
           {includeStorage && <div className="rounded-lg border bg-gray-50 p-4"><Label>Storage billing period</Label><div className="mt-2 grid grid-cols-3 gap-2">{["DAILY", "WEEKLY", "MONTHLY"].map((period) => <button type="button" key={period} onClick={() => changeStoragePeriod(period)} className={`rounded-md border px-3 py-2 text-sm font-medium ${storagePeriod === period ? "border-teal-500 bg-white text-teal-700" : "border-gray-200 bg-white text-gray-600"}`}>{period[0] + period.slice(1).toLowerCase()}</button>)}</div>{storagePeriod === "MONTHLY" && <p className="mt-2 text-xs text-amber-700">Monthly storage creates an officer billing reminder.</p>}</div>}
+          {primaryService === "STORAGE" && <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4"><input type="checkbox" className="mt-1 h-4 w-4 accent-amber-600" checked={addYardToStorage} onChange={(event) => toggleAdditionalYardService(event.target.checked)} /><span><b className="text-amber-900">Optional: add Yard / Other Services</b><span className="block text-xs text-amber-800">Use when the stored vessel also needs service now. If service is requested later, start a new linked Service Request from the stored vessel record.</span></span></label>}
           {includeYardService && <div className="space-y-4 rounded-lg border bg-gray-50 p-4"><div><Label>Who performs the Yard Service? <HelpHint title="Operator affects price and approval">Ocean Rover work may receive an authorised discount. Boat-owner contractor work requires verified insurance. Ocean Rover subcontractor work uses direct cost plus markup and cannot receive a Marina discount.</HelpHint></Label><div className="mt-2 grid gap-2 md:grid-cols-3">{[{ value: "OCEAN_ROVER", label: "Ocean Rover" }, { value: "BOAT_OWNER_CONTRACTOR", label: "Boat owner / contractor" }, { value: "OCEAN_ROVER_SUBCONTRACTOR", label: "Ocean Rover subcontractor" }].map((operator) => <button type="button" key={operator.value} onClick={() => changeYardOperator(operator.value)} className={`rounded-md border p-3 text-sm font-semibold ${operatorType === operator.value ? "border-teal-500 bg-white text-teal-700" : "border-gray-200 bg-white"}`}>{operator.label}</button>)}</div></div>
           {operatorType === "BOAT_OWNER_CONTRACTOR" && <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-800">Enter the contractor scope in Internal Notes. Insurance starts as Requested and must be verified before confirming the Service Order.</p>}
           {operatorType === "OCEAN_ROVER_SUBCONTRACTOR" && <div className="grid gap-4 md:grid-cols-2"><div><Label>Trade</Label><select className="mt-1 w-full rounded-md border p-2" value={trade} onChange={(e) => setTrade(e.target.value)}><option>Paint</option><option>Mechanic</option><option>Electrical</option><option>Other</option></select></div><div><Label>Markup %</Label><Input type="number" min="0" max="100" value={markupPct} onChange={(e) => changeMarkup(Number(e.target.value))} /><p className="mt-1 text-xs text-gray-500">Selling price = direct cost + markup. Existing Yard items are recalculated automatically.</p></div></div>}</div>}
         </CardContent></Card>
-        <div className="flex justify-end"><Button type="button" variant="teal" onClick={() => { setError(null); if (!customerId || !boatId) { setError("Select the customer and vessel before continuing."); return } if (movement.error) { setError(movement.error); return } if (!includeStorage && !includeYardService) { setError("Select Storage, Yard Service, or both before continuing."); return } setActiveSection(movementRateRequired ? "RAMP" : includeStorage ? "STORAGE" : "YARD"); setCurrentStep(2) }}>Continue to Service Items →</Button></div>
+        <div className="flex justify-end"><Button type="button" variant="teal" onClick={() => { setError(null); if (!customerId || !boatId) { setError("Select the customer and vessel before continuing."); return } if (movement.error) { setError(movement.error); return } setActiveSection(movementRateRequired ? "RAMP" : includeStorage ? "STORAGE" : "YARD"); setCurrentStep(2) }}>Continue to Service Items →</Button></div>
         </>}
 
         {currentStep === 2 && <>

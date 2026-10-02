@@ -181,14 +181,21 @@ test("service request form uses cascading Rate Card selection and restricts Open
   assert.match(route, /canonicalGroup === "YARD"[^\n]+: "OCEAN_ROVER"/)
 })
 
-test("service request collects storage and yard items before one quotation", () => {
+test("service request supports normal storage/yard routes and the optional stored-vessel service route", () => {
   const page = readFileSync("app/(dashboard)/service-requests/new/page.tsx", "utf8")
+  const detailPage = readFileSync("app/(dashboard)/service-requests/[id]/page.tsx", "utf8")
   const requestRoute = readFileSync("app/api/db/service-requests/route.ts", "utf8")
+  assert.match(page, /primaryService/)
+  assert.match(page, /addYardToStorage/)
   assert.match(page, /includeStorage/)
   assert.match(page, /includeYardService/)
-  assert.match(page, /Storage, Yard Service, or both/)
+  assert.match(page, /Storage goes from its billing period and Rate Card directly to Draft Quotation/)
+  assert.match(page, /Optional: add Yard \/ Other Services/)
   assert.match(page, /service_types:/)
   assert.match(page, /selectedSections\.map/)
+  assert.match(page, /follow_up_to/)
+  assert.match(detailPage, /Optional service for stored vessel/)
+  assert.match(detailPage, /Add Yard \/ Other Service/)
   assert.match(requestRoute, /requestedServiceTypes/)
   assert.match(requestRoute, /includesStorage/)
   assert.match(requestRoute, /includesYardService/)

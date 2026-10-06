@@ -46,6 +46,19 @@ export async function POST(req: Request) {
       if (!owner) return NextResponse.json({ error: "Selected owner was not found" }, { status: 400 })
       ownerName = owner.company_name ?? ([owner.first_name, owner.last_name].filter(Boolean).join(" ") || null)
     }
+    const captainContactId = body.captain_contact_id ? String(body.captain_contact_id) : null
+    if (captainContactId) {
+      if (!body.owner_id) return NextResponse.json({ error: "Select the boat owner before assigning a captain." }, { status: 400 })
+      const { data: captain, error: captainError } = await supabase
+        .from("mms_customer_contacts")
+        .select("id,customer_id,is_active")
+        .eq("id", captainContactId)
+        .maybeSingle()
+      if (captainError) return NextResponse.json({ error: captainError.message }, { status: 500 })
+      if (!captain || captain.customer_id !== body.owner_id || !captain.is_active) {
+        return NextResponse.json({ error: "Selected captain is not an active contact of this boat owner." }, { status: 400 })
+      }
+    }
     const { data, error } = await supabase
       .from("mms_boats")
       .insert({
@@ -73,6 +86,9 @@ export async function POST(req: Request) {
         insurance_expiry: body.insurance_expiry ?? null,
         special_handling: body.special_handling ?? null,
         notes: body.notes ?? null,
+        captain_contact_id: captainContactId,
+        captain_effective_from: captainContactId ? body.captain_effective_from ?? null : null,
+        captain_effective_to: captainContactId ? body.captain_effective_to ?? null : null,
         status: body.status ?? "ACTIVE",
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),

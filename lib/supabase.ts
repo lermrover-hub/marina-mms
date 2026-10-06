@@ -56,6 +56,26 @@ export type Boat = {
   current_location_code: string | null
   special_handling: string | null
   notes: string | null
+  captain_contact_id?: string | null
+  captain_effective_from?: string | null
+  captain_effective_to?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type CustomerContact = {
+  id: string
+  customer_id: string
+  full_name: string
+  role_title: string
+  phone: string | null
+  email: string | null
+  line_id: string | null
+  whatsapp_number: string | null
+  preferred_channel: "PHONE" | "LINE" | "WHATSAPP" | "EMAIL"
+  operational_notifications: boolean
+  notes: string | null
+  is_active: boolean
   created_at: string
   updated_at: string
 }
@@ -117,6 +137,11 @@ export type ServiceRequest = {
   payment_gate_status?: string | null
   service_order_confirmed_at?: string | null
   quotation_id?: string | null
+  operational_contact_id?: string | null
+  operational_contact_name?: string | null
+  operational_contact_phone?: string | null
+  operational_contact_email?: string | null
+  operational_contact_preferred_channel?: string | null
   created_at: string
   updated_at: string
 }

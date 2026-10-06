@@ -41,6 +41,17 @@ export async function POST(req: Request) {
     if (!body.customer_id || !body.boat_id) return NextResponse.json({ error: "Customer and boat are required." }, { status: 400 })
     if (!["RAMP_SERVICE", "SERVICE_TYPE"].includes(body.request_type)) return NextResponse.json({ error: "Select Ramp Service or Service Type." }, { status: 400 })
     if (!items.length) return NextResponse.json({ error: "Add at least one service from the rate card." }, { status: 400 })
+    let operationalContact: { id: string; full_name: string; phone: string | null; email: string | null; preferred_channel: string } | null = null
+    if (body.operational_contact_id) {
+      const { data: contact, error: contactError } = await supabase
+        .from("mms_customer_contacts")
+        .select("id,customer_id,full_name,phone,email,preferred_channel,is_active")
+        .eq("id", body.operational_contact_id)
+        .maybeSingle()
+      if (contactError) throw contactError
+      if (!contact || contact.customer_id !== body.customer_id || !contact.is_active) return NextResponse.json({ error: "Selected operational contact is not active for this customer." }, { status: 400 })
+      operationalContact = contact
+    }
     const movement = deriveRampMovementPlan({
       haulOut: body.haul_out === true,
       haulOutDate: body.confirmed_haul_out_date,
@@ -133,6 +144,11 @@ export async function POST(req: Request) {
       payment_gate_status: "AWAITING_PAYMENT",
       quotation_id: null,
       service_order_confirmed_at: null,
+      operational_contact_id: operationalContact?.id ?? null,
+      operational_contact_name: operationalContact?.full_name ?? null,
+      operational_contact_phone: operationalContact?.phone ?? null,
+      operational_contact_email: operationalContact?.email ?? null,
+      operational_contact_preferred_channel: operationalContact?.preferred_channel ?? null,
     }
     const baseRequest = {
       reference: body.reference ?? `SR-${Date.now().toString().slice(-6)}`, customer_id: body.customer_id, customer_name: body.customer_name ?? null, boat_id: body.boat_id, boat_name: body.boat_name ?? null,
@@ -146,6 +162,9 @@ export async function POST(req: Request) {
       request_type: body.request_type, ramp_operation_plan: movement.error ? null : movement.rampOperationPlan, confirmed_haul_out_date: body.confirmed_haul_out_date ?? null, confirmed_launch_date: body.confirmed_launch_date ?? null, tow_in_date: body.tow_in_date ?? null, tow_out_date: body.tow_out_date ?? null, service_type: serviceType, operator_type: operatorType,
       storage_period: includesStorage ? String(body.storage_period ?? "DAILY") : null,
       insurance_status: workflowMetadata.insurance_status, subcontractor_trade: body.subcontractor_trade ?? null, contractor_cost: contractorCost, markup_pct: Number(body.markup_pct ?? 0), payment_mode: paymentMode, payment_gate_status: "AWAITING_PAYMENT",
+      operational_contact_id: operationalContact?.id ?? null, operational_contact_name: operationalContact?.full_name ?? null,
+      operational_contact_phone: operationalContact?.phone ?? null, operational_contact_email: operationalContact?.email ?? null,
+      operational_contact_preferred_channel: operationalContact?.preferred_channel ?? null,
     }).select().single()
     let legacySchema = false
     let serviceRequest = firstRequest.data

@@ -53,3 +53,23 @@ test("ramp booking create derives service rules on the server and migration stor
   assert.match(migration, /mms_ramp_bookings_service_plan_consistency_check/)
   assert.match(listPage, /Monthly Billing Reminders/)
 })
+
+test("captain is an owner contact with history and a service-request snapshot", () => {
+  const migration = read("../supabase/migrations/20261006002639_add_boat_captain_contacts.sql")
+  const boatRoute = read("../app/api/db/boats/route.ts")
+  const contactRoute = read("../app/api/db/customer-contacts/route.ts")
+  const serviceRoute = read("../app/api/db/service-requests/route.ts")
+  const boatForm = read("../app/(dashboard)/boats/new/page.tsx")
+  const serviceForm = read("../app/(dashboard)/service-requests/new/page.tsx")
+
+  assert.match(migration, /CREATE TABLE public\.mms_customer_contacts/)
+  assert.match(migration, /CREATE TABLE public\.mms_boat_captain_history/)
+  assert.match(migration, /operational_contact_name text/)
+  assert.match(migration, /FORCE ROW LEVEL SECURITY/)
+  assert.match(migration, /REVOKE ALL ON public\.mms_customer_contacts FROM anon, authenticated/)
+  assert.match(boatRoute, /captain\.customer_id !== body\.owner_id/)
+  assert.match(contactRoute, /requireApiActor\(OPERATIONS_WRITE_ROLES\)/)
+  assert.match(serviceRoute, /operational_contact_name: operationalContact\?\.full_name/)
+  assert.match(boatForm, /CaptainContactFields/)
+  assert.match(serviceForm, /Defaults from the selected boat/)
+})

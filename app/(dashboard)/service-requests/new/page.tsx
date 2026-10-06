@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { HelpHint } from "@/components/shared/HelpHint"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import type { Boat, Customer } from "@/lib/supabase"
+import type { Boat, Customer, CustomerContact } from "@/lib/supabase"
 import { formatTHB } from "@/lib/utils"
 import { maxOperationalDiscountForRole, QUOTATION_PRICE_EDIT_ROLES, roleAllowed } from "@/lib/workflow-access"
 import { rateCardItemsForSection, serviceCategories, storagePeriodMatches, type ServiceWorkflowSection } from "@/lib/service-rate-card"
@@ -32,6 +32,8 @@ export default function NewServiceRequestPage() {
   const [prices, setPrices] = useState<Price[]>([])
   const [customerId, setCustomerId] = useState("")
   const [boatId, setBoatId] = useState("")
+  const [contacts, setContacts] = useState<CustomerContact[]>([])
+  const [operationalContactId, setOperationalContactId] = useState("")
   const requestType = "RAMP_SERVICE"
   const [haulOut, setHaulOut] = useState(false)
   const [haulOutDate, setHaulOutDate] = useState("")
@@ -92,6 +94,7 @@ export default function NewServiceRequestPage() {
   const boatsForCustomer = useMemo(() => boats.filter((boat) => boat.owner_id === customerId), [boats, customerId])
   const selectedCustomer = customers.find((customer) => customer.id === customerId)
   const selectedBoat = boats.find((boat) => boat.id === boatId)
+  const selectedOperationalContact = contacts.find((contact) => contact.id === operationalContactId)
   const total = items.reduce((sum, item) => sum + item.qty * item.unit_price * (1 - item.discount_pct / 100), 0)
   const sectionPrices = useMemo(() => rateCardItemsForSection(prices, activeSection).filter((price) => activeSection !== "STORAGE" || storagePeriodMatches(price, storagePeriod)), [prices, activeSection, storagePeriod])
   const categories = useMemo(() => serviceCategories(sectionPrices), [sectionPrices])
@@ -108,6 +111,22 @@ export default function NewServiceRequestPage() {
     setSelectedCategory("")
     setSelectedPrice("")
   }, [activeSection, storagePeriod])
+
+  useEffect(() => {
+    if (!customerId) {
+      setContacts([])
+      setOperationalContactId("")
+      return
+    }
+    fetch(`/api/db/customer-contacts?customer_id=${encodeURIComponent(customerId)}`)
+      .then((response) => response.json())
+      .then((rows) => setContacts(Array.isArray(rows) ? rows : []))
+      .catch(() => setContacts([]))
+  }, [customerId])
+
+  useEffect(() => {
+    setOperationalContactId(selectedBoat?.captain_contact_id ?? "")
+  }, [selectedBoat?.captain_contact_id, boatId])
 
   function addRate() {
     const price = prices.find((row) => row.code === selectedPrice)
@@ -202,6 +221,7 @@ export default function NewServiceRequestPage() {
           customer_name: selectedCustomer?.company_name ?? [selectedCustomer?.first_name, selectedCustomer?.last_name].filter(Boolean).join(" "),
           boat_id: boatId,
           boat_name: selectedBoat?.name,
+          operational_contact_id: operationalContactId || null,
           title: title || `Ramp service — ${selectedBoat?.name ?? "boat"}`,
           description: notes,
           request_type: requestType,
@@ -243,8 +263,9 @@ export default function NewServiceRequestPage() {
         <div className="grid grid-cols-3 gap-2 rounded-xl border bg-white p-3">{["Customer & Movement", "Service & Rate Card", "Review Draft"].map((label, index) => { const step = index + 1; return <div key={label} className={`flex items-center gap-2 rounded-lg p-2 text-xs font-medium ${currentStep === step ? "bg-teal-50 text-teal-800" : currentStep > step ? "text-teal-700" : "text-gray-400"}`}><span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border font-bold ${currentStep >= step ? "border-teal-600 bg-teal-600 text-white" : "border-gray-300"}`}>{currentStep > step ? "✓" : step}</span><span className="hidden sm:inline">{label}</span></div> })}</div>
         {currentStep === 1 && <>
         <Card><CardHeader><CardTitle>1. Customer & Boat</CardTitle></CardHeader><CardContent className="grid gap-4 md:grid-cols-2">
-          <div><Label>Customer *</Label><select required className="mt-1 w-full rounded-md border p-2" value={customerId} onChange={(e) => { setCustomerId(e.target.value); setBoatId("") }}><option value="">Select customer</option>{customers.map((c) => <option key={c.id} value={c.id}>{c.company_name ?? [c.first_name, c.last_name].filter(Boolean).join(" ")}</option>)}</select></div>
+          <div><Label>Customer *</Label><select required className="mt-1 w-full rounded-md border p-2" value={customerId} onChange={(e) => { setCustomerId(e.target.value); setBoatId(""); setOperationalContactId("") }}><option value="">Select customer</option>{customers.map((c) => <option key={c.id} value={c.id}>{c.company_name ?? [c.first_name, c.last_name].filter(Boolean).join(" ")}</option>)}</select></div>
           <div><Label>Boat / Vessel *</Label><select required className="mt-1 w-full rounded-md border p-2" value={boatId} onChange={(e) => setBoatId(e.target.value)}><option value="">Select boat</option>{boatsForCustomer.map((boat) => <option key={boat.id} value={boat.id}>{boat.name} — {boat.boat_type ?? "type not set"}</option>)}</select>{selectedBoat && <p className="mt-1 text-xs text-gray-500">Boat type: {selectedBoat.boat_type ?? "Not set"} · LOA {selectedBoat.loa_ft ?? "?"} ft</p>}</div>
+          <div className="md:col-span-2"><Label>Operational Contact / Captain</Label><select className="mt-1 w-full rounded-md border p-2" value={operationalContactId} onChange={(event) => setOperationalContactId(event.target.value)}><option value="">— Use customer main contact —</option>{contacts.map((contact) => <option key={contact.id} value={contact.id}>{contact.full_name}{contact.phone ? ` · ${contact.phone}` : ""}</option>)}</select><p className="mt-1 text-xs text-gray-500">Defaults from the selected boat. You may override it for this request only. This does not change the billing contact.{selectedOperationalContact ? ` Preferred channel: ${selectedOperationalContact.preferred_channel}.` : ""}</p></div>
         </CardContent></Card>
 
         <Card><CardHeader><CardTitle>2. Vessel Movement &amp; Service <HelpHint title="Arrival and departure workflow">Choose how the vessel enters the yard: marina Haul-out or road Tow in. Departure may remain open, or be confirmed as Launch or Tow out. Tow movements may be free or charged separately by Rate Card / Open Rate.</HelpHint></CardTitle></CardHeader><CardContent className="space-y-4">

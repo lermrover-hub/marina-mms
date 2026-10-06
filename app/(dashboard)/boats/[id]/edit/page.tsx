@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { CaptainContactFields } from "@/components/shared/CaptainContactFields"
 import type { Boat, Customer } from "@/lib/supabase"
 import { ftToM, mToFt } from "@/lib/utils"
 
@@ -100,6 +101,9 @@ export default function EditBoatPage() {
   const [insuranceExpiry, setInsurance] = useState("")
   const [specialHandling, setSpecial]   = useState("")
   const [notes,           setNotes]     = useState("")
+  const [captainContactId, setCaptainContactId] = useState("")
+  const [captainEffectiveFrom, setCaptainEffectiveFrom] = useState("")
+  const [captainEffectiveTo, setCaptainEffectiveTo] = useState("")
 
   useEffect(() => {
     if (!id) return
@@ -135,6 +139,9 @@ export default function EditBoatPage() {
         setInsurance(boatData.insurance_expiry ?? "")
         setSpecial(boatData.special_handling ?? "")
         setNotes(boatData.notes ?? "")
+        setCaptainContactId(boatData.captain_contact_id ?? "")
+        setCaptainEffectiveFrom(boatData.captain_effective_from ?? "")
+        setCaptainEffectiveTo(boatData.captain_effective_to ?? "")
         // Customers list
         if (Array.isArray(custData)) setCustomers(custData)
       })
@@ -188,6 +195,9 @@ export default function EditBoatPage() {
         insurance_expiry:    insuranceExpiry || null,
         special_handling:    specialHandling || null,
         notes:               notes || null,
+        captain_contact_id: captainContactId || null,
+        captain_effective_from: captainContactId ? captainEffectiveFrom || null : null,
+        captain_effective_to: captainContactId ? captainEffectiveTo || null : null,
       }
       const res = await fetch(`/api/db/boats/${id}`, {
         method: "PATCH",
@@ -249,7 +259,7 @@ export default function EditBoatPage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label>Owner <span className="text-red-500">*</span></Label>
-                    <SelectField value={ownerId} onChange={setOwnerId} placeholder="— Select owner —"
+                    <SelectField value={ownerId} onChange={(value) => { setOwnerId(value); setCaptainContactId("") }} placeholder="— Select owner —"
                       options={customerOptions} />
                   </div>
                   <div className="space-y-1.5">
@@ -289,6 +299,21 @@ export default function EditBoatPage() {
                     <Input value={flag} onChange={(e) => setFlag(e.target.value)} placeholder="Thailand" />
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader><CardTitle>Captain &amp; Operational Contact</CardTitle></CardHeader>
+              <CardContent>
+                <CaptainContactFields
+                  customerId={ownerId}
+                  contactId={captainContactId}
+                  onContactIdChange={setCaptainContactId}
+                  effectiveFrom={captainEffectiveFrom}
+                  onEffectiveFromChange={setCaptainEffectiveFrom}
+                  effectiveTo={captainEffectiveTo}
+                  onEffectiveToChange={setCaptainEffectiveTo}
+                />
               </CardContent>
             </Card>
 

@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import type { Customer, Boat, Quotation, Invoice } from "@/lib/supabase"
+import type { Customer, CustomerContact, Boat, Quotation, Invoice } from "@/lib/supabase"
 import { formatTHB, formatDate, CUSTOMER_TYPE_LABELS, BOAT_TYPE_LABELS } from "@/lib/utils"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -31,6 +31,7 @@ export default function CustomerDetailPage() {
   const [invoices,  setInvoices]  = useState<Invoice[]>([])
   const [loading,   setLoading]   = useState(true)
   const [error,     setError]     = useState<string | null>(null)
+  const [contacts, setContacts] = useState<CustomerContact[]>([])
 
   useEffect(() => {
     if (!id) return
@@ -40,13 +41,15 @@ export default function CustomerDetailPage() {
       fetch(`/api/db/boats?owner_id=${id}`).then(r => r.json()),
       fetch(`/api/db/quotations?customer_id=${id}`).then(r => r.json()),
       fetch(`/api/db/invoices?customer_id=${id}`).then(r => r.json()),
+      fetch(`/api/db/customer-contacts?customer_id=${id}&active=all`).then(r => r.json()),
     ])
-      .then(([cData, bData, qData, iData]) => {
+      .then(([cData, bData, qData, iData, contactData]) => {
         if (cData?.error) { setError("Customer not found"); return }
         setCustomer(cData)
         if (Array.isArray(bData)) setBoats(bData)
         if (Array.isArray(qData)) setQuotes(qData)
         if (Array.isArray(iData)) setInvoices(iData)
+        if (Array.isArray(contactData)) setContacts(contactData)
       })
       .catch(() => setError("Network error"))
       .finally(() => setLoading(false))
@@ -230,6 +233,7 @@ export default function CustomerDetailPage() {
               <TabsTrigger value="boats">Boats ({boats.length})</TabsTrigger>
               <TabsTrigger value="quotations">Quotations ({quotes.length})</TabsTrigger>
               <TabsTrigger value="invoices">Invoices ({invoices.length})</TabsTrigger>
+              <TabsTrigger value="contacts">Contacts ({contacts.length})</TabsTrigger>
             </TabsList>
 
             {/* Boats tab */}
@@ -268,6 +272,19 @@ export default function CustomerDetailPage() {
                       ))}
                     </div>
                   )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="contacts">
+              <Card>
+                <CardHeader><CardTitle>Vessel &amp; Operational Contacts</CardTitle></CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-xs text-gray-500">These contacts support vessel operations. Billing contacts and invoice recipients remain separate.</p>
+                  {contacts.length === 0 ? <p className="py-8 text-center text-sm text-gray-500">No operational contacts. Add a captain while registering or editing a boat.</p> : contacts.map((contact) => <div key={contact.id} className="rounded-lg border p-3 text-sm">
+                    <div className="flex items-start justify-between gap-3"><div><p className="font-semibold text-gray-900">{contact.full_name}</p><p className="text-xs text-gray-500">{contact.role_title}</p></div><Badge variant="default">{contact.is_active ? "Active" : "Inactive"}</Badge></div>
+                    <p className="mt-2 text-gray-600">{[contact.phone, contact.email, contact.preferred_channel].filter(Boolean).join(" · ")}</p>
+                  </div>)}
                 </CardContent>
               </Card>
             </TabsContent>

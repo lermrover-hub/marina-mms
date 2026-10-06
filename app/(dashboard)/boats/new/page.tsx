@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { CaptainContactFields } from "@/components/shared/CaptainContactFields"
 import type { Customer } from "@/lib/supabase"
 import { ftToM, mToFt } from "@/lib/utils"
 
@@ -139,6 +140,9 @@ export default function NewBoatPage() {
   const [insuranceExpiry, setInsurance]   = useState("")
   const [specialHandling, setSpecial]     = useState("")
   const [notes, setNotes]                 = useState("")
+  const [captainContactId, setCaptainContactId] = useState("")
+  const [captainEffectiveFrom, setCaptainEffectiveFrom] = useState("")
+  const [captainEffectiveTo, setCaptainEffectiveTo] = useState("")
 
   function applyBoatSpec(specId: string) {
     setSelectedSpecId(specId)
@@ -200,6 +204,9 @@ export default function NewBoatPage() {
         insurance_expiry: insuranceExpiry || null,
         special_handling: specialHandling || null,
         notes: notes || null,
+        captain_contact_id: captainContactId || null,
+        captain_effective_from: captainContactId ? captainEffectiveFrom || null : null,
+        captain_effective_to: captainContactId ? captainEffectiveTo || null : null,
         status: "ACTIVE",
       }
       const res = await fetch("/api/db/boats", {
@@ -255,7 +262,7 @@ export default function NewBoatPage() {
                         <option>Loading customers…</option>
                       </select>
                     ) : (
-                      <SelectField value={ownerId} onChange={setOwnerId} placeholder="— Select owner —"
+                      <SelectField value={ownerId} onChange={(value) => { setOwnerId(value); setCaptainContactId("") }} placeholder="— Select owner —"
                         options={customers.map((c) => ({
                           value: c.id,
                           label: c.company_name ?? ([c.first_name, c.last_name].filter(Boolean).join(" ") || c.id),
@@ -304,6 +311,21 @@ export default function NewBoatPage() {
                     <Input value={flag} onChange={(e) => setFlag(e.target.value)} placeholder="Thailand" />
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader><CardTitle>Captain &amp; Operational Contact</CardTitle></CardHeader>
+              <CardContent>
+                <CaptainContactFields
+                  customerId={ownerId}
+                  contactId={captainContactId}
+                  onContactIdChange={setCaptainContactId}
+                  effectiveFrom={captainEffectiveFrom}
+                  onEffectiveFromChange={setCaptainEffectiveFrom}
+                  effectiveTo={captainEffectiveTo}
+                  onEffectiveToChange={setCaptainEffectiveTo}
+                />
               </CardContent>
             </Card>
 

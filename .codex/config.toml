@@ -1,0 +1,9 @@
+[mcp_servers.opencadstudio]
+command = "powershell.exe"
+args = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts\\opencadstudio-mcp-launcher.ps1"]
+cwd = "."
+enabled = true
+required = false
+startup_timeout_sec = 180
+tool_timeout_sec = 900
+default_tools_approval_mode = "prompt"

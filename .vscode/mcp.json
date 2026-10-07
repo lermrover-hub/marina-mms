@@ -1,0 +1,16 @@
+{
+  "servers": {
+    "opencadstudio": {
+      "type": "stdio",
+      "command": "powershell.exe",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\scripts\\opencadstudio-mcp-launcher.ps1"
+      ],
+      "cwd": "${workspaceFolder}"
+    }
+  }
+}

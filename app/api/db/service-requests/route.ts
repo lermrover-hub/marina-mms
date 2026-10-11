@@ -5,6 +5,8 @@ import { calculateDepositRequired, defaultPaymentMode, deriveCreditSchedule, der
 import { isMissingWorkflowSchema, writeLegacyWorkflowMetadata } from "@/lib/service-workflow-compat"
 import { deriveRampServicePlan } from "@/lib/ramp-booking-service"
 import { maxOperationalDiscountForRole, QUOTATION_PRICE_EDIT_ROLES, roleAllowed } from "@/lib/workflow-access"
+import { classifySpeedboat, isSpeedboatType } from "@/lib/speedboat-classification"
+import { lowestStoragePackage, speedboatStorageClass, storageRateCodes, validateSb4Storage, type StorageClass, type StorageMethod, type StorageSlot } from "@/lib/storage-pricing"
 
 export const dynamic = "force-dynamic"
 
@@ -40,7 +42,6 @@ export async function POST(req: Request) {
     const items: RequestItem[] = Array.isArray(body.items) ? body.items : []
     if (!body.customer_id || !body.boat_id) return NextResponse.json({ error: "Customer and boat are required." }, { status: 400 })
     if (!["RAMP_SERVICE", "SERVICE_TYPE"].includes(body.request_type)) return NextResponse.json({ error: "Select Ramp Service or Service Type." }, { status: 400 })
-    if (!items.length) return NextResponse.json({ error: "Add at least one service from the rate card." }, { status: 400 })
     let operationalContact: { id: string; full_name: string; phone: string | null; email: string | null; preferred_channel: string } | null = null
     if (body.operational_contact_id) {
       const { data: contact, error: contactError } = await supabase
@@ -64,7 +65,44 @@ export async function POST(req: Request) {
     })
     if (body.request_type === "RAMP_SERVICE" && movement.error) return NextResponse.json({ error: movement.error }, { status: 400 })
 
-    const pricingCodes = [...new Set(items.map((item) => String(item.pricing_code ?? "").trim()).filter(Boolean))]
+    const operatorType = String(body.operator_type ?? "OCEAN_ROVER")
+    const requestedServiceTypes = Array.isArray(body.service_types)
+      ? body.service_types.map(String).filter((value: string) => ["STORAGE", "YARD_SERVICE"].includes(value))
+      : [String(body.service_type ?? (body.request_type === "RAMP_SERVICE" ? "YARD_SERVICE" : "STORAGE"))]
+    const includesStorage = requestedServiceTypes.includes("STORAGE")
+    const includesYardService = requestedServiceTypes.includes("YARD_SERVICE")
+    const serviceType = includesYardService ? "YARD_SERVICE" : "STORAGE"
+    if (!includesStorage && !includesYardService) return NextResponse.json({ error: "Select Storage, Yard Service, or both." }, { status: 400 })
+
+    let automaticStorage: { storageClass: StorageClass; codes: string[]; days: number; slot: StorageSlot; method: StorageMethod | null; reviewWarning: string | null } | null = null
+    if (includesStorage) {
+      const { data: boat, error: boatError } = await supabase.from("mms_boats").select("id,owner_id,boat_type,loa_ft,num_engines,weight_t").eq("id", body.boat_id).maybeSingle()
+      if (boatError) throw boatError
+      if (!boat || (boat.owner_id && boat.owner_id !== body.customer_id)) return NextResponse.json({ error: "The selected boat does not belong to the selected customer." }, { status: 400 })
+      if (isSpeedboatType(boat.boat_type)) {
+        let storageClass: StorageClass
+        try { storageClass = speedboatStorageClass(Number(boat.loa_ft)) }
+        catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 400 }) }
+        const classification = classifySpeedboat({ loaFt: Number(boat.loa_ft), engines: boat.num_engines, weightKg: boat.weight_t == null ? null : Number(boat.weight_t) * 1000 })
+        const days = Number(body.storage_days)
+        if (!Number.isInteger(days) || days < 1 || days > 3650) return NextResponse.json({ error: "Storage duration must be a whole number from 1 to 3650 days." }, { status: 400 })
+        const slot = storageClass === "SB4" ? String(body.storage_slot_code ?? "") as StorageSlot : "ANY_APPROVED"
+        const method = storageClass === "SB4" ? String(body.storage_method ?? "") as StorageMethod : null
+        if (storageClass === "SB4") {
+          try { validateSb4Storage(slot, method) }
+          catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 400 }) }
+          const { data: berth, error: berthError } = await supabase.from("mms_berths").select("id,code,status,current_boat_id,max_loa_ft").eq("code", slot).maybeSingle()
+          if (berthError) throw berthError
+          if (!berth) return NextResponse.json({ error: `${slot} is not configured in the storage map.` }, { status: 400 })
+          if (berth.max_loa_ft != null && Number(boat.loa_ft) > Number(berth.max_loa_ft)) return NextResponse.json({ error: `${slot} is not configured for a ${boat.loa_ft} ft vessel.` }, { status: 400 })
+          if (berth.status !== "AVAILABLE" && berth.current_boat_id !== boat.id) return NextResponse.json({ error: `${slot} is not available for this vessel. Select another approved option or waitlist it.` }, { status: 409 })
+        }
+        automaticStorage = { storageClass, codes: storageRateCodes(storageClass, slot), days, slot, method, reviewWarning: classification.mismatchWarning }
+      }
+    }
+    if (!items.length && !automaticStorage) return NextResponse.json({ error: "Add at least one service from the rate card." }, { status: 400 })
+
+    const pricingCodes = [...new Set([...items.map((item) => String(item.pricing_code ?? "").trim()).filter(Boolean), ...(automaticStorage?.codes ?? [])])]
     const { data: prices, error: pricingError } = pricingCodes.length
       ? await supabase.from("pricing_master").select("id,code,service_name_en,unit,rate_thb,full_rate_thb,direct_cost_thb,revenue_gl_code,cost_gl_code,pnl_category,cost_pnl_category,service_group,subgroup,source_version,effective_date,updated_at").in("code", pricingCodes).eq("is_active", true)
       : { data: [], error: null }
@@ -73,7 +111,7 @@ export async function POST(req: Request) {
     const unknownCodes = pricingCodes.filter((code) => !priceByCode.has(code))
     if (unknownCodes.length) return NextResponse.json({ error: `Unknown or inactive rate-card code: ${unknownCodes.join(", ")}` }, { status: 400 })
 
-    const normalizedItems = items.map((item, index) => {
+    let normalizedItems = items.map((item, index) => {
       const price = priceByCode.get(String(item.pricing_code ?? ""))
       const isOpenRate = item.is_open_rate === true
       if (!price && !isOpenRate) throw new Error(`Line ${index + 1}: select an active rate-card item.`)
@@ -104,15 +142,20 @@ export async function POST(req: Request) {
       return { pricing_master_id: price?.id ?? null, pricing_code: price?.code ?? null, description: String(isOpenRate ? item.description : price?.service_name_en), service_group: canonicalGroup, operator_type: operatorType, qty, unit: String(isOpenRate ? item.unit ?? "item" : price?.unit ?? "item"), unit_price: Math.round(basePrice * 100) / 100, direct_cost: Math.max(0, directCost), markup_pct: Math.max(0, markupPct), discount_pct: discountPct, insurance_required: operatorType === "BOAT_OWNER_CONTRACTOR", sort_order: index + 1, price }
     })
 
-    const operatorType = String(body.operator_type ?? "OCEAN_ROVER")
-    const requestedServiceTypes = Array.isArray(body.service_types)
-      ? body.service_types.map(String).filter((value: string) => ["STORAGE", "YARD_SERVICE"].includes(value))
-      : [String(body.service_type ?? (body.request_type === "RAMP_SERVICE" ? "YARD_SERVICE" : "STORAGE"))]
-    const includesStorage = requestedServiceTypes.includes("STORAGE")
-    const includesYardService = requestedServiceTypes.includes("YARD_SERVICE")
-    const serviceType = includesYardService ? "YARD_SERVICE" : "STORAGE"
+    if (automaticStorage) {
+      const rates = automaticStorage.codes.map((code) => {
+        const price = priceByCode.get(code)
+        if (!price) throw new Error(`Approved v3.6 rate ${code} is not active.`)
+        return { code, rateThb: Number(price.rate_thb), fullRateThb: Number(price.full_rate_thb), unit: String(price.unit) }
+      })
+      const packages = lowestStoragePackage(automaticStorage.days, rates)
+      const storageLines = packages.map((pack, index) => {
+        const price = priceByCode.get(pack.code)!
+        return { pricing_master_id: price.id, pricing_code: price.code, description: String(price.service_name_en), service_group: "STORAGE", operator_type: "OCEAN_ROVER", qty: pack.qty, unit: String(price.unit), unit_price: Number(price.rate_thb), direct_cost: Number(price.direct_cost_thb ?? 0), markup_pct: 0, discount_pct: 0, insurance_required: false, sort_order: index + 1, price }
+      })
+      normalizedItems = [...normalizedItems.filter((item) => item.service_group !== "STORAGE"), ...storageLines]
+    }
     if (body.request_type === "RAMP_SERVICE" && (body.haul_out === true || body.launch === true) && !normalizedItems.some((item) => item.service_group === "RAMP")) return NextResponse.json({ error: "Add at least one Ramp, Haul-out, or Launch rate-card item." }, { status: 400 })
-    if (!includesStorage && !includesYardService) return NextResponse.json({ error: "Select Storage, Yard Service, or both." }, { status: 400 })
     if (includesStorage && !normalizedItems.some((item) => item.service_group === "STORAGE")) return NextResponse.json({ error: "Add at least one Storage rate-card item." }, { status: 400 })
     if (includesYardService && !normalizedItems.some((item) => item.service_group === "YARD")) return NextResponse.json({ error: "Add at least one Yard / Other Service rate-card item." }, { status: 400 })
     const paymentMode = String(body.payment_mode ?? defaultPaymentMode(serviceType, operatorType))
@@ -123,7 +166,8 @@ export async function POST(req: Request) {
       ? deriveRampServicePlan("BOAT_STORAGE", "STORAGE_MONTHLY", yardStartDate)
       : null
     const now = new Date().toISOString()
-    const visibleNotes = [body.location ? `Location: ${body.location}` : null, body.notes ?? null].filter(Boolean).join("\n") || null
+    const storageNote = automaticStorage ? `Storage v3.6: ${automaticStorage.storageClass}; ${automaticStorage.days} day(s); slot ${automaticStorage.slot}; method ${automaticStorage.method ?? "approved slot"}.${automaticStorage.reviewWarning ? ` Manager review: ${automaticStorage.reviewWarning}` : ""}` : null
+    const visibleNotes = [body.location ? `Location: ${body.location}` : null, storageNote, body.notes ?? null].filter(Boolean).join("\n") || null
     const contractorCost = normalizedItems.reduce((sum, item) => sum + item.qty * item.direct_cost, 0)
     const workflowMetadata = {
       request_type: body.request_type,
@@ -135,6 +179,9 @@ export async function POST(req: Request) {
       service_type: serviceType,
       service_types: requestedServiceTypes,
       storage_period: includesStorage ? String(body.storage_period ?? "DAILY") : null,
+      storage_days: automaticStorage?.days ?? null,
+      storage_slot_code: automaticStorage?.slot ?? null,
+      storage_method: automaticStorage?.method ?? null,
       operator_type: operatorType,
       insurance_status: operatorType === "BOAT_OWNER_CONTRACTOR" ? "REQUESTED" : "NOT_REQUIRED",
       subcontractor_trade: body.subcontractor_trade ?? null,

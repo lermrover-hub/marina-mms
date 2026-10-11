@@ -10,7 +10,7 @@
  * 1 Engine      |  ≤ 27 ft        |  Normal
  * 2 Engines     |  > 27 – 40 ft   |  Normal / Medium
  * 3 Engines     |  > 40 – 47 ft   |  Medium / High
- * 4 Engines     |  > 47 – 55 ft   |  High / Special Handling
+ * 4 Engines     |  > 47 – 60 ft   |  High / Special Handling
  *
  * LOA takes priority over declared engine count when they disagree.
  * Beam ≥ 9 ft, draft ≥ 2.5 ft, weight ≥ 4,000 kg each escalate risk one level.
@@ -72,13 +72,18 @@ function escalateRisk(base, { beamFt, draftFt, weightKg }) {
  */
 export function classifySpeedboat({ loaFt = 0, engines = null, beamFt = null, draftFt = null, weightKg = null } = {}) {
   const loa = Number(loaFt) || 0
+  const outsideConfiguredRange = loa <= 0 || loa > 60
   const loaGroup = loaToEngineGroup(loa)
   const baseRisk = groupToBaseRisk(loaGroup)
   const { flag: effectiveRiskFlag, reasons: escalationReasons } = escalateRisk(baseRisk, { beamFt, draftFt, weightKg })
   const rampCode = groupToRampCode(loaGroup)
 
   let mismatchWarning = null
-  if (engines != null && Number(engines) > 0 && Number(engines) !== loaGroup) {
+  if (outsideConfiguredRange) {
+    mismatchWarning = loa > 60
+      ? `LOA (${loa} ft) is outside the configured speedboat pricing range (maximum 60 ft). Manager review required.`
+      : "A valid LOA is required before speedboat pricing can be selected."
+  } else if (engines != null && Number(engines) > 0 && Number(engines) !== loaGroup) {
     mismatchWarning =
       `Engine count (${engines}) does not match LOA-derived group (${loaGroup}). ` +
       `LOA (${loa} ft) takes priority. Verify boat data before quoting.`
@@ -88,7 +93,7 @@ export function classifySpeedboat({ loaFt = 0, engines = null, beamFt = null, dr
     `Engine Group ${loaGroup} | LOA ${loa} ft | Risk: ${effectiveRiskFlag}` +
     (mismatchWarning ? " ⚠ LOA/engine mismatch" : "")
 
-  return { engineGroup: loaGroup, loaFt: loa, primaryRiskFlag: baseRisk, effectiveRiskFlag, rampCode, escalationReasons, mismatchWarning, label }
+  return { engineGroup: loaGroup, loaFt: loa, primaryRiskFlag: baseRisk, effectiveRiskFlag, rampCode, escalationReasons, mismatchWarning, outsideConfiguredRange, label }
 }
 
 /** Return the correct ramp code for a speedboat */

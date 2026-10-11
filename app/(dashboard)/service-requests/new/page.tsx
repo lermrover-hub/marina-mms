@@ -16,6 +16,8 @@ import { formatTHB } from "@/lib/utils"
 import { maxOperationalDiscountForRole, QUOTATION_PRICE_EDIT_ROLES, roleAllowed } from "@/lib/workflow-access"
 import { rateCardItemsForSection, serviceCategories, storagePeriodMatches, type ServiceWorkflowSection } from "@/lib/service-rate-card"
 import { deriveRampMovementPlan } from "@/lib/service-workflow"
+import { classifySpeedboat, isSpeedboatType } from "@/lib/speedboat-classification"
+import { lowestStoragePackage, speedboatStorageClass, storageRateCodes, validateSb4Storage, type StorageMethod, type StorageSlot } from "@/lib/storage-pricing"
 
 type Price = { id: string; code: string; serviceNameEn: string; category: string; unit: string; rateThb: number; directCostThb: number | null; serviceGroup?: string | null; subgroup?: string | null; revenueGlCode?: string | null; costGlCode?: string | null; pnlCategory?: string | null }
 type ServiceLine = { pricing_code?: string; description: string; service_group: ServiceWorkflowSection | "OPEN_RATE"; operator_type: string; qty: number; unit: string; unit_price: number; direct_cost: number; discount_pct: number; is_open_rate?: boolean; revenue_gl_code?: string | null; cost_gl_code?: string | null; pnl_category?: string | null }
@@ -46,6 +48,9 @@ export default function NewServiceRequestPage() {
   const [primaryService, setPrimaryService] = useState<"STORAGE" | "YARD">("STORAGE")
   const [addYardToStorage, setAddYardToStorage] = useState(false)
   const [storagePeriod, setStoragePeriod] = useState("DAILY")
+  const [storageDays, setStorageDays] = useState(1)
+  const [storageSlotCode, setStorageSlotCode] = useState<StorageSlot | "">("")
+  const [storageMethod, setStorageMethod] = useState<StorageMethod | "">("")
   const [operatorType, setOperatorType] = useState("OCEAN_ROVER")
   const [trade, setTrade] = useState("Paint")
   const [markupPct, setMarkupPct] = useState(10)
@@ -94,6 +99,17 @@ export default function NewServiceRequestPage() {
   const boatsForCustomer = useMemo(() => boats.filter((boat) => boat.owner_id === customerId), [boats, customerId])
   const selectedCustomer = customers.find((customer) => customer.id === customerId)
   const selectedBoat = boats.find((boat) => boat.id === boatId)
+  const selectedStorageClass = useMemo(() => {
+    if (!selectedBoat || !isSpeedboatType(selectedBoat.boat_type)) return null
+    try { return speedboatStorageClass(Number(selectedBoat.loa_ft)) } catch { return null }
+  }, [selectedBoat])
+  const speedboatReviewWarning = useMemo(() => {
+    if (!selectedBoat || !isSpeedboatType(selectedBoat.boat_type) || !selectedBoat.loa_ft) return null
+    return classifySpeedboat({ loaFt: selectedBoat.loa_ft, engines: selectedBoat.num_engines, beamFt: selectedBoat.beam_ft, draftFt: selectedBoat.draft_ft, weightKg: selectedBoat.weight_t == null ? null : selectedBoat.weight_t * 1000 }).mismatchWarning
+  }, [selectedBoat])
+  const storageClassificationError = selectedBoat && isSpeedboatType(selectedBoat.boat_type) && !selectedStorageClass
+    ? "A valid speedboat LOA from 1 to 60 ft is required. Vessels over 60 ft need manager review and an approved rate."
+    : null
   const selectedOperationalContact = contacts.find((contact) => contact.id === operationalContactId)
   const total = items.reduce((sum, item) => sum + item.qty * item.unit_price * (1 - item.discount_pct / 100), 0)
   const sectionPrices = useMemo(() => rateCardItemsForSection(prices, activeSection).filter((price) => activeSection !== "STORAGE" || storagePeriodMatches(price, storagePeriod)), [prices, activeSection, storagePeriod])
@@ -184,6 +200,35 @@ export default function NewServiceRequestPage() {
     setItems((rows) => rows.filter((row) => row.service_group !== "STORAGE"))
   }
 
+  function changeStorageDays(nextDays: number) {
+    const days = Math.max(1, Math.min(3650, Math.floor(nextDays || 1)))
+    setStorageDays(days)
+    changeStoragePeriod(days >= 30 ? "MONTHLY" : days >= 7 ? "WEEKLY" : "DAILY")
+  }
+
+  function addOptimizedStorage() {
+    setError(null)
+    try {
+      if (!selectedStorageClass) throw new Error(storageClassificationError ?? "Automatic v3.6 storage pricing requires a classified speedboat.")
+      const slot = selectedStorageClass === "SB4" ? (storageSlotCode || null) : "ANY_APPROVED"
+      if (selectedStorageClass === "SB4") validateSb4Storage(slot, storageMethod || null)
+      const codes = storageRateCodes(selectedStorageClass, slot)
+      const rates = codes.map((code) => {
+        const price = prices.find((row) => row.code === code)
+        if (!price) throw new Error(`Approved v3.6 rate ${code} is not loaded. Ask Finance/Admin to reconcile the staging Rate Card.`)
+        return { code, rateThb: price.rateThb, fullRateThb: null, unit: price.unit }
+      })
+      const packages = lowestStoragePackage(storageDays, rates)
+      const storageLines = packages.map((pack) => {
+        const price = prices.find((row) => row.code === pack.code)!
+        return { pricing_code: price.code, description: price.serviceNameEn, service_group: "STORAGE" as const, operator_type: "OCEAN_ROVER", qty: pack.qty, unit: price.unit, unit_price: price.rateThb, direct_cost: price.directCostThb ?? 0, discount_pct: 0, revenue_gl_code: price.revenueGlCode, cost_gl_code: price.costGlCode, pnl_category: price.pnlCategory }
+      })
+      setItems((rows) => [...rows.filter((row) => row.service_group !== "STORAGE"), ...storageLines])
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause))
+    }
+  }
+
   function changeMarkup(nextMarkup: number) {
     setMarkupPct(nextMarkup)
     setItems((rows) => rows.map((row) => row.service_group === "YARD" && row.operator_type === "OCEAN_ROVER_SUBCONTRACTOR" && !row.is_open_rate
@@ -237,6 +282,9 @@ export default function NewServiceRequestPage() {
           service_type: includeYardService ? "YARD_SERVICE" : "STORAGE",
           service_types: [includeStorage ? "STORAGE" : null, includeYardService ? "YARD_SERVICE" : null].filter(Boolean),
           storage_period: includeStorage ? storagePeriod : null,
+          storage_days: includeStorage ? storageDays : null,
+          storage_slot_code: includeStorage ? storageSlotCode || null : null,
+          storage_method: includeStorage ? storageMethod || null : null,
           operator_type: operatorType,
           subcontractor_trade: operatorType === "OCEAN_ROVER_SUBCONTRACTOR" ? trade : null,
           markup_pct: operatorType === "OCEAN_ROVER_SUBCONTRACTOR" ? markupPct : 0,
@@ -290,24 +338,24 @@ export default function NewServiceRequestPage() {
             </div>
           </div>
           <div><Label>Primary service path *</Label><p className="mt-1 text-xs text-gray-600">Choose the normal route. Storage goes from its billing period and Rate Card directly to Draft Quotation. Yard Service continues through operator, category and service item.</p><div className="mt-2 grid gap-3 md:grid-cols-2"><button type="button" aria-pressed={primaryService === "STORAGE"} onClick={() => changePrimaryService("STORAGE")} className={`rounded-lg border p-4 text-left ${primaryService === "STORAGE" ? "border-teal-500 bg-teal-50" : "border-gray-200"}`}><b>{primaryService === "STORAGE" ? "✓ " : ""}A. Storage</b><p className="text-sm text-gray-500">Daily, weekly or monthly → Draft Quotation</p></button><button type="button" aria-pressed={primaryService === "YARD"} onClick={() => changePrimaryService("YARD")} className={`rounded-lg border p-4 text-left ${primaryService === "YARD" ? "border-teal-500 bg-teal-50" : "border-gray-200"}`}><b>{primaryService === "YARD" ? "✓ " : ""}B. Yard Service</b><p className="text-sm text-gray-500">Operator → Category → Service Item → Draft Quotation</p></button></div></div>
-          {includeStorage && <div className="rounded-lg border bg-gray-50 p-4"><Label>Storage billing period</Label><div className="mt-2 grid grid-cols-3 gap-2">{["DAILY", "WEEKLY", "MONTHLY"].map((period) => <button type="button" key={period} onClick={() => changeStoragePeriod(period)} className={`rounded-md border px-3 py-2 text-sm font-medium ${storagePeriod === period ? "border-teal-500 bg-white text-teal-700" : "border-gray-200 bg-white text-gray-600"}`}>{period[0] + period.slice(1).toLowerCase()}</button>)}</div>{storagePeriod === "MONTHLY" && <p className="mt-2 text-xs text-amber-700">Monthly storage creates an officer billing reminder.</p>}</div>}
+          {includeStorage && <div className="space-y-4 rounded-lg border bg-gray-50 p-4"><div><Label>Storage duration (days)</Label><Input className="mt-1" type="number" min="1" max="3650" step="1" value={storageDays} onChange={(event) => changeStorageDays(Number(event.target.value))} /><p className="mt-1 text-xs text-gray-600">The system selects the lowest exact combination of approved 1-day, 7-day and 30-day packages. Monthly storage creates an officer billing reminder.</p></div>{selectedStorageClass === "SB4" && <><div><Label>Physical storage slot *</Label><select className="mt-1 w-full rounded-md border p-2" value={storageSlotCode} onChange={(event) => { setStorageSlotCode(event.target.value as StorageSlot); setStorageMethod(event.target.value === "W4" ? "TRAILER" : event.target.value === "B1" ? "BOAT_STANDS" : ""); setItems((rows) => rows.filter((row) => row.service_group !== "STORAGE")) }}><option value="">Select W4 or B1</option><option value="W4">W4 — trailer storage only</option><option value="B1">B1 — boat stands only</option></select></div><div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">SB4 is a pricing class only. W4/B1 availability and technical checks are mandatory. Storage approval does not approve haul-out or launch.</div></>}{speedboatReviewWarning && !storageClassificationError && <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-800">Manager review: {speedboatReviewWarning}</p>}{storageClassificationError && <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{storageClassificationError}</p>}</div>}
           {primaryService === "STORAGE" && <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4"><input type="checkbox" className="mt-1 h-4 w-4 accent-amber-600" checked={addYardToStorage} onChange={(event) => toggleAdditionalYardService(event.target.checked)} /><span><b className="text-amber-900">Optional: add Yard / Other Services</b><span className="block text-xs text-amber-800">Use when the stored vessel also needs service now. If service is requested later, start a new linked Service Request from the stored vessel record.</span></span></label>}
           {includeYardService && <div className="space-y-4 rounded-lg border bg-gray-50 p-4"><div><Label>Who performs the Yard Service? <HelpHint title="Operator affects price and approval">Ocean Rover work may receive an authorised discount. Boat-owner contractor work requires verified insurance. Ocean Rover subcontractor work uses direct cost plus markup and cannot receive a Marina discount.</HelpHint></Label><div className="mt-2 grid gap-2 md:grid-cols-3">{[{ value: "OCEAN_ROVER", label: "Ocean Rover" }, { value: "BOAT_OWNER_CONTRACTOR", label: "Boat owner / contractor" }, { value: "OCEAN_ROVER_SUBCONTRACTOR", label: "Ocean Rover subcontractor" }].map((operator) => <button type="button" key={operator.value} onClick={() => changeYardOperator(operator.value)} className={`rounded-md border p-3 text-sm font-semibold ${operatorType === operator.value ? "border-teal-500 bg-white text-teal-700" : "border-gray-200 bg-white"}`}>{operator.label}</button>)}</div></div>
           {operatorType === "BOAT_OWNER_CONTRACTOR" && <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-800">Enter the contractor scope in Internal Notes. Insurance starts as Requested and must be verified before confirming the Service Order.</p>}
           {operatorType === "OCEAN_ROVER_SUBCONTRACTOR" && <div className="grid gap-4 md:grid-cols-2"><div><Label>Trade</Label><select className="mt-1 w-full rounded-md border p-2" value={trade} onChange={(e) => setTrade(e.target.value)}><option>Paint</option><option>Mechanic</option><option>Electrical</option><option>Other</option></select></div><div><Label>Markup %</Label><Input type="number" min="0" max="100" value={markupPct} onChange={(e) => changeMarkup(Number(e.target.value))} /><p className="mt-1 text-xs text-gray-500">Selling price = direct cost + markup. Existing Yard items are recalculated automatically.</p></div></div>}</div>}
         </CardContent></Card>
-        <div className="flex justify-end"><Button type="button" variant="teal" onClick={() => { setError(null); if (!customerId || !boatId) { setError("Select the customer and vessel before continuing."); return } if (movement.error) { setError(movement.error); return } setActiveSection(movementRateRequired ? "RAMP" : includeStorage ? "STORAGE" : "YARD"); setCurrentStep(2) }}>Continue to Service Items →</Button></div>
+        <div className="flex justify-end"><Button type="button" variant="teal" onClick={() => { setError(null); if (!customerId || !boatId) { setError("Select the customer and vessel before continuing."); return } if (movement.error) { setError(movement.error); return } if (includeStorage && storageClassificationError) { setError(storageClassificationError); return } if (includeStorage && selectedStorageClass === "SB4" && (!storageSlotCode || !storageMethod)) { setError("Select W4 trailer storage or B1 boat-stand storage before continuing."); return } setActiveSection(movementRateRequired ? "RAMP" : includeStorage ? "STORAGE" : "YARD"); setCurrentStep(2) }}>Continue to Service Items →</Button></div>
         </>}
 
         {currentStep === 2 && <>
         <Card><CardHeader><CardTitle>3. Service Items & Rate Card <HelpHint title="Cascading service menu">Choose the workflow section, then a service category, then the exact Rate Card item. Price, unit, direct cost and accounting codes are filled automatically. Only quantity or duration is entered by the officer.</HelpHint></CardTitle></CardHeader><CardContent className="space-y-4">
           <div className="rounded-md border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900"><b>Movement:</b> {haulOut ? `Haul-out on ${haulOutDate}` : `Tow in on ${towInDate}`} · {launch ? `Launch on ${launchDate}` : towOut ? `Tow out on ${towOutDate}` : "Departure open"}<br /><span className="text-xs">{movementRateRequired ? "Add the required Ramp operation item, then add the main service." : "Tow charge is optional. Add a Tow item only when the customer is charged; otherwise continue with the main service."}</span></div>
           <div className={`grid gap-2 ${selectedSections.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>{selectedSections.map((section) => <button type="button" key={section} onClick={() => setActiveSection(section)} className={`rounded-lg border px-3 py-3 text-sm font-semibold ${activeSection === section ? "border-teal-500 bg-teal-50 text-teal-800" : "border-gray-200 bg-white text-gray-600"}`}>{section === "RAMP" ? (movementRateRequired ? "Ramp Operation (required)" : "Tow Charge (optional)") : section === "STORAGE" ? "Storage (required)" : "Yard / Other Services (required)"}</button>)}</div>
-          <div className="grid gap-3 md:grid-cols-[1fr_1.5fr_auto]">
+          {activeSection === "STORAGE" && selectedStorageClass ? <div className="rounded-lg border border-teal-200 bg-teal-50 p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="font-semibold text-teal-900">{selectedStorageClass} automatic storage package</p><p className="text-xs text-teal-800">{storageDays} days{selectedStorageClass === "SB4" ? ` · ${storageSlotCode || "slot required"} · ${storageMethod || "method required"}` : " · any approved storage slot"}</p></div><Button type="button" variant="outline" onClick={addOptimizedStorage}>Calculate &amp; add lowest package</Button></div></div> : <div className="grid gap-3 md:grid-cols-[1fr_1.5fr_auto]">
             <div><Label>Service category</Label><select className="mt-1 w-full rounded-md border p-2" value={selectedCategory} onChange={(e) => { setSelectedCategory(e.target.value); setSelectedPrice("") }}><option value="">Select category</option>{categories.map((category) => <option key={category} value={category}>{category}</option>)}</select></div>
             <div><Label>Service item</Label><select disabled={!selectedCategory} className="mt-1 w-full rounded-md border p-2 disabled:bg-gray-100" value={selectedPrice} onChange={(e) => setSelectedPrice(e.target.value)}><option value="">Select rate-card item</option>{filteredPrices.map((price) => <option key={price.id} value={price.code}>{price.serviceNameEn} — {formatTHB(price.rateThb)}/{price.unit}</option>)}</select></div>
             <Button type="button" className="self-end" variant="outline" disabled={!selectedPrice} onClick={addRate}><Plus className="mr-1 h-4 w-4" />Add item</Button>
-          </div>
+          </div>}
           {canEditCost ? <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50 p-3"><div className="mb-2 flex items-center gap-2 font-medium text-amber-900">Others / Open Rate <HelpHint title="Restricted manual price">Use only when no suitable Rate Card item exists. Admin, Managing Director or Finance must enter the negotiated price and the Draft still requires approval.</HelpHint></div><div className="grid gap-2 md:grid-cols-[1.5fr_100px_100px_auto]"><Input value={openRateDescription} onChange={(e) => setOpenRateDescription(e.target.value)} placeholder="Reason / negotiated service" /><Input type="number" min="0" step="0.01" value={openRatePrice} onChange={(e) => setOpenRatePrice(e.target.value)} placeholder="Price" /><Input type="number" min="0" step="0.01" value={openRateCost} onChange={(e) => setOpenRateCost(e.target.value)} placeholder="Cost" /><Button type="button" variant="outline" disabled={!openRateDescription.trim() || openRatePrice === ""} onClick={addOpenRate}>Add open rate</Button></div></div> : <p className="rounded-md bg-gray-50 p-3 text-xs text-gray-600">Others / Open Rate is restricted to Admin, Managing Director and Finance. Select an approved Rate Card item or request authorised price entry.</p>}
           {items.map((item, index) => <div key={`${item.pricing_code ?? "OPEN"}-${index}`} className="grid items-end gap-2 rounded-lg border p-3 md:grid-cols-[1fr_90px_90px_40px]"><div><div className="flex flex-wrap gap-2 text-xs"><span className="rounded bg-teal-50 px-2 py-0.5 text-teal-700">{item.service_group}</span><span className="text-gray-500">{item.pricing_code ?? "OPEN RATE"}</span><span className="text-gray-500">{item.operator_type.replaceAll("_", " ")}</span></div><p className="mt-1 font-medium">{item.description}</p><p className="text-xs text-gray-500">Rate {formatTHB(item.unit_price)} / {item.unit} · Cost {formatTHB(item.direct_cost)} · Discount {item.discount_pct}%</p>{item.pricing_code && <p className="text-xs text-gray-400">Revenue {item.revenue_gl_code ?? "—"} · Cost {item.cost_gl_code ?? "—"} · {item.pnl_category ?? "P&L not set"}</p>}</div><div><Label>Qty / duration</Label><Input type="number" min="0.001" step="0.001" value={item.qty} onChange={(e) => updateLine(index, { qty: Number(e.target.value) })} /></div><div><Label>Discount %</Label><Input type="number" min="0" max={maximumDiscount} step="0.01" disabled={item.operator_type !== "OCEAN_ROVER" || maximumDiscount === 0} title={`Maximum ${maximumDiscount}% for your role`} value={item.discount_pct} onChange={(e) => updateLine(index, { discount_pct: Math.min(maximumDiscount, Number(e.target.value)) })} /></div><Button type="button" variant="ghost" onClick={() => setItems((rows) => rows.filter((_, i) => i !== index))}><Trash2 className="h-4 w-4 text-red-500" /></Button></div>)}
           {!items.length && <p className="py-6 text-center text-sm text-gray-400">Add services in the order they should appear on the quotation.</p>}

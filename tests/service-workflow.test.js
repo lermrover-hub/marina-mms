@@ -181,6 +181,22 @@ test("service request form uses cascading Rate Card selection and restricts Open
   assert.match(route, /canonicalGroup === "YARD"[^\n]+: "OCEAN_ROVER"/)
 })
 
+test("speedboat storage quotation uses canonical v3.6 packages and server-side W4/B1 gates", () => {
+  const page = readFileSync("app/(dashboard)/service-requests/new/page.tsx", "utf8")
+  const route = readFileSync("app/api/db/service-requests/route.ts", "utf8")
+  assert.match(page, /storage_days:/)
+  assert.match(page, /storage_slot_code:/)
+  assert.match(page, /Calculate &amp; add lowest package/)
+  assert.match(page, /W4 — trailer storage only/)
+  assert.match(page, /B1 — boat stands only/)
+  assert.match(route, /speedboatStorageClass/)
+  assert.match(route, /validateSb4Storage/)
+  assert.match(route, /lowestStoragePackage/)
+  assert.match(route, /berth\.status !== "AVAILABLE"/)
+  assert.match(route, /normalizedItems\.filter\(\(item\) => item\.service_group !== "STORAGE"\)/)
+  assert.match(route, /unit_price: Number\(price\.rate_thb\)/)
+})
+
 test("service request supports normal storage/yard routes and the optional stored-vessel service route", () => {
   const page = readFileSync("app/(dashboard)/service-requests/new/page.tsx", "utf8")
   const detailPage = readFileSync("app/(dashboard)/service-requests/[id]/page.tsx", "utf8")

@@ -18,8 +18,9 @@ import { rateCardItemsForSection, serviceCategories, storagePeriodMatches, type 
 import { deriveRampMovementPlan } from "@/lib/service-workflow"
 import { classifySpeedboat, isSpeedboatType } from "@/lib/speedboat-classification"
 import { lowestStoragePackage, speedboatStorageClass, storageRateCodes, validateSb4Storage, type StorageMethod, type StorageSlot } from "@/lib/storage-pricing"
+import { evaluateStandardRampHaulOut, storageDurationMultiplier } from "@/lib/pricing-engine"
 
-type Price = { id: string; code: string; serviceNameEn: string; category: string; unit: string; rateThb: number; directCostThb: number | null; serviceGroup?: string | null; subgroup?: string | null; revenueGlCode?: string | null; costGlCode?: string | null; pnlCategory?: string | null }
+type Price = { id: string; code: string; serviceNameEn: string; category: string; unit: string; rateThb: number; directCostThb: number | null; calcType?: string | null; quoteAllowed?: string | null; priceStatus?: string | null; serviceGroup?: string | null; subgroup?: string | null; revenueGlCode?: string | null; costGlCode?: string | null; pnlCategory?: string | null }
 type ServiceLine = { pricing_code?: string; description: string; service_group: ServiceWorkflowSection | "OPEN_RATE"; operator_type: string; qty: number; unit: string; unit_price: number; direct_cost: number; discount_pct: number; is_open_rate?: boolean; revenue_gl_code?: string | null; cost_gl_code?: string | null; pnl_category?: string | null }
 
 export default function NewServiceRequestPage() {
@@ -117,6 +118,13 @@ export default function NewServiceRequestPage() {
   const filteredPrices = useMemo(() => sectionPrices.filter((price) => (price.subgroup || price.category) === selectedCategory), [sectionPrices, selectedCategory])
   const movement = deriveRampMovementPlan({ haulOut, haulOutDate, towIn, towInDate, launch, launchDate, towOut, towOutDate })
   const movementRateRequired = haulOut || launch
+  const rampAssessment = useMemo(() => selectedBoat ? evaluateStandardRampHaulOut({
+    loaFt: selectedBoat.loa_ft == null ? null : Number(selectedBoat.loa_ft),
+    weightT: selectedBoat.weight_t == null ? null : Number(selectedBoat.weight_t),
+    beamFt: selectedBoat.beam_ft == null ? null : Number(selectedBoat.beam_ft),
+    draftFt: selectedBoat.draft_ft == null ? null : Number(selectedBoat.draft_ft),
+    hullConfiguration: selectedBoat.boat_type,
+  }) : null, [selectedBoat])
   const selectedSections = useMemo<ServiceWorkflowSection[]>(() => [
     "RAMP",
     ...(includeStorage ? ["STORAGE" as const] : []),
@@ -150,7 +158,19 @@ export default function NewServiceRequestPage() {
     const lineOperator = activeSection === "YARD" ? operatorType : "OCEAN_ROVER"
     const directCost = price.directCostThb ?? 0
     const unitPrice = lineOperator === "OCEAN_ROVER_SUBCONTRACTOR" ? directCost * (1 + markupPct / 100) : price.rateThb
-    setItems((rows) => [...rows, { pricing_code: price.code, description: price.serviceNameEn, service_group: activeSection, operator_type: lineOperator, qty: 1, unit: price.unit, unit_price: unitPrice, direct_cost: directCost, discount_pct: 0, revenue_gl_code: price.revenueGlCode, cost_gl_code: price.costGlCode, pnl_category: price.pnlCategory }])
+    if (rowsContainCode(items, price.code)) { setError(`${price.code} is already selected. The same service cannot be billed twice.`); return }
+    const method = String(price.calcType ?? "FLAT_QTY").toUpperCase()
+    let automaticQty = method === "PER_FOOT" ? Number(selectedBoat?.loa_ft ?? 0)
+      : method === "PER_METRE" ? Number(selectedBoat?.loa_ft ?? 0) * 0.3048
+        : method === "PER_TONNE" ? Number(selectedBoat?.weight_t ?? 0)
+          : method === "FLAT_RATE" ? 1 : 1
+    if (["PER_FOOT", "PER_METRE", "PER_TONNE"].includes(method) && automaticQty <= 0) { setError(`Complete the vessel dimensions required by ${price.code} before adding it.`); return }
+    if (activeSection === "STORAGE" && ["PER_FOOT", "PER_METRE"].includes(method)) {
+      try { automaticQty *= storageDurationMultiplier(price.unit, Number(storageDays)) }
+      catch (error) { setError(error instanceof Error ? error.message : String(error)); return }
+    }
+    setError(null)
+    setItems((rows) => [...rows, { pricing_code: price.code, description: price.serviceNameEn, service_group: activeSection, operator_type: lineOperator, qty: automaticQty, unit: price.unit, unit_price: unitPrice, direct_cost: directCost, discount_pct: 0, revenue_gl_code: price.revenueGlCode, cost_gl_code: price.costGlCode, pnl_category: price.pnlCategory }])
     setSelectedPrice("")
   }
 
@@ -327,6 +347,7 @@ export default function NewServiceRequestPage() {
                 {towIn && <><DateField label="Confirmed tow-in date *" value={towInDate} onChange={setTowInDate} /><p className="mt-2 text-xs text-amber-700">Tow charge is optional. Add a Tow Truck Rate Card/Open Rate item only when charging the customer.</p></>}
               </MovementOption>
             </div>
+            {movementRateRequired && rampAssessment && !rampAssessment.automaticStandardQuoteAllowed && <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800"><b>Manual handling assessment required.</b> {rampAssessment.blockers.join(" ")} Automatic haul-out quotations are blocked; ask the manager to assess a separate special operation. Selecting a rate does not override equipment limits.</div>}
             <div className="border-t border-sky-200 pt-4"><Label className="text-base font-semibold">Departure method</Label><p className="mt-1 text-xs text-gray-600">Optional. Leave both unchecked while the departure date or method is still open.</p></div>
             <div className="grid gap-3 md:grid-cols-2">
               <MovementOption checked={launch} title="Launch" description="Marina launches vessel into the water" onChange={(checked) => { setLaunch(checked); if (checked) { setTowOut(false); setTowOutDate(""); setActiveSection("RAMP") } }}>
@@ -353,7 +374,7 @@ export default function NewServiceRequestPage() {
           <div className={`grid gap-2 ${selectedSections.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>{selectedSections.map((section) => <button type="button" key={section} onClick={() => setActiveSection(section)} className={`rounded-lg border px-3 py-3 text-sm font-semibold ${activeSection === section ? "border-teal-500 bg-teal-50 text-teal-800" : "border-gray-200 bg-white text-gray-600"}`}>{section === "RAMP" ? (movementRateRequired ? "Ramp Operation (required)" : "Tow Charge (optional)") : section === "STORAGE" ? "Storage (required)" : "Yard / Other Services (required)"}</button>)}</div>
           {activeSection === "STORAGE" && selectedStorageClass ? <div className="rounded-lg border border-teal-200 bg-teal-50 p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="font-semibold text-teal-900">{selectedStorageClass} automatic storage package</p><p className="text-xs text-teal-800">{storageDays} days{selectedStorageClass === "SB4" ? ` · ${storageSlotCode || "slot required"} · ${storageMethod || "method required"}` : " · any approved storage slot"}</p></div><Button type="button" variant="outline" onClick={addOptimizedStorage}>Calculate &amp; add lowest package</Button></div></div> : <div className="grid gap-3 md:grid-cols-[1fr_1.5fr_auto]">
             <div><Label>Service category</Label><select className="mt-1 w-full rounded-md border p-2" value={selectedCategory} onChange={(e) => { setSelectedCategory(e.target.value); setSelectedPrice("") }}><option value="">Select category</option>{categories.map((category) => <option key={category} value={category}>{category}</option>)}</select></div>
-            <div><Label>Service item</Label><select disabled={!selectedCategory} className="mt-1 w-full rounded-md border p-2 disabled:bg-gray-100" value={selectedPrice} onChange={(e) => setSelectedPrice(e.target.value)}><option value="">Select rate-card item</option>{filteredPrices.map((price) => <option key={price.id} value={price.code}>{price.serviceNameEn} — {formatTHB(price.rateThb)}/{price.unit}</option>)}</select></div>
+            <div><Label>Service item</Label><select disabled={!selectedCategory} className="mt-1 w-full rounded-md border p-2 disabled:bg-gray-100" value={selectedPrice} onChange={(e) => setSelectedPrice(e.target.value)}><option value="">Select rate-card item</option>{filteredPrices.map((price) => <option key={price.id} value={price.code}>{price.serviceNameEn} — {formatTHB(price.rateThb)}/{price.unit}{price.quoteAllowed && price.quoteAllowed !== "YES" ? " · approval required" : ""}</option>)}</select></div>
             <Button type="button" className="self-end" variant="outline" disabled={!selectedPrice} onClick={addRate}><Plus className="mr-1 h-4 w-4" />Add item</Button>
           </div>}
           {canEditCost ? <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50 p-3"><div className="mb-2 flex items-center gap-2 font-medium text-amber-900">Others / Open Rate <HelpHint title="Restricted manual price">Use only when no suitable Rate Card item exists. Admin, Managing Director or Finance must enter the negotiated price and the Draft still requires approval.</HelpHint></div><div className="grid gap-2 md:grid-cols-[1.5fr_100px_100px_auto]"><Input value={openRateDescription} onChange={(e) => setOpenRateDescription(e.target.value)} placeholder="Reason / negotiated service" /><Input type="number" min="0" step="0.01" value={openRatePrice} onChange={(e) => setOpenRatePrice(e.target.value)} placeholder="Price" /><Input type="number" min="0" step="0.01" value={openRateCost} onChange={(e) => setOpenRateCost(e.target.value)} placeholder="Cost" /><Button type="button" variant="outline" disabled={!openRateDescription.trim() || openRatePrice === ""} onClick={addOpenRate}>Add open rate</Button></div></div> : <p className="rounded-md bg-gray-50 p-3 text-xs text-gray-600">Others / Open Rate is restricted to Admin, Managing Director and Finance. Select an approved Rate Card item or request authorised price entry.</p>}
@@ -373,6 +394,10 @@ export default function NewServiceRequestPage() {
       </form>
     </div>
   )
+}
+
+function rowsContainCode(rows: ServiceLine[], code: string) {
+  return rows.some((row) => row.pricing_code === code)
 }
 
 function MovementOption({ checked, title, description, onChange, children }: { checked: boolean; title: string; description: string; onChange: (checked: boolean) => void; children?: React.ReactNode }) {

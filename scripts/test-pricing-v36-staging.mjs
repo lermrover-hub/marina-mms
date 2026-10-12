@@ -3,6 +3,8 @@ import fs from "node:fs"
 import dotenv from "dotenv"
 import { createClient } from "@supabase/supabase-js"
 import { lowestStoragePackage } from "../lib/storage-pricing.ts"
+import { classifySpeedboat } from "../lib/speedboat-classification.ts"
+import { evaluateStandardRampHaulOut } from "../lib/pricing-engine.ts"
 
 const STAGING_PROJECT = "zanlunbgupdtqznruzok"
 const args = process.argv.slice(2)
@@ -39,7 +41,7 @@ for (const rate of source.rates) {
     assert.equal(Number(actual.full_rate_thb), Number(rate.full_rate_thb))
     assert.equal(Number(actual.source_discount_pct), Number(rate.source_discount_pct))
     assert.equal(actual.is_active, true)
-    assert.equal(actual.quote_allowed, "YES")
+    assert.equal(actual.quote_allowed, rate.quote_allowed ?? "YES")
     assert.equal(actual.source_version, source.source.version)
   })
 }
@@ -57,6 +59,18 @@ check("SB4-REFERENCE", "generic SB4_D is reference-only", () => {
   assert.ok(row)
   assert.equal(row.is_active, false)
   assert.equal(row.quote_allowed, "NO")
+})
+check("SB4-BOUNDARY", "55, 56 and 60 ft classify as SB4; 61 ft is outside", () => {
+  for (const loaFt of [55, 56, 60]) {
+    const result = classifySpeedboat({ loaFt, engines: 4 })
+    assert.equal(result.engineGroup, 4)
+    assert.equal(result.outsideConfiguredRange, false)
+  }
+  assert.equal(classifySpeedboat({ loaFt: 61, engines: 4 }).outsideConfiguredRange, true)
+})
+check("RAMP-CAPACITY", "over 12 tonnes cannot receive automatic standard haul-out quote", () => {
+  const result = evaluateStandardRampHaulOut({ loaFt: 40, weightT: 12.1, trailerCompatible: true, centreOfGravityVerified: true })
+  assert.equal(result.automaticStandardQuoteAllowed, false)
 })
 
 const storageRates = (prefix) => ["DAY", "WEEK", "MONTH"].map((period) => {

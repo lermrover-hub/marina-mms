@@ -63,34 +63,38 @@ function semanticKey(row) {
 
 function canonicalPayload(rate, existing, actor) {
   const defaults = source.defaults
-  const periodName = rate.period === "DAY" ? "daily" : rate.period === "WEEK" ? "weekly" : "monthly"
-  const slotName = rate.slot === "ANY_APPROVED" ? "approved slot" : `${rate.slot} slot`
+  const isStoragePackage = rate.period && rate.class
+  const periodName = rate.period === "DAY" ? "daily" : rate.period === "WEEK" ? "weekly" : rate.period === "MONTH" ? "monthly" : null
+  const slotName = rate.slot === "ANY_APPROVED" ? "approved slot" : rate.slot ? `${rate.slot} slot` : null
+  const serviceNameEn = rate.service_name_en ?? (isStoragePackage ? `${rate.class} speedboat storage ${periodName} — ${slotName}` : rate.code)
+  const serviceNameTh = rate.service_name_th ?? (isStoragePackage ? `${rate.class} จอดเรือสปีดโบ๊ท${periodName} — ${slotName}` : null)
+  const isStorage = String(rate.service_group ?? defaults.service_group).startsWith("4.")
   return {
     ...(existing?.id ? { id: existing.id } : { id: crypto.randomUUID() }),
     code: rate.code,
-    service_name_en: `${rate.class} speedboat storage ${periodName} — ${slotName}`,
-    service_name_th: `${rate.class} จอดเรือสปีดโบ๊ท${periodName} — ${slotName}`,
-    category: defaults.category,
-    unit: rate.period.toLowerCase(),
+    service_name_en: serviceNameEn,
+    service_name_th: serviceNameTh,
+    category: rate.category ?? defaults.category,
+    unit: rate.unit ?? rate.period.toLowerCase(),
     rate_thb: rate.rate_thb,
     full_rate_thb: rate.full_rate_thb,
     discount_pct: 0,
     source_discount_pct: rate.source_discount_pct,
     direct_cost_thb: existing?.direct_cost_thb ?? null,
-    revenue_gl_code: existing?.revenue_gl_code ?? defaults.revenue_gl_code,
+    revenue_gl_code: existing?.revenue_gl_code ?? (isStorage ? defaults.revenue_gl_code : "4110"),
     cost_gl_code: existing?.cost_gl_code ?? defaults.cost_gl_code,
-    pnl_category: existing?.pnl_category ?? defaults.pnl_category,
+    pnl_category: existing?.pnl_category ?? (isStorage ? defaults.pnl_category : "B.Haul-out"),
     cost_pnl_category: existing?.cost_pnl_category ?? defaults.cost_pnl_category,
     cost_basis: existing?.cost_basis ?? null,
-    calc_type: "FLAT_QTY",
-    service_group: defaults.service_group,
-    subgroup: `${rate.class} storage / ${rate.slot} / ${rate.period}`,
-    provider_type: defaults.provider_type,
-    quote_allowed: "YES",
-    price_status: rate.full_rate_thb === 0 ? "SOFT_APPROVED_STAGING" : "ACTIVE",
+    calc_type: rate.calc_type ?? "FLAT_QTY",
+    service_group: rate.service_group ?? defaults.service_group,
+    subgroup: rate.subgroup ?? `${rate.class} storage / ${rate.slot} / ${rate.period}`,
+    provider_type: rate.provider_type ?? defaults.provider_type,
+    quote_allowed: rate.quote_allowed ?? "YES",
+    price_status: rate.price_status ?? (rate.full_rate_thb === 0 ? "SOFT_APPROVED_STAGING" : "ACTIVE"),
     source_version: source.source.version,
-    description: `${rate.class}; LOA ${rate.loa}; physical slot ${rate.slot}; ${rate.days} day package; VAT exclusive.`,
-    notes: rate.notes ?? "Soft opening rate is already applied. Do not apply an additional 25% source discount.",
+    description: rate.description ?? `${rate.class}; LOA ${rate.loa}; physical slot ${rate.slot}; ${rate.days} day package; VAT exclusive.`,
+    notes: rate.notes ?? `${rate.eligibility ? `${rate.eligibility}. ` : ""}Soft opening rate is already applied. Do not apply an additional 25% source discount.`,
     is_active: true,
     updated_by: actor,
     approved_by: actor,
@@ -102,6 +106,7 @@ function canonicalPayload(rate, existing, actor) {
 async function main() {
   fs.mkdirSync(outputDir, { recursive: true })
   const existingRows = await allRows("pricing_master", "*")
+  const historyRows = await allRows("pricing_master_history", "*")
   const quotationRefs = await allRows("mms_quotation_items", "id,quotation_id,pricing_master_id,pricing_code,unit_price,current_rate_snapshot_thb,pricing_source_version")
   const requestRefs = await allRows("mms_service_request_items", "id,service_request_id,pricing_master_id,pricing_code,unit_price")
   const existingByCode = new Map(existingRows.map((row) => [row.code, row]))
@@ -109,6 +114,7 @@ async function main() {
   const refCount = (row) => refs.filter((ref) => ref.pricing_master_id === row.id || ref.pricing_code === row.code).length
 
   const nowTag = new Date().toISOString().replaceAll(":", "-").replaceAll(".", "-")
+  fs.writeFileSync(path.join(outputDir, `${nowTag}-pricing-history-before.json`), `${JSON.stringify(historyRows, null, 2)}\n`)
   fs.writeFileSync(path.join(outputDir, `${nowTag}-pricing-master-before.json`), `${JSON.stringify(existingRows, null, 2)}\n`)
   fs.writeFileSync(path.join(outputDir, `${nowTag}-pricing-master-before.csv`), csv(existingRows))
   fs.writeFileSync(path.join(outputDir, `${nowTag}-pricing-references-before.json`), `${JSON.stringify(refs, null, 2)}\n`)
@@ -118,7 +124,8 @@ async function main() {
   const reconciliation = []
   for (const rate of source.rates) {
     const current = existingByCode.get(rate.code)
-    const differences = current ? ["rate_thb", "full_rate_thb", "source_discount_pct", "unit", "is_active", "quote_allowed"].filter((field) => String(current[field] ?? "") !== String((field === "unit" ? rate.period.toLowerCase() : field === "is_active" ? true : field === "quote_allowed" ? "YES" : rate[field]) ?? "")) : ["missing"]
+    const expected = canonicalPayload(rate, current, approvedBy)
+    const differences = current ? ["rate_thb", "full_rate_thb", "source_discount_pct", "unit", "is_active", "quote_allowed", "calc_type", "source_version"].filter((field) => String(current[field] ?? "") !== String(expected[field] ?? "")) : ["missing"]
     reconciliation.push({ code: rate.code, semantic_key: semanticKey(rate), action: current ? (differences.length ? "UPDATE_CANONICAL" : "KEEP_CANONICAL") : "ADD_CANONICAL", before_rate: current?.rate_thb ?? "", after_rate: rate.rate_thb, before_full_rate: current?.full_rate_thb ?? "", after_full_rate: rate.full_rate_thb, references: current ? refCount(current) : 0, differences: differences.join("|") })
   }
   for (const [alias, replacement] of Object.entries(source.legacy_aliases)) {
@@ -135,17 +142,21 @@ async function main() {
   const before = { total: existingRows.length, active: existingRows.filter((row) => row.is_active).length, quoteable: existingRows.filter((row) => row.is_active && row.quote_allowed !== "NO").length }
   if (apply) {
     for (const rate of source.rates) {
-      const payload = canonicalPayload(rate, existingByCode.get(rate.code), approvedBy)
+      if (reconciliation.find((row) => row.code === rate.code)?.action === "KEEP_CANONICAL") continue
+      const aliasCode = Object.entries(source.legacy_aliases).find(([alias, replacement]) => replacement === rate.code && existingByCode.has(alias))?.[0]
+      const payload = canonicalPayload(rate, existingByCode.get(rate.code) ?? (aliasCode ? existingByCode.get(aliasCode) : null), approvedBy)
+      if (!existingByCode.get(rate.code)) payload.id = crypto.randomUUID()
       const { error } = await supabase.from("pricing_master").upsert(payload, { onConflict: "code" })
       if (error) throw new Error(`${rate.code}: ${error.message}`)
     }
-    const aliases = Object.keys(source.legacy_aliases).filter((code) => existingByCode.has(code))
+    const aliases = Object.keys(source.legacy_aliases).filter((code) => existingByCode.get(code)?.is_active)
     if (aliases.length) {
       const { error } = await supabase.from("pricing_master").update({ is_active: false, quote_allowed: "NO", price_status: "LEGACY_ALIAS", source_version: source.source.version, updated_by: approvedBy, approved_by: approvedBy, approved_at: new Date().toISOString(), updated_at: new Date().toISOString() }).in("code", aliases)
       if (error) throw error
     }
     for (const reference of source.reference_only) {
       const existing = existingByCode.get(reference.code)
+      if (existing && !existing.is_active && existing.quote_allowed === "NO") continue
       const payload = { ...canonicalPayload({ ...reference, loa: "48-60 ft", days: 1, notes: "Generic SB4 reference. Resolve W4 or B1 before quotation." }, existing, approvedBy), quote_allowed: "NO", price_status: "REFERENCE_ONLY", is_active: false }
       const { error } = await supabase.from("pricing_master").upsert(payload, { onConflict: "code" })
       if (error) throw error

@@ -60,6 +60,14 @@ test("LOA 60ft remains SB4 pricing class while 61ft is outside configured range"
   assert.match(sixtyOne.mismatchWarning, /maximum 60 ft/i)
 })
 
+test("55ft and 56ft remain inside the SB4 pricing class", () => {
+  for (const loaFt of [55, 56]) {
+    const result = classifySpeedboat({ loaFt, engines: 4 })
+    assert.equal(result.engineGroup, 4)
+    assert.equal(result.outsideConfiguredRange, false)
+  }
+})
+
 // ── Engine count mismatch warning ─────────────────────────────────────────────
 
 test("LOA 32ft + 1 engine → group 2, mismatch warning (LOA wins)", () => {

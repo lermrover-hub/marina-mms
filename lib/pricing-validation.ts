@@ -9,7 +9,7 @@ const effectiveDate = z
   .nullable()
   .optional()
 
-export const PRICING_CALC_TYPES = ["FLAT_QTY", "FLAT_DAYS", "LOA_RATE_QTY", "LOA_RATE_DAYS", "MANUAL"] as const
+export const PRICING_CALC_TYPES = ["FLAT_QTY", "FLAT_DAYS", "LOA_RATE_QTY", "LOA_RATE_DAYS", "MANUAL", "FLAT_RATE", "PER_FOOT", "PER_METRE", "PER_TONNE", "PER_SQUARE_METRE", "PER_HOUR", "PER_DAY", "PER_WEEK", "PER_MONTH", "PER_UNIT", "COST_PLUS", "MANUAL_QUOTE"] as const
 export const PRICING_QUOTE_RULES = ["YES", "NO", "CONTACT", "MANAGER_REVIEW", "MANUAL"] as const
 export const PRICING_STATUSES = ["ACTIVE", "INACTIVE", "CONTACT_ONLY", "PENDING_PAINT_TEAM", "MANUAL_QUOTE"] as const
 

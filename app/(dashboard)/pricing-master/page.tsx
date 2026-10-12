@@ -21,8 +21,15 @@ interface PricingItem {
   revenueGlCode: string | null
   costGlCode: string | null
   pnlCategory: string | null
+  calcType: string
+  serviceGroup: string | null
+  subgroup: string | null
+  providerType: string | null
+  quoteAllowed: string
   priceStatus: string
   sourceVersion: string | null
+  effectiveDate: string | null
+  updatedAt: string
   pilotRateThb: number | null
   pilotNotes: string | null
   effectiveRate: number
@@ -122,6 +129,9 @@ export default function PricingMasterPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch]   = useState("")
   const [category, setCategory] = useState("all")
+  const [serviceGroup, setServiceGroup] = useState("all")
+  const [calcType, setCalcType] = useState("all")
+  const [statusFilter, setStatusFilter] = useState<"active" | "retired" | "all">("active")
   const [pilotFilter, setPilotFilter] = useState<"all" | "set" | "unset">("all")
   const [saving, setSaving]   = useState<string | null>(null) // row id being saved
 
@@ -130,7 +140,7 @@ export default function PricingMasterPage() {
     fetch("/api/pricing-master")
       .then(r => r.json())
       .then(json => {
-        const rows: PricingItem[] = (json.data ?? []).filter((p: PricingItem) => p.isActive)
+        const rows: PricingItem[] = json.data ?? []
         setList(rows)
         setFiltered(rows)
       })
@@ -147,15 +157,27 @@ export default function PricingMasterPage() {
       (p.serviceNameTh ?? "").toLowerCase().includes(search.toLowerCase())
     )
     if (category !== "all") f = f.filter(p => p.category === category)
+    if (serviceGroup !== "all") f = f.filter(p => (p.serviceGroup ?? "Unclassified") === serviceGroup)
+    if (calcType !== "all") f = f.filter(p => p.calcType === calcType)
+    if (statusFilter === "active") f = f.filter(p => p.isActive)
+    if (statusFilter === "retired") f = f.filter(p => !p.isActive)
     if (pilotFilter === "set")   f = f.filter(p => p.pilotRateThb != null)
     if (pilotFilter === "unset") f = f.filter(p => p.pilotRateThb == null)
-    setFiltered(f)
-  }, [search, category, pilotFilter, list])
+    setFiltered([...f].sort((a, b) => (a.serviceGroup ?? "Unclassified").localeCompare(b.serviceGroup ?? "Unclassified") || a.code.localeCompare(b.code)))
+  }, [search, category, serviceGroup, calcType, statusFilter, pilotFilter, list])
 
   const categories = Array.from(new Set(list.map(p => p.category)))
+  const serviceGroups = Array.from(new Set(list.map(p => p.serviceGroup ?? "Unclassified"))).sort()
+  const calcTypes = Array.from(new Set(list.map(p => p.calcType))).sort()
 
   // ── save helper ──────────────────────────────────────────────────────────
   const patchRow = useCallback(async (id: string, patch: Partial<Pick<PricingItem, "pilotRateThb" | "pilotNotes">>) => {
+    const current = list.find((row) => row.id === id)
+    if (Object.prototype.hasOwnProperty.call(patch, "pilotRateThb")) {
+      const before = current?.pilotRateThb == null ? "not set" : `THB ${current.pilotRateThb.toLocaleString()}`
+      const after = patch.pilotRateThb == null ? "not set (use approved current rate)" : `THB ${Number(patch.pilotRateThb).toLocaleString()}`
+      if (!confirm(`Preview pricing change\n\n${current?.code ?? id}\nPilot rate: ${before} → ${after}\n\nSave this approved staging change?`)) return
+    }
     setSaving(id)
     try {
       const res = await fetch(`/api/pricing-master/${id}`, {
@@ -172,45 +194,22 @@ export default function PricingMasterPage() {
     } finally {
       setSaving(null)
     }
-  }, [])
-
-  // ── bulk: apply a temporary pilot reduction to filtered rows ────────────
-  const [bulkPct, setBulkPct] = useState("")
-  const applyBulkDiscount = async () => {
-    const pct = Number(bulkPct)
-    if (isNaN(pct) || pct <= 0 || pct >= 100) { alert("Enter 1–99 %"); return }
-    if (!confirm(`Set pilot rate = standard × ${(100 - pct).toFixed(0)}% for ${filtered.length} visible rows?`)) return
-    for (const row of filtered) {
-      const newRate = Math.round(row.rateThb * (1 - pct / 100))
-      await patchRow(row.id, { pilotRateThb: newRate })
-    }
-    setBulkPct("")
-  }
-
-  // ── clear pilot rates for filtered rows ──────────────────────────────────
-  const clearPilotRates = async () => {
-    const setPilot = filtered.filter(p => p.pilotRateThb != null)
-    if (setPilot.length === 0) { alert("No pilot rates set in current filter"); return }
-    if (!confirm(`Clear pilot rates for ${setPilot.length} rows? They will revert to standard rate.`)) return
-    for (const row of setPilot) {
-      await patchRow(row.id, { pilotRateThb: null, pilotNotes: null })
-    }
-  }
+  }, [list])
 
   // ── export CSV ───────────────────────────────────────────────────────────
   const exportCsv = () => {
     const BOM = "﻿"
-    const headers = ["code","category","serviceNameEn","unit","full_rate_thb","current_rate_thb","default_discount_pct","source_discount_pct","direct_cost_thb","gross_profit_thb","gross_margin_pct","revenue_gl_code","cost_gl_code","pnl_category","price_status","source_version","pilot_rate_thb","pct_of_current","pilot_notes"]
+    const headers = ["code","category","service_group","subgroup","calculation_method","serviceNameEn","unit","full_rate_thb","soft_or_current_rate_thb","effective_rate_thb","default_discount_pct","source_discount_pct","direct_cost_thb","gross_profit_thb","gross_margin_pct","revenue_gl_code","cost_gl_code","pnl_category","quote_allowed","price_status","source_version","effective_date","active","pilot_rate_thb","pct_of_current","pilot_notes"]
     const rows = filtered.map(p => {
       const pct = p.pilotRateThb != null && p.rateThb > 0
         ? Math.round((p.pilotRateThb / p.rateThb) * 100)
         : ""
       return [
-        p.code, p.category,
+        p.code, p.category, p.serviceGroup ?? "", p.subgroup ?? "", p.calcType,
         `"${p.serviceNameEn.replace(/"/g,'""')}"`,
-        p.unit, p.fullRateThb, p.rateThb, p.discountPct, p.sourceDiscountPct,
+        p.unit, p.fullRateThb, p.rateThb, p.effectiveRate, p.discountPct, p.sourceDiscountPct,
         p.directCostThb ?? "", p.grossProfitThb ?? "", p.grossMarginPct ?? "",
-        p.revenueGlCode ?? "", p.costGlCode ?? "", p.pnlCategory ?? "", p.priceStatus, p.sourceVersion ?? "",
+        p.revenueGlCode ?? "", p.costGlCode ?? "", p.pnlCategory ?? "", p.quoteAllowed, p.priceStatus, p.sourceVersion ?? "", p.effectiveDate ?? "", p.isActive,
         p.pilotRateThb ?? "", pct,
         `"${(p.pilotNotes ?? "").replace(/"/g,'""')}"`,
       ].join(",")
@@ -235,9 +234,9 @@ export default function PricingMasterPage() {
       {/* ── Stats bar ──────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          { label: "Total services", value: list.length },
+          { label: "Active services", value: list.filter((row) => row.isActive).length },
           { label: "Pilot rate set", value: setPilotCount, highlight: setPilotCount > 0 },
-          { label: "Using standard rate", value: list.length - setPilotCount },
+          { label: "Retired / reference", value: list.filter((row) => !row.isActive).length },
           { label: "Categories", value: categories.length },
         ].map(s => (
           <div key={s.label} className="rounded-lg border border-[#e5dfd2] bg-white p-3 shadow-sm">
@@ -267,6 +266,15 @@ export default function PricingMasterPage() {
             <option value="all">All Categories</option>
             {categories.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
+          <select value={serviceGroup} onChange={e => setServiceGroup(e.target.value)} className="rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm text-[#1f2933] focus:outline-none">
+            <option value="all">All Service Groups</option>{serviceGroups.map(group => <option key={group} value={group}>{group}</option>)}
+          </select>
+          <select value={calcType} onChange={e => setCalcType(e.target.value)} className="rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm text-[#1f2933] focus:outline-none">
+            <option value="all">All Calculation Methods</option>{calcTypes.map(method => <option key={method} value={method}>{method}</option>)}
+          </select>
+          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as "active" | "retired" | "all")} className="rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm text-[#1f2933] focus:outline-none">
+            <option value="active">Active only</option><option value="retired">Retired / reference</option><option value="all">All statuses</option>
+          </select>
           {/* pilot filter */}
           <select value={pilotFilter} onChange={e => setPilotFilter(e.target.value as "all"|"set"|"unset")}
             className="rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm text-[#1f2933] focus:outline-none">
@@ -276,24 +284,8 @@ export default function PricingMasterPage() {
           </select>
         </div>
 
-        {/* bulk tools */}
+        {/* export only; bulk discount changes are intentionally disabled */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2 py-1">
-            <span className="text-xs text-amber-700 whitespace-nowrap">Pilot reduction %</span>
-            <input
-              type="number" min="1" max="99" placeholder="e.g. 30"
-              value={bulkPct} onChange={e => setBulkPct(e.target.value)}
-              className="w-16 rounded border-0 bg-transparent text-sm text-amber-900 focus:outline-none"
-            />
-            <button onClick={applyBulkDiscount}
-              className="rounded bg-amber-500 px-2 py-0.5 text-xs font-semibold text-white hover:bg-amber-600 transition-colors">
-              Apply to {filtered.length} rows
-            </button>
-          </div>
-          <button onClick={clearPilotRates}
-            className="rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-xs text-[#647076] hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors">
-            Clear pilot rates
-          </button>
           <button onClick={exportCsv}
             className="flex items-center gap-1 rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-xs text-[#647076] hover:bg-[#f9f8f5] transition-colors">
             <Download className="h-3.5 w-3.5" /> Export CSV
@@ -316,6 +308,7 @@ export default function PricingMasterPage() {
                 <th className="px-4 py-3 text-left font-semibold text-[#1f2933]">Code</th>
                 <th className="px-4 py-3 text-left font-semibold text-[#1f2933]">Service</th>
                 <th className="px-4 py-3 text-left font-semibold text-[#1f2933]">Category</th>
+                <th className="px-4 py-3 text-left font-semibold text-[#1f2933]">Group / Method</th>
                 <th className="px-4 py-3 text-left font-semibold text-[#1f2933]">Unit</th>
                 <th className="px-4 py-3 text-right font-semibold text-[#1f2933]">Full Rate</th>
                 <th className="px-4 py-3 text-right font-semibold text-[#1f2933]">Current Rate</th>
@@ -330,8 +323,10 @@ export default function PricingMasterPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#e5dfd2]">
-              {filtered.map(row => (
-                <tr key={row.id}
+              {filtered.map((row, index) => (
+                <React.Fragment key={row.id}>
+                {(index === 0 || filtered[index - 1].serviceGroup !== row.serviceGroup) && <tr className="bg-teal-50"><td colSpan={12} className="px-4 py-2 text-sm font-bold text-teal-900">{row.serviceGroup ?? "Unclassified services"}</td></tr>}
+                <tr
                   className={`transition-colors ${saving === row.id ? "bg-amber-50" : row.pilotRateThb != null ? "bg-amber-50/30 hover:bg-amber-50/60" : "hover:bg-[#f9f8f5]"}`}>
                   <td className="px-4 py-2.5 font-mono text-xs font-semibold text-ocean-turquoise whitespace-nowrap">{row.code}</td>
                   <td className="px-4 py-2.5 text-[#1f2933]">
@@ -346,6 +341,7 @@ export default function PricingMasterPage() {
                   <td className="px-4 py-2.5">
                     <span className="inline-block rounded-full bg-[#e8fbf9] px-2 py-0.5 text-xs font-medium text-[#126c66]">{row.category}</span>
                   </td>
+                  <td className="px-4 py-2.5 text-xs text-[#647076]"><div>{row.subgroup ?? "—"}</div><div className="font-mono">{row.calcType}</div><div>{row.quoteAllowed !== "YES" ? row.quoteAllowed : ""}</div></td>
                   <td className="px-4 py-2.5 text-[#647076] text-xs whitespace-nowrap">{row.unit}</td>
                   <td className="px-4 py-2.5 text-right font-semibold text-[#1f2933] whitespace-nowrap">
                     ฿{row.fullRateThb.toLocaleString()}
@@ -385,7 +381,7 @@ export default function PricingMasterPage() {
                       className="text-xs text-[#647076]"
                     />
                   </td>
-                </tr>
+                </tr></React.Fragment>
               ))}
             </tbody>
           </table>
@@ -399,7 +395,7 @@ export default function PricingMasterPage() {
           <li>Click any cell in the <span className="font-semibold text-amber-700">Pilot Rate</span> column to set an effective rate for trial operations.</li>
           <li>The AI quotation agent will use the pilot rate automatically when set; otherwise it falls back to the standard rate.</li>
           <li>Default customer discount is <span className="font-semibold">0%</span>. Any quotation discount still requires the configured approval flow.</li>
-          <li>Use <span className="font-semibold">Pilot reduction %</span> only for an explicit temporary trial price.</li>
+          <li>Bulk discount editing is disabled. Every pilot-rate change shows an individual before/after preview and requires confirmation.</li>
           <li>Badge colour: <span className="text-green-700 font-semibold">green ≥90%</span> · <span className="text-amber-700 font-semibold">amber 70–89%</span> · <span className="text-red-700 font-semibold">red &lt;70%</span> of standard rate.</li>
           <li>Showing <span className="font-semibold">{filtered.length}</span> of <span className="font-semibold">{list.length}</span> active pricing records.</li>
         </ul>

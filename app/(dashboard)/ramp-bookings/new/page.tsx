@@ -83,7 +83,7 @@ function LiveTidePanel({
     return (
       <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
         <strong>Tide data unavailable:</strong> {error}
-        <p className="text-xs mt-1 text-amber-600">Tide data covers 2026 only. Formula result shown above.</p>
+        <p className="text-xs mt-1 text-amber-600">Reference table covers 2026 only. Use Tide Forecast for future dates; provisional forecasts do not authorize launch.</p>
       </div>
     )
   }
@@ -303,11 +303,14 @@ export default function NewRampBookingPage() {
           { label: "Ramp Bookings", href: "/ramp-bookings" },
           { label: "New Booking" },
         ]}
-        actions={
+        actions={<div className="flex gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/ramp-bookings/tide-forecast">Tide Forecast (2027+)</Link>
+          </Button>
           <Button variant="outline" size="sm" asChild>
             <Link href="/ramp-bookings"><ChevronLeft className="h-4 w-4 mr-1" />Back</Link>
           </Button>
-        }
+        </div>}
       />
 
       <form onSubmit={handleSubmit}>

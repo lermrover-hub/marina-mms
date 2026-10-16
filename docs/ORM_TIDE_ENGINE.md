@@ -42,3 +42,7 @@ API: `GET /api/tide/forecast?date=2027-01-02&days=1&step=10&draft=0.50&uncertain
 Limits: days 1–31; step 10,30,60 minutes; 30-day requests must use 30- or 60-minute steps. UTC returned; UI converts to Asia/Bangkok. Deliberately no background cron yet; forecast is computed on demand, with no yearly PDF upload.
 
 **Deployment status**: A GitHub feature branch is not a running FES2022 service. FES2022 cannot be used until its licensed data, configuration, and verified datum offset have been provided.
+
+## Important database migration gate
+
+The existing live `mms_agent_config` may still override the updated 0.60 m default with **0.70 m**. Tide Agent now fails closed with `stale_tide_agent_config` until the operator updates `trailer_height_m` in Settings. The API and new booking form default to 0.60 m. No production configuration has been changed by this PR.

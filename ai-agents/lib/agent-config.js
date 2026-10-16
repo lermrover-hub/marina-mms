@@ -32,7 +32,7 @@ const DEFAULTS = {
   tide: {
     ramp_offset_m: -1.0,
     safety_clearance_m: 0.10,  // confirmed: Ko Samui 2026 operational spreadsheet
-    trailer_height_m: 0.70,    // confirmed: Ko Samui 2026 operational spreadsheet
+    trailer_height_m: 0.60,    // ORM 2026-10-16: central frame, NOT side bunk height
   },
   marina: {
     contract_expiry_warn_days: 30,

@@ -1,0 +1,23 @@
+name: ORM Tide Forecast CI
+on:
+  pull_request:
+    paths:
+      - 'lib/tide-*.ts'
+      - 'app/api/tide/**'
+      - 'app/(dashboard)/ramp-bookings/**'
+      - 'ai-agents/**'
+      - 'tests/tide-prediction.test.js'
+      - 'services/tide-fes/**'
+      - '.github/workflows/orm-tide-ci.yml'
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npx tsc --noEmit

@@ -14,6 +14,16 @@ import { getAgentConfig } from "../lib/agent-config.js"
 
 export async function run({ boatId, date, tideData, trailerHeight, safetyClearance, rampDepthOffset } = {}) {
   const cfg = await getAgentConfig("tide")
+  // Existing DB may still contain the retired 0.70 m trailer setting.
+  // Fail closed rather than using a height that contradicts ORM's confirmed
+  // 0.60 m central-frame geometry.
+  if (trailerHeight === undefined && Number(cfg.trailer_height_m) !== 0.60) {
+    return {
+      ok: false,
+      reason: "stale_tide_agent_config",
+      warning: "Update the Tide Agent trailer_height_m to 0.60 m in Settings; verify LLW datum and ramp -1.00 m offset before operation."
+    }
+  }
   console.log(`[TideAgent] boat=${boatId ?? "unknown"} date=${date ?? "today"}`)
 
   // Get boat draft
@@ -31,10 +41,12 @@ export async function run({ boatId, date, tideData, trailerHeight, safetyClearan
   let slots = tideData
   if (!slots) {
     try {
-      const targetDate = date ?? new Date().toISOString().split("T")[0]
-      const res = await apiFetch(`/api/db/ramp-bookings/tide?date=${targetDate}`)
-      slots = res?.slots ?? res?.data ?? null
-    } catch { /* tide data not available; use stub */ }
+      const targetDate = date ?? new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 10)
+      const res = await apiFetch(`/api/tide/calculate?date=${targetDate}`)
+      slots = Array.isArray(res?.records)
+        ? res.records.map((r) => ({ hour: Number(r.hour), height: Number(r.tide_m) }))
+        : null
+    } catch { /* No operational tide data — fail closed. */ }
   }
 
   if (!slots || slots.length === 0) {

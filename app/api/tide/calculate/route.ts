@@ -3,6 +3,8 @@ import { createServerClient } from "@/lib/supabase-server"
 
 export const dynamic = "force-dynamic"
 
+// ORM confirmed LLW formula: actual ramp depth = tide table height - 1.00 m.
+// trailerHeight represents the CENTRAL FRAME 0.60 m; side bunks 1.00 m are separate.
 interface TideSlot {
   hour: number
   height: number
@@ -27,8 +29,8 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
 
     const boatDraft: number = Number(body.boatDraft ?? 0)
-    const trailerHeight: number = Number(body.trailerHeight ?? 0)
-    const safetyClearance: number = Number(body.safetyClearance ?? 0)
+    const trailerHeight: number = Number(body.trailerHeight ?? 0.60)
+    const safetyClearance: number = Number(body.safetyClearance ?? 0.10)
     const rampDepthOffset: number = Number(body.rampDepthOffset ?? -1.0)
 
     // If a date is provided, load tide data from DB instead of requiring it in the body

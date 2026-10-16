@@ -37,8 +37,8 @@ const todayISO = new Date().toISOString().slice(0, 10)
 export default function TideCalculatorPage() {
   const [date,            setDate]            = useState(todayISO)
   const [boatDraft,       setBoatDraft]       = useState("0.8")
-  const [trailerHeight,   setTrailerHeight]   = useState("0.3")
-  const [safetyClearance, setSafetyClearance] = useState("0.5")
+  const [trailerHeight,   setTrailerHeight]   = useState("0.60")
+  const [safetyClearance, setSafetyClearance] = useState("0.10")
   const [rampDepthOffset, setRampDepthOffset] = useState("-1.0")
 
   const [tideLoading, setTideLoading] = useState(false)
@@ -109,7 +109,7 @@ export default function TideCalculatorPage() {
     <div className="space-y-6">
       <PageHeader
         title="Tide Safety Calculator"
-        description="Calculate safe launch and retrieval windows from Ko Samui 2026 tide database"
+        description="Frame-clearance advisory against official 2026 hourly data. For future dates use Tide Forecast."
         actions={
           <Button variant="ghost" size="sm" className="gap-2" asChild>
             <Link href="/ramp-bookings">
@@ -149,7 +149,7 @@ export default function TideCalculatorPage() {
                   Tide range: <span className="font-semibold">{tideRange}</span> · {tideData.length} hourly records
                 </p>
               )}
-              <p className="text-xs text-gray-400">Ko Samui tide data loaded from database. 2026 only.</p>
+              <p className="text-xs text-gray-400">2026 reference data only. <Link className="underline text-teal-700" href="/ramp-bookings/tide-forecast">View future tide forecasts →</Link></p>
             </CardContent>
           </Card>
 
@@ -162,7 +162,7 @@ export default function TideCalculatorPage() {
             <CardContent className="space-y-3">
               {[
                 { label: "Boat Draft (m)",             value: boatDraft,       set: setBoatDraft       },
-                { label: "Trailer / Support Ht. (m)",  value: trailerHeight,   set: setTrailerHeight   },
+                { label: "Central Frame Ht. (m)",  value: trailerHeight,   set: setTrailerHeight   },
                 { label: "Safety Clearance (m)",       value: safetyClearance, set: setSafetyClearance },
                 { label: "Ramp Depth Offset (m)",      value: rampDepthOffset, set: setRampDepthOffset, hint: "Default: −1.00 m" },
               ].map(({ label, value, set, hint }) => (
@@ -180,7 +180,7 @@ export default function TideCalculatorPage() {
               <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2">Formula</p>
               <p className="text-xs text-slate-500 font-mono leading-relaxed">Min. Depth = Draft + Trailer + Clearance</p>
               <p className="text-xs text-slate-500 font-mono leading-relaxed">Min. Tide = Min. Depth − Ramp Offset</p>
-              <p className="text-xs text-teal-600 mt-2 font-medium">SAFE when: Tide ≥ Min. Tide Height</p>
+              <p className="text-xs text-teal-600 mt-2 font-medium">FRAME CLEARANCE PASS when Tide ≥ Min. Tide Height</p>
             </CardContent>
           </Card>
 
@@ -203,7 +203,7 @@ export default function TideCalculatorPage() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-semibold text-gray-700">
                   Hourly Tide Heights — {date}
-                  {result && <span className="ml-2 text-xs font-normal text-gray-400">· colour = safe/unsafe for entered parameters</span>}
+                  {result && <span className="ml-2 text-xs font-normal text-gray-400">· colour = frame clearance only (not operational approval)</span>}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -264,7 +264,7 @@ export default function TideCalculatorPage() {
                   <div className="rounded-lg border border-green-300 bg-green-50 px-4 py-3 flex items-center gap-3">
                     <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
                     <div>
-                      <p className="text-xs font-medium text-green-700">Earliest Safe Window</p>
+                      <p className="text-xs font-medium text-green-700">Earliest Frame-clearance Window</p>
                       <p className="text-xl font-bold text-green-800">{String(result.earliestSafeHour).padStart(2,"0")}:00</p>
                     </div>
                   </div>
@@ -272,7 +272,7 @@ export default function TideCalculatorPage() {
                   <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 flex items-center gap-3">
                     <XCircle className="h-5 w-5 text-red-600 shrink-0" />
                     <div>
-                      <p className="text-xs font-medium text-red-700">No Safe Window Today</p>
+                      <p className="text-xs font-medium text-red-700">No Frame-clearance Window Today</p>
                       <p className="text-xs text-red-600">Tide too low for this draft</p>
                     </div>
                   </div>

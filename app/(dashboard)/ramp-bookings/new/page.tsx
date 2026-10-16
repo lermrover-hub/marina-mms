@@ -177,8 +177,8 @@ export default function NewRampBookingPage() {
   const [selectedBoat,   setSelectedBoat]   = useState<Boat | null>(null)
   const [customerName,   setCustomerName]   = useState("")
   const [draftM,         setDraftM]         = useState<string>("")
-  const [trailerM,       setTrailerM]       = useState<string>("")
-  const [safetyM,        setSafetyM]        = useState<string>("0.3")
+  const [trailerM,       setTrailerM]       = useState<string>("0.60")
+  const [safetyM,        setSafetyM]        = useState<string>("0.10")
   const [assignedStaff,  setAssignedStaff]  = useState("")
   const [notes,          setNotes]          = useState("")
 
@@ -243,7 +243,7 @@ export default function NewRampBookingPage() {
     try {
       const draft   = parseFloat(draftM)   || 0
       const trailer = parseFloat(trailerM) || 0
-      const safety  = parseFloat(safetyM)  || 0.3
+      const safety  = safetyM === '' ? 0.10 : parseFloat(safetyM)
       if ((opType === "LAUNCH" || opType === "RETRIEVAL") && (draft <= 0 || trailer <= 0)) {
         setFormError("Boat draft and trailer height are required for launch or retrieval")
         setSubmitting(false)
@@ -285,7 +285,7 @@ export default function NewRampBookingPage() {
 
   const draft   = parseFloat(draftM)   || 0
   const trailer = parseFloat(trailerM) || 0
-  const safety  = parseFloat(safetyM)  || 0.3
+  const safety  = safetyM === '' ? 0.10 : parseFloat(safetyM)
   const isTideOp = opType === "LAUNCH" || opType === "RETRIEVAL"
   const showDims = isTideOp
   const hasTideDimensions = draft > 0 && trailer > 0
@@ -298,7 +298,7 @@ export default function NewRampBookingPage() {
     <div className="space-y-6">
       <PageHeader
         title="New Ramp Booking"
-        description="Create a launch, retrieval, or ramp operation booking"
+        description="Create a launch, retrieval, or ramp operation booking — future predictions remain advisory"
         breadcrumb={[
           { label: "Ramp Bookings", href: "/ramp-bookings" },
           { label: "New Booking" },
@@ -449,7 +449,7 @@ export default function NewRampBookingPage() {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-gray-700 uppercase tracking-wide">Trailer Ht. (m)</label>
+                      <label className="text-xs font-medium text-gray-700 uppercase tracking-wide">Frame Ht. (m)</label>
                       <Input
                         type="number"
                         step="0.1"
@@ -465,7 +465,7 @@ export default function NewRampBookingPage() {
                         type="number"
                         step="0.1"
                         min="0"
-                        placeholder="default 0.3"
+                        placeholder="default 0.10"
                         value={safetyM}
                         onChange={e => setSafetyM(e.target.value)}
                       />

@@ -25,6 +25,14 @@ export const isAgentWritesEnabled = (): boolean =>
 export const isRealCustomerMessagesEnabled = (): boolean =>
   process.env.ENABLE_REAL_CUSTOMER_MESSAGES === "true"
 
+/**
+ * Staging-only workflow aid: records that a quotation was delivered without
+ * sending email, LINE, or WhatsApp. Production is always excluded.
+ */
+export const isStagingManualDeliveryEnabled = (): boolean =>
+  process.env.VERCEL_ENV === "preview" ||
+  (process.env.VERCEL_ENV !== "production" && process.env.NODE_ENV !== "production")
+
 /** Allow creation, update, confirmation, and movement of production bookings. */
 export const isProductionBookingsEnabled = (): boolean =>
   process.env.ENABLE_PRODUCTION_BOOKINGS === "true"

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { isRealCustomerMessagesEnabled } from "@/lib/safe-mode"
+import { isRealCustomerMessagesEnabled, isStagingManualDeliveryEnabled } from "@/lib/safe-mode"
 import { createServerClient } from "@/lib/supabase-server"
 import { isEmailConfigured, sendEmail } from "@/lib/email"
 import { quotationSent } from "@/lib/email-templates"
@@ -305,6 +305,33 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       }, { status: "APPROVED", updated_at: approvedAt })
       if (error) throw error
       return NextResponse.json(data)
+    }
+
+    if (body.action === "mark_staging_delivered") {
+      if (!QUOTATION_WRITE_ROLES.includes(access.actor.role as (typeof QUOTATION_WRITE_ROLES)[number])) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+      }
+      if (!isStagingManualDeliveryEnabled()) {
+        return NextResponse.json({ error: "Staging-only manual delivery is disabled outside Preview." }, { status: 403 })
+      }
+      if (ownedQuotation.status !== "APPROVED" || ownedQuotation.internal_approval_status !== "APPROVED") {
+        return NextResponse.json({ error: "Only an internally approved quotation can be marked delivered in staging." }, { status: 409 })
+      }
+      const sentAt = new Date().toISOString()
+      const { data, error } = await updateQuotationWorkflow(id, ownedQuotation.status, {
+        status: "SENT",
+        internal_approval_status: "APPROVED",
+        internal_approved_by: ownedQuotation.internal_approved_by ?? access.actor.userId,
+        internal_approval_role: ownedQuotation.internal_approval_role ?? access.actor.role,
+        internal_approved_at: ownedQuotation.internal_approved_at,
+        customer_sent_at: sentAt,
+        updated_at: sentAt,
+      }, { status: "SENT", updated_at: sentAt })
+      if (error) throw error
+      return NextResponse.json({
+        ...data,
+        delivery: { safe_mode: true, sent: false, manual: true, reason: "Staging-only manual delivery; no customer message sent" },
+      })
     }
 
     if (body.action === "send_to_customer" || body.action === "approve_and_send") {

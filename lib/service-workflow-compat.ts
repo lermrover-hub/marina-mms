@@ -41,6 +41,24 @@ export function writeLegacyWorkflowMetadata(notes: unknown, metadata: LegacyWork
   return [visible || null, `${MARKER}${JSON.stringify(metadata)}`].filter(Boolean).join("\n")
 }
 
+/**
+ * Merge workflow values from the legacy notes marker only when the canonical
+ * database column is null/undefined.  The database columns are authoritative;
+ * the marker remains a compatibility fallback for older staging rows.
+ */
+export function mergeWorkflowMetadata<T extends Record<string, unknown>>(
+  row: T,
+  legacy: LegacyWorkflowMetadata,
+): T & LegacyWorkflowMetadata {
+  const merged = { ...row } as T & LegacyWorkflowMetadata
+  for (const key of Object.keys(legacy) as (keyof LegacyWorkflowMetadata)[]) {
+    if (merged[key] == null && legacy[key] != null) {
+      merged[key] = legacy[key] as never
+    }
+  }
+  return merged
+}
+
 export function isMissingWorkflowSchema(error: { code?: string; message?: string } | null | undefined) {
   if (!error) return false
   return ["PGRST204", "PGRST205", "42703", "42P01"].includes(String(error.code ?? "")) ||

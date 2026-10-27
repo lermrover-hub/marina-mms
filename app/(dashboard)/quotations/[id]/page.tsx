@@ -56,7 +56,7 @@ export default function QuotationDetailPage() {
   const [lineItems,  setLineItems]  = useState<QuotationItem[]>([])
   const [loading,    setLoading]    = useState(true)
   const [error,      setError]      = useState<string | null>(null)
-  const [dialog,     setDialog]     = useState<"submit" | "approve" | "send" | "return-draft" | "accept" | "reject" | "convert" | "convert-wo" | null>(null)
+  const [dialog,     setDialog]     = useState<"submit" | "approve" | "send" | "staging-delivery" | "return-draft" | "accept" | "reject" | "convert" | "convert-wo" | null>(null)
   const [saving,     setSaving]     = useState(false)
   const [showSigModal, setShowSigModal] = useState(false)
   const router = useRouter()
@@ -98,7 +98,7 @@ export default function QuotationDetailPage() {
     }
   }
 
-  async function handleWorkflow(action: "submit_for_approval" | "approve_internal" | "send_to_customer" | "return_to_draft") {
+  async function handleWorkflow(action: "submit_for_approval" | "approve_internal" | "send_to_customer" | "mark_staging_delivered" | "return_to_draft") {
     if (!quotation) return
     setSaving(true)
     try {
@@ -110,7 +110,9 @@ export default function QuotationDetailPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error ?? "Update failed")
       setQuotation(data)
-      if (data?.delivery?.safe_mode) {
+      if (data?.delivery?.manual) {
+        alert("Preview safe mode: staging delivery was recorded. No real customer message was sent.")
+      } else if (data?.delivery?.safe_mode) {
         alert("Preview safe mode is active. The quotation remains approved and no real customer message was sent.")
       }
     } catch (e) {
@@ -232,6 +234,7 @@ export default function QuotationDetailPage() {
   const approvalLevel = quotation.required_approver_role ?? "MANAGER"
   const canApprove = quotation.status === "PENDING_APPROVAL" && (approvalLevel === "GENERAL_MANAGER" ? isGeneralApprover : isManagerApprover)
   const canSendApproved = quotation.status === "APPROVED" && ["SUPER_ADMIN", "MANAGING_DIRECTOR", "MARINA_MANAGER", "FINANCE"].includes(actorRole)
+  const canMarkStagingDelivered = canSendApproved
   const canReturnToDraft = quotation.status === "PENDING_APPROVAL" && isGeneralApprover
   const canSignApprove = quotation.status === "SENT"
   const hasSignature  = !!(quotation.signature_data)
@@ -291,6 +294,17 @@ export default function QuotationDetailPage() {
           confirmVariant="teal"
           saving={saving}
           onConfirm={() => handleWorkflow("send_to_customer")}
+          onCancel={() => setDialog(null)}
+        />
+      )}
+      {dialog === "staging-delivery" && (
+        <ConfirmDialog
+          title="Mark Delivered (Staging Only)"
+          message={`Record ${quotation.quote_number} as delivered for the Preview workflow only. No email, LINE, or WhatsApp message will be sent, and this action is blocked on Production.`}
+          confirmLabel="Mark Delivered (Staging)"
+          confirmVariant="teal"
+          saving={saving}
+          onConfirm={() => handleWorkflow("mark_staging_delivered")}
           onCancel={() => setDialog(null)}
         />
       )}
@@ -383,6 +397,11 @@ export default function QuotationDetailPage() {
               {canSendApproved && (
                 <Button size="sm" variant="teal" className="gap-2" onClick={() => setDialog("send")}>
                   <Send className="h-4 w-4" /> Send Approved Quotation
+                </Button>
+              )}
+              {canMarkStagingDelivered && (
+                <Button size="sm" variant="outline" className="gap-2 border-amber-300 text-amber-800 hover:bg-amber-50" onClick={() => setDialog("staging-delivery")}>
+                  <CheckCircle className="h-4 w-4" /> Mark Delivered (Staging)
                 </Button>
               )}
               {canReturnToDraft && (

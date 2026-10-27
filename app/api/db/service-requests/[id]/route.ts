@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase-server"
 import { concealOtherCustomer, FINANCE_WRITE_ROLES, PORTAL_READ_ROLES, requireApiActor, SERVICE_REQUEST_WRITE_ROLES } from "@/lib/api-auth"
 import { canConfirmServiceOrder } from "@/lib/service-workflow"
-import { isMissingWorkflowSchema, readLegacyWorkflowMetadata, writeLegacyWorkflowMetadata } from "@/lib/service-workflow-compat"
+import { isMissingWorkflowSchema, mergeWorkflowMetadata, readLegacyWorkflowMetadata, writeLegacyWorkflowMetadata } from "@/lib/service-workflow-compat"
 import { INSURANCE_VERIFY_ROLES, SERVICE_ORDER_CONFIRM_ROLES, roleAllowed } from "@/lib/workflow-access"
 
 export const dynamic = "force-dynamic"
@@ -23,12 +23,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     const itemResult = await supabase.from("mms_service_request_items").select("*").eq("service_request_id", id).order("sort_order")
     if (itemResult.error && !isMissingWorkflowSchema(itemResult.error)) throw itemResult.error
     if (!itemResult.error) items = itemResult.data ?? []
-    const quotationId = data.quotation_id ?? legacy.quotation_id ?? null
+    const effective = mergeWorkflowMetadata(data, legacy)
+    const quotationId = effective.quotation_id ?? null
     let quotation: Record<string, unknown> | null = null
     if (!items.length && quotationId) {
       const quoteItems = await supabase.from("mms_quotation_items").select("*").eq("quotation_id", quotationId).order("sort_order")
       if (quoteItems.error) throw quoteItems.error
-      items = (quoteItems.data ?? []).map((item) => ({ ...item, operator_type: legacy.operator_type ?? data.execution_type, direct_cost: item.direct_cost_snapshot_thb ?? 0 }))
+      items = (quoteItems.data ?? []).map((item) => ({ ...item, operator_type: effective.operator_type ?? data.execution_type, direct_cost: item.direct_cost_snapshot_thb ?? 0 }))
     }
     if (quotationId) {
       const quotationResult = await supabase.from("mms_quotations").select("id,status,internal_approval_status,quote_number").eq("id", quotationId).single()
@@ -40,10 +41,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     const planResult = await supabase.from("mms_service_payment_plans").select("*").eq("service_request_id", id).maybeSingle()
     if (planResult.error && !isMissingWorkflowSchema(planResult.error)) throw planResult.error
     if (!planResult.error) paymentPlan = planResult.data
-    if (!paymentPlan && legacy.payment_plan) paymentPlan = legacy.payment_plan
+    if (!paymentPlan && effective.payment_plan) paymentPlan = effective.payment_plan
     const serviceGroups = [...new Set(items.map((item) => String(item.service_group ?? "")).filter(Boolean))]
     const serviceTypes = [serviceGroups.includes("STORAGE") ? "STORAGE" : null, serviceGroups.includes("YARD") ? "YARD_SERVICE" : null].filter(Boolean)
-    return NextResponse.json({ ...data, ...legacy, service_types: serviceTypes, quotation_id: quotationId, quotation, items, payment_plan: paymentPlan })
+    return NextResponse.json({ ...effective, service_types: serviceTypes, quotation_id: quotationId, quotation, items, payment_plan: paymentPlan })
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 })
   }
@@ -59,14 +60,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const { data: current, error: currentError } = await supabase.from("mms_service_requests").select("*").eq("id", id).single()
     if (currentError) throw currentError
     const legacy = readLegacyWorkflowMetadata(current.notes)
-    const effective = { ...current, ...legacy }
+    const effective = mergeWorkflowMetadata(current, legacy)
     const now = new Date().toISOString()
 
     async function updateWorkflow(columns: Record<string, unknown>, metadata: Record<string, unknown>) {
-      const result = await supabase.from("mms_service_requests").update({ ...columns, updated_at: now }).eq("id", id).select().single()
-      if (!result.error) return result.data
-      if (!isMissingWorkflowSchema(result.error)) throw result.error
       const nextMetadata = { ...legacy, ...metadata }
+      const result = await supabase.from("mms_service_requests").update({
+        ...columns,
+        notes: writeLegacyWorkflowMetadata(current.notes, nextMetadata),
+        updated_at: now,
+      }).eq("id", id).select().single()
+      if (!result.error) return { ...result.data, ...nextMetadata }
+      if (!isMissingWorkflowSchema(result.error)) throw result.error
       const fallback = await supabase.from("mms_service_requests").update({ notes: writeLegacyWorkflowMetadata(current.notes, nextMetadata), ...(columns.status ? { status: columns.status } : {}), updated_at: now }).eq("id", id).select().single()
       if (fallback.error) throw fallback.error
       return { ...fallback.data, ...nextMetadata }
@@ -94,7 +99,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       }
       const planResult = await supabase.from("mms_service_payment_plans").update(planUpdate).eq("service_request_id", id)
       if (planResult.error && !isMissingWorkflowSchema(planResult.error)) throw planResult.error
-      const legacyPlan = legacy.payment_plan ? { ...legacy.payment_plan, ...planUpdate } : null
+      const legacyPlan = effective.payment_plan ? { ...effective.payment_plan, ...planUpdate } : null
       const data = await updateWorkflow({ payment_gate_status: next }, { payment_gate_status: next, payment_plan: legacyPlan })
       return NextResponse.json(data)
     }

@@ -41,6 +41,9 @@ export default function ServiceRequestDetailPage() {
     const data = await response.json()
     if (!response.ok) throw new Error(data?.error ?? "Service request not found")
     setRequest(data)
+    // Keep the Finance control aligned with the canonical payment mode/status
+    // returned by the API; do not default a credit workflow to "Paid".
+    setPaymentStatus(data?.payment_mode === "CREDIT" ? "CREDIT_APPROVED" : (data?.payment_gate_status ?? "PAID"))
   }, [id])
 
   useEffect(() => {

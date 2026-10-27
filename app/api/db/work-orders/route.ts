@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { getWorkOrders } from "@/lib/db"
 import { createServerClient } from "@/lib/supabase-server"
 import { PORTAL_READ_ROLES, requireApiActor } from "@/lib/api-auth"
-import { readLegacyWorkflowMetadata } from "@/lib/service-workflow-compat"
+import { mergeWorkflowMetadata, readLegacyWorkflowMetadata } from "@/lib/service-workflow-compat"
 import { WORK_ORDER_CREATE_ROLES } from "@/lib/workflow-access"
 
 export const dynamic = "force-dynamic"
@@ -46,9 +46,10 @@ export async function POST(req: Request) {
         .single()
       if (requestError) return NextResponse.json({ error: requestError.message }, { status: 404 })
       const legacy = readLegacyWorkflowMetadata(serviceRequest.notes)
-      const paymentMode = serviceRequest.payment_mode ?? legacy.payment_mode
-      const paymentGateStatus = serviceRequest.payment_gate_status ?? legacy.payment_gate_status
-      const serviceOrderConfirmedAt = serviceRequest.service_order_confirmed_at ?? legacy.service_order_confirmed_at
+      const effective = mergeWorkflowMetadata(serviceRequest, legacy)
+      const paymentMode = effective.payment_mode
+      const paymentGateStatus = effective.payment_gate_status
+      const serviceOrderConfirmedAt = effective.service_order_confirmed_at
       if (serviceRequest.status !== "SERVICE_ORDER_CONFIRMED" || !serviceOrderConfirmedAt) {
         return NextResponse.json({
           error: `Confirm the Service Order after payment clearance before creating a Work Order (${paymentMode}: ${paymentGateStatus}).`,
@@ -56,7 +57,7 @@ export async function POST(req: Request) {
       }
       body.service_request_id = serviceRequestId
       body.sr_id = serviceRequestId
-      const quotationId = serviceRequest.quotation_id ?? legacy.quotation_id ?? null
+      const quotationId = effective.quotation_id ?? null
       if (!quotationId) {
         return NextResponse.json({ error: "The confirmed Service Order has no linked quotation." }, { status: 409 })
       }

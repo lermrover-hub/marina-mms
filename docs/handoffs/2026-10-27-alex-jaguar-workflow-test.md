@@ -1,7 +1,7 @@
 # Marina MMS — Alex / Jaguar Workflow Test Handoff
 
-Date: 2026-10-27  
-Environment: Vercel Preview + staging Supabase only  
+Date: 2026-10-27
+Environment: Vercel Preview + staging Supabase only
 Production: not touched
 
 ## Saved goal

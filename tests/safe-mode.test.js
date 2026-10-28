@@ -31,6 +31,24 @@ test("blocks: 'true ' (trailing space)", () => assert.equal(flag("true "), false
 
 test("enables: exact string 'true'", () => assert.equal(flag("true"), true))
 
+// Preview-only quotation test recipient must fail closed outside the explicit
+// flag and must never be available in production.
+function stagingQuotationTestRecipient(env) {
+  if (env.VERCEL_ENV === "production" || env.NODE_ENV === "production") return null
+  if (env.ENABLE_TEST_QUOTATION_EMAILS !== "true") return null
+  const recipient = String(env.MMS_TEST_QUOTATION_RECIPIENT ?? "").trim().toLowerCase()
+  return recipient || null
+}
+
+test("staging quotation test recipient is opt-in", () => {
+  assert.equal(stagingQuotationTestRecipient({ VERCEL_ENV: "preview", MMS_TEST_QUOTATION_RECIPIENT: "lermrover@gmail.com" }), null)
+  assert.equal(stagingQuotationTestRecipient({ VERCEL_ENV: "preview", ENABLE_TEST_QUOTATION_EMAILS: "true", MMS_TEST_QUOTATION_RECIPIENT: " LERMROVER@GMAIL.COM " }), "lermrover@gmail.com")
+})
+
+test("staging quotation test recipient is unavailable in production", () => {
+  assert.equal(stagingQuotationTestRecipient({ VERCEL_ENV: "production", ENABLE_TEST_QUOTATION_EMAILS: "true", MMS_TEST_QUOTATION_RECIPIENT: "lermrover@gmail.com" }), null)
+})
+
 // ── All 5 safety flags share the same pattern ─────────────────────────────────
 
 const FLAGS = [

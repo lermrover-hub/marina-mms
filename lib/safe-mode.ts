@@ -33,6 +33,20 @@ export const isStagingManualDeliveryEnabled = (): boolean =>
   process.env.VERCEL_ENV === "preview" ||
   (process.env.VERCEL_ENV !== "production" && process.env.NODE_ENV !== "production")
 
+/**
+ * Return the explicitly configured staging-only quotation test recipient.
+ *
+ * This is deliberately opt-in and fail-closed. It lets the team exercise the
+ * customer-delivery gate with a controlled mailbox without sending a message
+ * to the customer's real contact channels. Production can never use it.
+ */
+export const getStagingQuotationTestRecipient = (): string | null => {
+  if (process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production") return null
+  if (process.env.ENABLE_TEST_QUOTATION_EMAILS !== "true") return null
+  const recipient = process.env.MMS_TEST_QUOTATION_RECIPIENT?.trim().toLowerCase()
+  return recipient || null
+}
+
 /** Allow creation, update, confirmation, and movement of production bookings. */
 export const isProductionBookingsEnabled = (): boolean =>
   process.env.ENABLE_PRODUCTION_BOOKINGS === "true"

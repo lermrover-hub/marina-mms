@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { isRealCustomerMessagesEnabled, isStagingManualDeliveryEnabled } from "@/lib/safe-mode"
+import { getStagingQuotationTestRecipient, isRealCustomerMessagesEnabled, isStagingManualDeliveryEnabled } from "@/lib/safe-mode"
 import { createServerClient } from "@/lib/supabase-server"
 import { isEmailConfigured, sendEmail } from "@/lib/email"
 import { quotationSent } from "@/lib/email-templates"
@@ -345,11 +345,62 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         .select("first_name,last_name,company_name,email,line_user_id,whatsapp_number")
         .eq("id", ownedQuotation.customer_id).single()
       if (customerError) throw customerError
-      const channels = [customer.email, customer.line_user_id, customer.whatsapp_number].filter(Boolean)
+      const stagingTestRecipient = getStagingQuotationTestRecipient()
+      const channels = [stagingTestRecipient ?? customer.email, customer.line_user_id, customer.whatsapp_number].filter(Boolean)
       if (!channels.length) {
         return NextResponse.json({
           error: "Customer has no email, LINE user ID, or WhatsApp number. Print the quotation for physical signature or add a contact channel before approval.",
         }, { status: 409 })
+      }
+
+      if (stagingTestRecipient) {
+        if (!isEmailConfigured()) {
+          return NextResponse.json({ error: "Quotation test email is enabled but the email provider is not configured." }, { status: 503 })
+        }
+        const customerName = customer.company_name ??
+          ([customer.first_name, customer.last_name].filter(Boolean).join(" ") || "Valued Customer")
+        const siteUrl = process.env.NEXTAUTH_URL ?? "https://marina-mms.vercel.app"
+        const quotationNumber = ownedQuotation.quote_number ?? id
+        const validUntil = ownedQuotation.valid_until
+          ? new Date(ownedQuotation.valid_until).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+          : "—"
+        const result = await sendEmail({
+          to: stagingTestRecipient,
+          subject: `[STAGING TEST] Quotation ${quotationNumber} — Ocean Rover Marina`,
+          html: quotationSent({
+            customerName,
+            quotationNumber,
+            serviceDescription: ownedQuotation.title ?? "Marine services",
+            totalAmount: Number(ownedQuotation.total_amount ?? 0),
+            validUntil,
+            quotationUrl: `${siteUrl}/portal/quotations`,
+          }),
+        })
+        if (!result.success) {
+          return NextResponse.json({ error: "Staging quotation test email failed; quotation remains Pending Approval." }, { status: 502 })
+        }
+        const sentAt = new Date().toISOString()
+        const { data, error } = await updateQuotationWorkflow(id, ownedQuotation.status, {
+          status: "SENT",
+          internal_approval_status: "APPROVED",
+          internal_approved_by: ownedQuotation.internal_approved_by ?? access.actor.userId,
+          internal_approval_role: ownedQuotation.internal_approval_role ?? access.actor.role,
+          internal_approved_at: ownedQuotation.internal_approved_at,
+          customer_sent_at: sentAt,
+          updated_at: sentAt,
+        }, { status: "SENT", updated_at: sentAt })
+        if (error) throw error
+        return NextResponse.json({
+          ...data,
+          delivery: {
+            safe_mode: true,
+            sent: true,
+            test_recipient: true,
+            recipient: stagingTestRecipient,
+            channels: ["email"],
+            reason: "Preview staging test recipient; no customer channel used",
+          },
+        })
       }
 
       if (!isRealCustomerMessagesEnabled()) {

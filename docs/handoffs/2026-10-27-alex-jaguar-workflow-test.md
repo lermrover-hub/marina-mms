@@ -144,3 +144,19 @@ Vercel Preview deployment `https://marina-c87zyfmu1-lermrover-hubs-projects.verc
 ### Current staging evidence
 
 The synthetic Alex/Jaguar Service Request currently has canonical DB state `QUOTATION_DRAFT`, `insurance_status=VERIFIED`, `payment_mode=FULL_PREPAYMENT`, `payment_gate_status=AWAITING_PAYMENT`, and `quotation_id=NULL`; the legacy marker still contains the prior `CREDIT` and quotation ID values. This is the exact dual-source mismatch the code fix prevents from being silently presented as current state. The linked synthetic quotation remains internally `APPROVED` with no customer delivery timestamp. No real payment or customer message was recorded.
+
+## Controlled quotation test delivery (2026-10-29)
+
+During Preview testing, quotations may be sent by email to the controlled test
+recipient `lermrover@gmail.com`. They must not be sent to the customer's real
+email, LINE, or WhatsApp channels. Production must never use this override.
+
+The implementation is opt-in and fail-closed through these Preview-only
+environment variables:
+
+- `ENABLE_TEST_QUOTATION_EMAILS=true`
+- `MMS_TEST_QUOTATION_RECIPIENT=lermrover@gmail.com`
+
+When enabled, the response records that the email was sent to the test
+recipient and keeps the real customer messaging flag separate. Finance,
+payment confirmation, and Work Order gates remain unchanged.

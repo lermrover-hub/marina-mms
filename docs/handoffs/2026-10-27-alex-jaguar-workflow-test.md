@@ -160,3 +160,8 @@ environment variables:
 When enabled, the response records that the email was sent to the test
 recipient and keeps the real customer messaging flag separate. Finance,
 payment confirmation, and Work Order gates remain unchanged.
+
+The Preview branch now has the two test-recipient flags plus the Staging
+Supabase service-role and Auth secrets configured. A fresh deployment is
+required after this environment update; the earlier deployment was built
+before the secrets were attached and is not valid evidence.

@@ -39,7 +39,8 @@ Before the write, `public.pricing_master_backup_v37_20261102` was created with 1
 - `npx tsc --noEmit`: passed.
 - `npm run build`: local collection reaches compilation/type checking, then fails because local shell variables do not contain Supabase URL. Vercel Preview is configured with Preview Supabase variables and is the deployment validation target.
 - Supabase staging: backup, v3.7 sync and verification completed; no production rows changed.
+- Vercel Preview: `https://marina-f61m23i6t-lermrover-hubs-projects.vercel.app` reached `READY`; `/login` returned the deployed Marina MMS login page.
 
 ## Remaining approval
 
-No production release is implied. Vercel Preview must be redeployed from the tested branch before staff use; the staged database changes are reversible from the backup table if a later approved rollback is required.
+No production release is implied. The staged database changes are reversible from `public.pricing_master_backup_v37_20261102` if a later approved rollback is required. Production promotion remains a separate approval gate.

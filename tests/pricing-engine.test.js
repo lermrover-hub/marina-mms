@@ -1,6 +1,6 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import { assertNoDuplicateChargeCodes, calculatePrice, evaluateStandardRampHaulOut, isPerFootRate, storageDurationMultiplier } from "../lib/pricing-engine.ts"
+import { assertNoDuplicateChargeCodes, calculatePrice, evaluateStandardRampHaulOut, isPerFootRate, storageDurationMultiplier, tier4StorageRate } from "../lib/pricing-engine.ts"
 
 test("per-foot storage includes duration without inventing partial monthly rates", () => {
   assert.equal(40 * 30 * storageDurationMultiplier("ft/day", 10), 12000)
@@ -14,7 +14,13 @@ test("per-foot safeguards cover weekly yacht rates and stale calc types", () => 
   assert.equal(isPerFootRate("FLAT_QTY", "ft/week"), true)
   assert.equal(isPerFootRate("FLAT_QTY", "stand/wk"), false)
   assert.equal(storageDurationMultiplier("ft/week", 21), 3)
+  assert.equal(storageDurationMultiplier("THB/ft/7 days", 14), 2)
+  assert.equal(storageDurationMultiplier("THB/ft/30 days", 60), 2)
   assert.throws(() => storageDurationMultiplier("ft/week", 10), /7-day/)
+  assert.equal(tier4StorageRate("THB/day", 55), 1750)
+  assert.equal(tier4StorageRate("THB/7 days", 55), 11030)
+  assert.equal(tier4StorageRate("THB/30 days", 60), 51000)
+  assert.throws(() => tier4StorageRate("THB/day", 61), /51 to 60/)
 })
 
 test("calculation methods cover flat, dimensions, time, unit and cost-plus", () => {

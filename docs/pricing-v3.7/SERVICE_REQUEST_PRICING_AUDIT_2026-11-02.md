@@ -6,9 +6,9 @@ This audit verifies the reported v3.7/Service Request issues against the current
 
 ## Findings
 
-### Claude Code finding: v3.7 is not the active quotation source
+### Claude Code finding: v3.7 was not the active quotation source
 
-Confirmed. The existing comparison report records that the staging Pricing Master has no exact-code matches for the approved v3.7 workbook rows and still contains mixed v3.5/v3.6 source versions. The current staging rows used by Service Request include `REPAIR_MONO_W`/`REPAIR_MONO_M` from v3.5 and `YACHT_STORAGE_D`/`YACHT_STORAGE_M` from v3.6. This remains a management decision for a future approved rate import, not an automatic import.
+Confirmed before the sync. Staging had 156 mixed v3.5/v3.6 rows and no exact-code matches for the canonical v3.7 rows. The approved v3.7 workbook is now imported into staging only: 126 unique canonical codes are present with `source_version = ORM-PRICE-2026-v3.7`; 39 confirmed legacy aliases are retired with `is_active = false` and historical records are preserved.
 
 ### Yacht monohull weekly LOA multiplication
 
@@ -29,13 +29,17 @@ Fixed in Service Request. `stand/wk` remains a flat stand-week charge, but the U
 | `YACHT_STORAGE_D` | `ft/day` | `PER_FOOT` | 30 | `ORM Pricing Structure v3.6 FINAL_MERGED` |
 | `YACHT_STORAGE_M` | `ft/month` | `PER_FOOT` | 525 | `ORM Pricing Structure v3.6 FINAL_MERGED` |
 
+## v3.7 staging sync (2026-11-02)
+
+Before the write, `public.pricing_master_backup_v37_20261102` was created with 156 rows. The approved workbook `ORM_Quote_Tidal_v3_7_Tier3_41_50_Tier4_51_60_APPROVED.xlsx` contains 126 unique canonical codes; those rows are now upserted in staging. Confirmed `LEGACY_RATES` aliases are retired without deletion, and pre-existing `PENDING_*` rows are inactive so they cannot be selected automatically. Tier 4 rates retain the manager/capacity gate and are calculated from actual 51–60 ft LOA rather than treating the 51 ft display value as a fixed price.
+
 ## Validation
 
 - `npm test`: 140 passed, 0 failed.
 - `npx tsc --noEmit`: passed.
 - `npm run build`: local collection reaches compilation/type checking, then fails because local shell variables do not contain Supabase URL. Vercel Preview is configured with Preview Supabase variables and is the deployment validation target.
-- Supabase staging: read-only verification completed; no pricing rows changed.
+- Supabase staging: backup, v3.7 sync and verification completed; no production rows changed.
 
 ## Remaining approval
 
-The approved v3.7 workbook must be present and explicitly approved before importing/replacing v3.7 rates. No new prices or discounts are inferred from screenshots or legacy rows.
+No production release is implied. Vercel Preview must be redeployed from the tested branch before staff use; the staged database changes are reversible from the backup table if a later approved rollback is required.

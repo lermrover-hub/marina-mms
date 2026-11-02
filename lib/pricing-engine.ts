@@ -44,6 +44,19 @@ export function isPerFootRate(method: string | null | undefined, unit: string | 
     || normalizedUnit === "ft"
 }
 
+/** v3.7 Tier 4 (51–60 ft) is a dynamic LOA-based rate, not a fixed 51 ft price. */
+export function tier4StorageRate(unit: string, loaFt: number): number {
+  if (!Number.isFinite(loaFt) || loaFt < 51 || loaFt > 60) {
+    throw new Error("Tier 4 storage requires a verified LOA from 51 to 60 ft.")
+  }
+  const daily = 1500 + 50 * (loaFt - 50)
+  const normalizedUnit = String(unit ?? "").toLowerCase().replace(/\s+/g, "")
+  if (/month|30days|\/mo\b/.test(normalizedUnit)) return roundToTen(daily * 30 * 0.85)
+  if (/week|7days|\/wk\b/.test(normalizedUnit)) return roundToTen(daily * 7 * 0.9)
+  if (/day/.test(normalizedUnit)) return roundToTen(daily)
+  throw new Error("Tier 4 storage requires a daily, weekly, or monthly billing unit.")
+}
+
 const requiredPositive = (value: number | null | undefined, label: string) => {
   if (value == null || !Number.isFinite(value) || value <= 0) throw new Error(`${label} is required for this calculation method.`)
   return value
@@ -134,11 +147,11 @@ export function assertNoDuplicateChargeCodes(codes: Array<string | null | undefi
 
 export function storageDurationMultiplier(unit: string, days: number): number {
   if (!Number.isInteger(days) || days < 1 || days > 3650) throw new Error("Storage duration must be a whole number from 1 to 3650 days.")
-  if (/month/i.test(unit)) {
+  if (/month|30\s*days/i.test(unit)) {
     if (days % 30 !== 0) throw new Error("Monthly per-foot storage requires complete 30-day periods. Use an approved daily rate or request a package quotation for the remainder.")
     return days / 30
   }
-  if (/week/i.test(unit) || /\/wk\b/i.test(unit)) {
+  if (/week|7\s*days/i.test(unit) || /\/wk\b/i.test(unit)) {
     if (days % 7 !== 0) throw new Error("Weekly per-foot storage requires complete 7-day periods. Use an approved daily rate or request a package quotation for the remainder.")
     return days / 7
   }
@@ -148,4 +161,8 @@ export function storageDurationMultiplier(unit: string, days: number): number {
 
 function roundMoney(value: number) {
   return Math.round((value + Number.EPSILON) * 100) / 100
+}
+
+function roundToTen(value: number) {
+  return Math.round((value + Number.EPSILON) / 10) * 10
 }

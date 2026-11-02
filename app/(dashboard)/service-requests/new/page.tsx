@@ -18,7 +18,7 @@ import { rateCardItemsForSection, serviceCategories, serviceCategoryForRate, sto
 import { deriveRampMovementPlan } from "@/lib/service-workflow"
 import { classifySpeedboat, isSpeedboatType } from "@/lib/speedboat-classification"
 import { lowestStoragePackage, speedboatStorageClass, storageRateCodes, validateSb4Storage, type StorageMethod, type StorageSlot } from "@/lib/storage-pricing"
-import { evaluateStandardRampHaulOut, isPerFootRate, storageDurationMultiplier } from "@/lib/pricing-engine"
+import { evaluateStandardRampHaulOut, isPerFootRate, storageDurationMultiplier, tier4StorageRate } from "@/lib/pricing-engine"
 
 type Price = { id: string; code: string; serviceNameEn: string; catalogCategory?: string; catalogServiceName?: string; category: string; unit: string; rateThb: number; directCostThb: number | null; calcType?: string | null; quoteAllowed?: string | null; priceStatus?: string | null; serviceGroup?: string | null; subgroup?: string | null; revenueGlCode?: string | null; costGlCode?: string | null; pnlCategory?: string | null }
 type ServiceLine = { pricing_code?: string; description: string; service_group: ServiceWorkflowSection | "OPEN_RATE"; operator_type: string; qty: number; unit: string; unit_price: number; direct_cost: number; discount_pct: number; is_open_rate?: boolean; revenue_gl_code?: string | null; cost_gl_code?: string | null; pnl_category?: string | null }
@@ -158,7 +158,12 @@ export default function NewServiceRequestPage() {
     if (!price) return
     const lineOperator = activeSection === "YARD" ? operatorType : "OCEAN_ROVER"
     const directCost = price.directCostThb ?? 0
-    const unitPrice = lineOperator === "OCEAN_ROVER_SUBCONTRACTOR" ? directCost * (1 + markupPct / 100) : price.rateThb
+    const method = String(price.calcType ?? "FLAT_QTY").toUpperCase()
+    const unitPrice = lineOperator === "OCEAN_ROVER_SUBCONTRACTOR"
+      ? directCost * (1 + markupPct / 100)
+      : method === "TIER4_LOA_DYNAMIC"
+        ? tier4StorageRate(price.unit, Number(selectedBoat?.loa_ft ?? 0))
+        : price.rateThb
     if (rowsContainCode(items, price.code)) {
       // Keep one canonical charge line while allowing a repeatable unit such
       // as stand/wk to represent multiple weeks. This avoids duplicate lines
@@ -172,10 +177,9 @@ export default function NewServiceRequestPage() {
       setError(`${price.code} is already selected. The same service cannot be billed twice.`)
       return
     }
-    const method = String(price.calcType ?? "FLAT_QTY").toUpperCase()
     // Method and unit both identify a per-LOA rate. This catches imported
     // v3.7 rows whose calc_type was stale but unit was ft/week or ft/month.
-    let automaticQty = isPerFootRate(method, price.unit) ? Number(selectedBoat?.loa_ft ?? 0)
+    let automaticQty = method === "TIER4_LOA_DYNAMIC" ? 1 : isPerFootRate(method, price.unit) ? Number(selectedBoat?.loa_ft ?? 0)
       : method === "PER_METRE" ? Number(selectedBoat?.loa_ft ?? 0) * 0.3048
         : method === "PER_TONNE" ? Number(selectedBoat?.weight_t ?? 0)
           : method === "FLAT_RATE" ? 1 : 1

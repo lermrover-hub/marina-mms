@@ -7,7 +7,7 @@ import { deriveRampServicePlan } from "@/lib/ramp-booking-service"
 import { maxOperationalDiscountForRole, QUOTATION_PRICE_EDIT_ROLES, roleAllowed } from "@/lib/workflow-access"
 import { classifySpeedboat, isSpeedboatType } from "@/lib/speedboat-classification"
 import { lowestStoragePackage, speedboatStorageClass, storageRateCodes, validateSb4Storage, type StorageClass, type StorageMethod, type StorageSlot } from "@/lib/storage-pricing"
-import { assertNoDuplicateChargeCodes, evaluateStandardRampHaulOut, isPerFootRate, storageDurationMultiplier } from "@/lib/pricing-engine"
+import { assertNoDuplicateChargeCodes, evaluateStandardRampHaulOut, isPerFootRate, storageDurationMultiplier, tier4StorageRate } from "@/lib/pricing-engine"
 import { withCatalogRates } from "@/lib/catalog-rate-card"
 
 export const dynamic = "force-dynamic"
@@ -148,18 +148,21 @@ export async function POST(req: Request) {
       const discountPct = Number(item.discount_pct ?? 0)
       const maximumDiscount = maxOperationalDiscountForRole(access.actor.role)
       if (discountPct > maximumDiscount) throw new Error(`Line ${index + 1}: ${access.actor.role} may enter at most ${maximumDiscount}% discount.`)
+      const method = String(price?.calc_type ?? "FLAT_QTY").toUpperCase()
       let basePrice = isOpenRate
         ? Number(item.unit_price ?? 0)
         : operatorType === "OCEAN_ROVER_SUBCONTRACTOR"
           ? directCost * (1 + markupPct / 100)
-          : Number(price?.rate_thb ?? 0)
+          : method === "TIER4_LOA_DYNAMIC"
+            ? tier4StorageRate(String(price?.unit ?? ""), Number(boat.loa_ft ?? 0))
+            : Number(price?.rate_thb ?? 0)
       if (!isOpenRate && operatorType !== "OCEAN_ROVER_SUBCONTRACTOR") {
-        const method = String(price?.calc_type ?? "FLAT_QTY").toUpperCase()
         if (method === "FLAT_RATE") qty = 1
         // Both the calculation method and billing unit are authoritative
         // signals. This prevents a v3.7 ft/week or ft/month row with a stale
         // FLAT_QTY method from being quoted as one unit.
-        if (isPerFootRate(method, price?.unit)) qty = Number(boat.loa_ft ?? 0)
+        if (method === "TIER4_LOA_DYNAMIC") qty = 1
+        else if (isPerFootRate(method, price?.unit)) qty = Number(boat.loa_ft ?? 0)
         if (method === "PER_METRE") qty = Number(boat.loa_ft ?? 0) * 0.3048
         if (method === "PER_TONNE") qty = Number(boat.weight_t ?? 0)
         if (canonicalGroup === "STORAGE" && (isPerFootRate(method, price?.unit) || method === "PER_METRE")) qty *= storageDurationMultiplier(String(price?.unit ?? ""), Number(body.storage_days))

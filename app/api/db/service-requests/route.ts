@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase-server"
 import { customerScope, PORTAL_READ_ROLES, requireApiActor, SERVICE_REQUEST_WRITE_ROLES } from "@/lib/api-auth"
-import { calculateDepositRequired, defaultPaymentMode, deriveCreditSchedule, deriveRampMovementPlan, minimumQuotationApprover, validateDiscount } from "@/lib/service-workflow"
+import { BILLING_SCENARIOS, calculateDepositRequired, defaultPaymentMode, deriveCreditSchedule, deriveRampMovementPlan, minimumQuotationApprover, validateDiscount } from "@/lib/service-workflow"
 import { isMissingWorkflowSchema, writeLegacyWorkflowMetadata } from "@/lib/service-workflow-compat"
 import { deriveRampServicePlan } from "@/lib/ramp-booking-service"
 import { maxOperationalDiscountForRole, QUOTATION_PRICE_EDIT_ROLES, roleAllowed } from "@/lib/workflow-access"
 import { classifySpeedboat, isSpeedboatType } from "@/lib/speedboat-classification"
 import { lowestStoragePackage, speedboatStorageClass, storageRateCodes, validateSb4Storage, type StorageClass, type StorageMethod, type StorageSlot } from "@/lib/storage-pricing"
-import { assertNoDuplicateChargeCodes, evaluateStandardRampHaulOut, storageDurationMultiplier } from "@/lib/pricing-engine"
+import { assertNoDuplicateChargeCodes, evaluateStandardRampHaulOut, isPerFootRate, storageDurationMultiplier } from "@/lib/pricing-engine"
+import { withCatalogRates } from "@/lib/catalog-rate-card"
 
 export const dynamic = "force-dynamic"
 
@@ -82,6 +83,13 @@ export async function POST(req: Request) {
     const includesYardService = requestedServiceTypes.includes("YARD_SERVICE")
     const serviceType = includesYardService ? "YARD_SERVICE" : "STORAGE"
     if (!includesStorage && !includesYardService) return NextResponse.json({ error: "Select Storage, Yard Service, or both." }, { status: 400 })
+    const billingScenario = String(body.billing_scenario ?? (includesStorage && !includesYardService ? "SPACE_LEASE" : "REPAIR_HOLD_30D"))
+    if (!(BILLING_SCENARIOS as readonly string[]).includes(billingScenario)) {
+      return NextResponse.json({ error: "Select a valid billing scenario: repair hold or space lease." }, { status: 400 })
+    }
+    if (billingScenario === "SPACE_LEASE" && !includesStorage) {
+      return NextResponse.json({ error: "Space lease billing requires a Storage service and a storage contract." }, { status: 400 })
+    }
 
     let automaticStorage: { storageClass: StorageClass; codes: string[]; days: number; slot: StorageSlot; method: StorageMethod | null; reviewWarning: string | null } | null = null
     if (includesStorage) {
@@ -113,7 +121,8 @@ export async function POST(req: Request) {
       ? await supabase.from("pricing_master").select("id,code,service_name_en,unit,rate_thb,full_rate_thb,direct_cost_thb,revenue_gl_code,cost_gl_code,pnl_category,cost_pnl_category,service_group,subgroup,calc_type,quote_allowed,price_status,source_version,effective_date,updated_at").in("code", pricingCodes).eq("is_active", true)
       : { data: [], error: null }
     if (pricingError) throw pricingError
-    const priceByCode = new Map((prices ?? []).map((price) => [price.code, price]))
+    const availablePrices = await withCatalogRates(prices ?? [])
+    const priceByCode = new Map(availablePrices.map((price) => [price.code, price]))
     const unknownCodes = pricingCodes.filter((code) => !priceByCode.has(code))
     if (unknownCodes.length) return NextResponse.json({ error: `Unknown or inactive rate-card code: ${unknownCodes.join(", ")}` }, { status: 400 })
     assertNoDuplicateChargeCodes(items.filter((item) => !item.is_open_rate).map((item) => item.pricing_code))
@@ -147,10 +156,13 @@ export async function POST(req: Request) {
       if (!isOpenRate && operatorType !== "OCEAN_ROVER_SUBCONTRACTOR") {
         const method = String(price?.calc_type ?? "FLAT_QTY").toUpperCase()
         if (method === "FLAT_RATE") qty = 1
-        if (method === "PER_FOOT") qty = Number(boat.loa_ft ?? 0)
+        // Both the calculation method and billing unit are authoritative
+        // signals. This prevents a v3.7 ft/week or ft/month row with a stale
+        // FLAT_QTY method from being quoted as one unit.
+        if (isPerFootRate(method, price?.unit)) qty = Number(boat.loa_ft ?? 0)
         if (method === "PER_METRE") qty = Number(boat.loa_ft ?? 0) * 0.3048
         if (method === "PER_TONNE") qty = Number(boat.weight_t ?? 0)
-        if (canonicalGroup === "STORAGE" && ["PER_FOOT", "PER_METRE"].includes(method)) qty *= storageDurationMultiplier(String(price?.unit ?? ""), Number(body.storage_days))
+        if (canonicalGroup === "STORAGE" && (isPerFootRate(method, price?.unit) || method === "PER_METRE")) qty *= storageDurationMultiplier(String(price?.unit ?? ""), Number(body.storage_days))
         if (method === "MANUAL_QUOTE") throw new Error(`Line ${index + 1}: ${price?.code} requires an approved manual quotation.`)
         if (method === "COST_PLUS") {
           if (directCost <= 0) throw new Error(`Line ${index + 1}: verified subcontractor cost is required.`)
@@ -228,6 +240,7 @@ export async function POST(req: Request) {
       contractor_cost: contractorCost,
       markup_pct: Number(body.markup_pct ?? 0),
       payment_mode: paymentMode,
+      billing_scenario: billingScenario,
       payment_gate_status: "AWAITING_PAYMENT",
       quotation_id: null,
       service_order_confirmed_at: null,
@@ -249,6 +262,7 @@ export async function POST(req: Request) {
       request_type: body.request_type, ramp_operation_plan: movement.error ? null : movement.rampOperationPlan, confirmed_haul_out_date: body.confirmed_haul_out_date ?? null, confirmed_launch_date: body.confirmed_launch_date ?? null, tow_in_date: body.tow_in_date ?? null, tow_out_date: body.tow_out_date ?? null, service_type: serviceType, operator_type: operatorType,
       storage_period: includesStorage ? String(body.storage_period ?? "DAILY") : null,
       insurance_status: workflowMetadata.insurance_status, subcontractor_trade: body.subcontractor_trade ?? null, contractor_cost: contractorCost, markup_pct: Number(body.markup_pct ?? 0), payment_mode: paymentMode, payment_gate_status: "AWAITING_PAYMENT",
+      billing_scenario: billingScenario,
       operational_contact_id: operationalContact?.id ?? null, operational_contact_name: operationalContact?.full_name ?? null,
       operational_contact_phone: operationalContact?.phone ?? null, operational_contact_email: operationalContact?.email ?? null,
       operational_contact_preferred_channel: operationalContact?.preferred_channel ?? null,
@@ -346,7 +360,7 @@ export async function POST(req: Request) {
     } else if (firstQuoteItems.error) throw firstQuoteItems.error
 
     const nextReminderDate = schedule?.firstReminderDate ?? storagePlan?.next_billing_date ?? null
-    const paymentPlanPayload = { service_request_id: serviceRequest.id, quotation_id: quotation.id, customer_id: serviceRequest.customer_id, boat_id: serviceRequest.boat_id, payment_mode: paymentMode, status: "AWAITING_PAYMENT", total_amount: totalAmount, deposit_pct: depositPct, deposit_required_amount: depositAmount, committed_cost_amount: committedCost, yard_start_date: yardStartDate, launch_date: exitDate, first_cycle_due_date: schedule?.firstCycleDueDate ?? null, next_reminder_at: nextReminderDate ? `${nextReminderDate}T01:00:00.000Z` : null, good_credit_customer: Boolean(body.good_credit_customer), post_launch_due_date: schedule?.finalDueDate ?? null, created_at: now, updated_at: now }
+    const paymentPlanPayload = { service_request_id: serviceRequest.id, quotation_id: quotation.id, customer_id: serviceRequest.customer_id, boat_id: serviceRequest.boat_id, payment_mode: paymentMode, billing_scenario: billingScenario, reminder_lead_days: 7, status: "AWAITING_PAYMENT", total_amount: totalAmount, deposit_pct: depositPct, deposit_required_amount: depositAmount, committed_cost_amount: committedCost, yard_start_date: yardStartDate, launch_date: exitDate, first_cycle_due_date: schedule?.firstCycleDueDate ?? null, next_reminder_at: nextReminderDate ? `${nextReminderDate}T01:00:00.000Z` : null, good_credit_customer: Boolean(body.good_credit_customer), post_launch_due_date: schedule?.finalDueDate ?? null, created_at: now, updated_at: now }
     let paymentPlan: Record<string, unknown> = paymentPlanPayload
     if (!legacySchema) {
       const paymentResult = await supabase.from("mms_service_payment_plans").insert(paymentPlanPayload).select().single()

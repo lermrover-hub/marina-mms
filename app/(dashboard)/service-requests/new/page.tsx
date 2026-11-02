@@ -14,13 +14,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { Boat, Customer, CustomerContact } from "@/lib/supabase"
 import { formatTHB } from "@/lib/utils"
 import { maxOperationalDiscountForRole, QUOTATION_PRICE_EDIT_ROLES, roleAllowed } from "@/lib/workflow-access"
-import { rateCardItemsForSection, serviceCategories, storagePeriodMatches, type ServiceWorkflowSection } from "@/lib/service-rate-card"
+import { rateCardItemsForSection, serviceCategories, serviceCategoryForRate, storagePeriodMatches, type ServiceWorkflowSection } from "@/lib/service-rate-card"
 import { deriveRampMovementPlan } from "@/lib/service-workflow"
 import { classifySpeedboat, isSpeedboatType } from "@/lib/speedboat-classification"
 import { lowestStoragePackage, speedboatStorageClass, storageRateCodes, validateSb4Storage, type StorageMethod, type StorageSlot } from "@/lib/storage-pricing"
-import { evaluateStandardRampHaulOut, storageDurationMultiplier } from "@/lib/pricing-engine"
+import { evaluateStandardRampHaulOut, isPerFootRate, storageDurationMultiplier } from "@/lib/pricing-engine"
 
-type Price = { id: string; code: string; serviceNameEn: string; category: string; unit: string; rateThb: number; directCostThb: number | null; calcType?: string | null; quoteAllowed?: string | null; priceStatus?: string | null; serviceGroup?: string | null; subgroup?: string | null; revenueGlCode?: string | null; costGlCode?: string | null; pnlCategory?: string | null }
+type Price = { id: string; code: string; serviceNameEn: string; catalogCategory?: string; catalogServiceName?: string; category: string; unit: string; rateThb: number; directCostThb: number | null; calcType?: string | null; quoteAllowed?: string | null; priceStatus?: string | null; serviceGroup?: string | null; subgroup?: string | null; revenueGlCode?: string | null; costGlCode?: string | null; pnlCategory?: string | null }
 type ServiceLine = { pricing_code?: string; description: string; service_group: ServiceWorkflowSection | "OPEN_RATE"; operator_type: string; qty: number; unit: string; unit_price: number; direct_cost: number; discount_pct: number; is_open_rate?: boolean; revenue_gl_code?: string | null; cost_gl_code?: string | null; pnl_category?: string | null }
 
 export default function NewServiceRequestPage() {
@@ -56,6 +56,7 @@ export default function NewServiceRequestPage() {
   const [trade, setTrade] = useState("Paint")
   const [markupPct, setMarkupPct] = useState(10)
   const [paymentMode, setPaymentMode] = useState("FULL_PREPAYMENT")
+  const [billingScenario, setBillingScenario] = useState<"REPAIR_HOLD_30D" | "SPACE_LEASE">("SPACE_LEASE")
   const [goodCredit, setGoodCredit] = useState(false)
   const [title, setTitle] = useState("")
   const [notes, setNotes] = useState("")
@@ -85,7 +86,7 @@ export default function NewServiceRequestPage() {
     Promise.all([
       fetch("/api/db/customers").then((r) => r.json()),
       fetch("/api/db/boats").then((r) => r.json()),
-      fetch("/api/pricing-master?isActive=true").then((r) => r.json()),
+      fetch("/api/pricing-master?isActive=true&catalog=true").then(async (r) => { if (!r.ok) throw new Error('Rate Card unavailable. Please reload.'); return r.json() }),
     ]).then(([customerRows, boatRows, priceRows]) => {
       setCustomers(Array.isArray(customerRows) ? customerRows : [])
       setBoats(Array.isArray(boatRows) ? boatRows : [])
@@ -115,7 +116,7 @@ export default function NewServiceRequestPage() {
   const total = items.reduce((sum, item) => sum + item.qty * item.unit_price * (1 - item.discount_pct / 100), 0)
   const sectionPrices = useMemo(() => rateCardItemsForSection(prices, activeSection).filter((price) => activeSection !== "STORAGE" || storagePeriodMatches(price, storagePeriod)), [prices, activeSection, storagePeriod])
   const categories = useMemo(() => serviceCategories(sectionPrices), [sectionPrices])
-  const filteredPrices = useMemo(() => sectionPrices.filter((price) => (price.subgroup || price.category) === selectedCategory), [sectionPrices, selectedCategory])
+  const filteredPrices = useMemo(() => sectionPrices.filter((price) => serviceCategoryForRate(price) === selectedCategory), [sectionPrices, selectedCategory])
   const movement = deriveRampMovementPlan({ haulOut, haulOutDate, towIn, towInDate, launch, launchDate, towOut, towOutDate })
   const movementRateRequired = haulOut || launch
   const rampAssessment = useMemo(() => selectedBoat ? evaluateStandardRampHaulOut({
@@ -158,14 +159,28 @@ export default function NewServiceRequestPage() {
     const lineOperator = activeSection === "YARD" ? operatorType : "OCEAN_ROVER"
     const directCost = price.directCostThb ?? 0
     const unitPrice = lineOperator === "OCEAN_ROVER_SUBCONTRACTOR" ? directCost * (1 + markupPct / 100) : price.rateThb
-    if (rowsContainCode(items, price.code)) { setError(`${price.code} is already selected. The same service cannot be billed twice.`); return }
+    if (rowsContainCode(items, price.code)) {
+      // Keep one canonical charge line while allowing a repeatable unit such
+      // as stand/wk to represent multiple weeks. This avoids duplicate lines
+      // and lets an officer click Add item again for week 2, week 3, etc.
+      if (/\/(?:day|week|wk|month|mo)\b/i.test(price.unit)) {
+        setItems((rows) => rows.map((row) => row.pricing_code === price.code ? { ...row, qty: row.qty + 1 } : row))
+        setError(null)
+        setSelectedPrice("")
+        return
+      }
+      setError(`${price.code} is already selected. The same service cannot be billed twice.`)
+      return
+    }
     const method = String(price.calcType ?? "FLAT_QTY").toUpperCase()
-    let automaticQty = method === "PER_FOOT" ? Number(selectedBoat?.loa_ft ?? 0)
+    // Method and unit both identify a per-LOA rate. This catches imported
+    // v3.7 rows whose calc_type was stale but unit was ft/week or ft/month.
+    let automaticQty = isPerFootRate(method, price.unit) ? Number(selectedBoat?.loa_ft ?? 0)
       : method === "PER_METRE" ? Number(selectedBoat?.loa_ft ?? 0) * 0.3048
         : method === "PER_TONNE" ? Number(selectedBoat?.weight_t ?? 0)
           : method === "FLAT_RATE" ? 1 : 1
-    if (["PER_FOOT", "PER_METRE", "PER_TONNE"].includes(method) && automaticQty <= 0) { setError(`Complete the vessel dimensions required by ${price.code} before adding it.`); return }
-    if (activeSection === "STORAGE" && ["PER_FOOT", "PER_METRE"].includes(method)) {
+    if ((isPerFootRate(method, price.unit) || ["PER_METRE", "PER_TONNE"].includes(method)) && automaticQty <= 0) { setError(`Complete the vessel dimensions required by ${price.code} before adding it.`); return }
+    if (activeSection === "STORAGE" && (isPerFootRate(method, price.unit) || method === "PER_METRE")) {
       try { automaticQty *= storageDurationMultiplier(price.unit, Number(storageDays)) }
       catch (error) { setError(error instanceof Error ? error.message : String(error)); return }
     }
@@ -206,6 +221,7 @@ export default function NewServiceRequestPage() {
 
   function changePrimaryService(next: "STORAGE" | "YARD") {
     setPrimaryService(next)
+    setBillingScenario(next === "STORAGE" ? "SPACE_LEASE" : "REPAIR_HOLD_30D")
     setAddYardToStorage(false)
     setItems((rows) => rows.filter((row) => row.service_group !== (next === "STORAGE" ? "YARD" : "STORAGE")))
   }
@@ -309,6 +325,7 @@ export default function NewServiceRequestPage() {
           subcontractor_trade: operatorType === "OCEAN_ROVER_SUBCONTRACTOR" ? trade : null,
           markup_pct: operatorType === "OCEAN_ROVER_SUBCONTRACTOR" ? markupPct : 0,
           payment_mode: paymentMode,
+          billing_scenario: billingScenario,
           good_credit_customer: paymentMode === "CREDIT" && goodCredit,
           notes: [followUpTo ? `Additional service request for stored vessel. Parent service request: ${followUpTo}` : null, notes].filter(Boolean).join("\n"),
           items: items.map((item) => ({ ...item, markup_pct: item.operator_type === "OCEAN_ROVER_SUBCONTRACTOR" ? markupPct : 0 })),
@@ -359,6 +376,7 @@ export default function NewServiceRequestPage() {
             </div>
           </div>
           <div><Label>Primary service path *</Label><p className="mt-1 text-xs text-gray-600">Choose the normal route. Storage goes from its billing period and Rate Card directly to Draft Quotation. Yard Service continues through operator, category and service item.</p><div className="mt-2 grid gap-3 md:grid-cols-2"><button type="button" aria-pressed={primaryService === "STORAGE"} onClick={() => changePrimaryService("STORAGE")} className={`rounded-lg border p-4 text-left ${primaryService === "STORAGE" ? "border-teal-500 bg-teal-50" : "border-gray-200"}`}><b>{primaryService === "STORAGE" ? "✓ " : ""}A. Storage</b><p className="text-sm text-gray-500">Daily, weekly or monthly → Draft Quotation</p></button><button type="button" aria-pressed={primaryService === "YARD"} onClick={() => changePrimaryService("YARD")} className={`rounded-lg border p-4 text-left ${primaryService === "YARD" ? "border-teal-500 bg-teal-50" : "border-gray-200"}`}><b>{primaryService === "YARD" ? "✓ " : ""}B. Yard Service</b><p className="text-sm text-gray-500">Operator → Category → Service Item → Draft Quotation</p></button></div></div>
+          <div className="rounded-lg border border-sky-200 bg-sky-50 p-4"><Label>Billing scenario *</Label><p className="mt-1 text-xs text-sky-900">This controls recurring billing without changing the quotation → payment → work-order workflow.</p><div className="mt-2 grid gap-2 md:grid-cols-2"><button type="button" onClick={() => setBillingScenario("REPAIR_HOLD_30D")} className={`rounded-md border p-3 text-left ${billingScenario === "REPAIR_HOLD_30D" ? "border-sky-600 bg-white" : "border-gray-200 bg-white/70"}`}><b>Repair hold / parts delay</b><span className="mt-1 block text-xs text-gray-600">Recurring cycle starts 30 days after the first haul-out/tow-in/yard start. Use when launch date is unknown.</span></button><button type="button" onClick={() => setBillingScenario("SPACE_LEASE")} className={`rounded-md border p-3 text-left ${billingScenario === "SPACE_LEASE" ? "border-sky-600 bg-white" : "border-gray-200 bg-white/70"}`}><b>Space lease / owner away</b><span className="mt-1 block text-xs text-gray-600">Use a clear storage contract for a 3–6 month stay or infrequent use; recurring invoices come from the contract.</span></button></div>{billingScenario === "SPACE_LEASE" && <p className="mt-2 text-xs font-medium text-amber-800">A Dry Storage contract must be created after the quotation is approved. Wet Berth is unavailable.</p>}</div>
           {includeStorage && <div className="space-y-4 rounded-lg border bg-gray-50 p-4"><div><Label>Storage duration (days)</Label><Input className="mt-1" type="number" min="1" max="3650" step="1" value={storageDays} onChange={(event) => changeStorageDays(Number(event.target.value))} /><p className="mt-1 text-xs text-gray-600">The system selects the lowest exact combination of approved 1-day, 7-day and 30-day packages. Monthly storage creates an officer billing reminder.</p></div>{selectedStorageClass === "SB4" && <><div><Label>Physical storage slot *</Label><select className="mt-1 w-full rounded-md border p-2" value={storageSlotCode} onChange={(event) => { setStorageSlotCode(event.target.value as StorageSlot); setStorageMethod(event.target.value === "W4" ? "TRAILER" : event.target.value === "B1" ? "BOAT_STANDS" : ""); setItems((rows) => rows.filter((row) => row.service_group !== "STORAGE")) }}><option value="">Select W4 or B1</option><option value="W4">W4 — trailer storage only</option><option value="B1">B1 — boat stands only</option></select></div><div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">SB4 is a pricing class only. W4/B1 availability and technical checks are mandatory. Storage approval does not approve haul-out or launch.</div></>}{speedboatReviewWarning && !storageClassificationError && <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-800">Manager review: {speedboatReviewWarning}</p>}{storageClassificationError && <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{storageClassificationError}</p>}</div>}
           {primaryService === "STORAGE" && <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4"><input type="checkbox" className="mt-1 h-4 w-4 accent-amber-600" checked={addYardToStorage} onChange={(event) => toggleAdditionalYardService(event.target.checked)} /><span><b className="text-amber-900">Optional: add Yard / Other Services</b><span className="block text-xs text-amber-800">Use when the stored vessel also needs service now. If service is requested later, start a new linked Service Request from the stored vessel record.</span></span></label>}
           {includeYardService && <div className="space-y-4 rounded-lg border bg-gray-50 p-4"><div><Label>Who performs the Yard Service? <HelpHint title="Operator affects price and approval">Ocean Rover work may receive an authorised discount. Boat-owner contractor work requires verified insurance. Ocean Rover subcontractor work uses direct cost plus markup and cannot receive a Marina discount.</HelpHint></Label><div className="mt-2 grid gap-2 md:grid-cols-3">{[{ value: "OCEAN_ROVER", label: "Ocean Rover" }, { value: "BOAT_OWNER_CONTRACTOR", label: "Boat owner / contractor" }, { value: "OCEAN_ROVER_SUBCONTRACTOR", label: "Ocean Rover subcontractor" }].map((operator) => <button type="button" key={operator.value} onClick={() => changeYardOperator(operator.value)} className={`rounded-md border p-3 text-sm font-semibold ${operatorType === operator.value ? "border-teal-500 bg-white text-teal-700" : "border-gray-200 bg-white"}`}>{operator.label}</button>)}</div></div>
@@ -374,11 +392,11 @@ export default function NewServiceRequestPage() {
           <div className={`grid gap-2 ${selectedSections.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>{selectedSections.map((section) => <button type="button" key={section} onClick={() => setActiveSection(section)} className={`rounded-lg border px-3 py-3 text-sm font-semibold ${activeSection === section ? "border-teal-500 bg-teal-50 text-teal-800" : "border-gray-200 bg-white text-gray-600"}`}>{section === "RAMP" ? (movementRateRequired ? "Ramp Operation (required)" : "Tow Charge (optional)") : section === "STORAGE" ? "Storage (required)" : "Yard / Other Services (required)"}</button>)}</div>
           {activeSection === "STORAGE" && selectedStorageClass ? <div className="rounded-lg border border-teal-200 bg-teal-50 p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="font-semibold text-teal-900">{selectedStorageClass} automatic storage package</p><p className="text-xs text-teal-800">{storageDays} days{selectedStorageClass === "SB4" ? ` · ${storageSlotCode || "slot required"} · ${storageMethod || "method required"}` : " · any approved storage slot"}</p></div><Button type="button" variant="outline" onClick={addOptimizedStorage}>Calculate &amp; add lowest package</Button></div></div> : <div className="grid gap-3 md:grid-cols-[1fr_1.5fr_auto]">
             <div><Label>Service category</Label><select className="mt-1 w-full rounded-md border p-2" value={selectedCategory} onChange={(e) => { setSelectedCategory(e.target.value); setSelectedPrice("") }}><option value="">Select category</option>{categories.map((category) => <option key={category} value={category}>{category}</option>)}</select></div>
-            <div><Label>Service item</Label><select disabled={!selectedCategory} className="mt-1 w-full rounded-md border p-2 disabled:bg-gray-100" value={selectedPrice} onChange={(e) => setSelectedPrice(e.target.value)}><option value="">Select rate-card item</option>{filteredPrices.map((price) => <option key={price.id} value={price.code}>{price.serviceNameEn} — {formatTHB(price.rateThb)}/{price.unit}{price.quoteAllowed && price.quoteAllowed !== "YES" ? " · approval required" : ""}</option>)}</select></div>
+            <div><Label>Service item</Label><select disabled={!selectedCategory} className="mt-1 w-full rounded-md border p-2 disabled:bg-gray-100" value={selectedPrice} onChange={(e) => setSelectedPrice(e.target.value)}><option value="">Select rate-card item</option>{filteredPrices.map((price) => <option key={price.id} value={price.code}>{price.catalogServiceName || price.serviceNameEn} — {formatTHB(price.rateThb)}/{price.unit}{price.quoteAllowed && price.quoteAllowed !== "YES" ? " · approval required" : ""}</option>)}</select></div>
             <Button type="button" className="self-end" variant="outline" disabled={!selectedPrice} onClick={addRate}><Plus className="mr-1 h-4 w-4" />Add item</Button>
           </div>}
           {canEditCost ? <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50 p-3"><div className="mb-2 flex items-center gap-2 font-medium text-amber-900">Others / Open Rate <HelpHint title="Restricted manual price">Use only when no suitable Rate Card item exists. Admin, Managing Director or Finance must enter the negotiated price and the Draft still requires approval.</HelpHint></div><div className="grid gap-2 md:grid-cols-[1.5fr_100px_100px_auto]"><Input value={openRateDescription} onChange={(e) => setOpenRateDescription(e.target.value)} placeholder="Reason / negotiated service" /><Input type="number" min="0" step="0.01" value={openRatePrice} onChange={(e) => setOpenRatePrice(e.target.value)} placeholder="Price" /><Input type="number" min="0" step="0.01" value={openRateCost} onChange={(e) => setOpenRateCost(e.target.value)} placeholder="Cost" /><Button type="button" variant="outline" disabled={!openRateDescription.trim() || openRatePrice === ""} onClick={addOpenRate}>Add open rate</Button></div></div> : <p className="rounded-md bg-gray-50 p-3 text-xs text-gray-600">Others / Open Rate is restricted to Admin, Managing Director and Finance. Select an approved Rate Card item or request authorised price entry.</p>}
-          {items.map((item, index) => <div key={`${item.pricing_code ?? "OPEN"}-${index}`} className="grid items-end gap-2 rounded-lg border p-3 md:grid-cols-[1fr_90px_90px_40px]"><div><div className="flex flex-wrap gap-2 text-xs"><span className="rounded bg-teal-50 px-2 py-0.5 text-teal-700">{item.service_group}</span><span className="text-gray-500">{item.pricing_code ?? "OPEN RATE"}</span><span className="text-gray-500">{item.operator_type.replaceAll("_", " ")}</span></div><p className="mt-1 font-medium">{item.description}</p><p className="text-xs text-gray-500">Rate {formatTHB(item.unit_price)} / {item.unit} · Cost {formatTHB(item.direct_cost)} · Discount {item.discount_pct}%</p>{item.pricing_code && <p className="text-xs text-gray-400">Revenue {item.revenue_gl_code ?? "—"} · Cost {item.cost_gl_code ?? "—"} · {item.pnl_category ?? "P&L not set"}</p>}</div><div><Label>Qty / duration</Label><Input type="number" min="0.001" step="0.001" value={item.qty} onChange={(e) => updateLine(index, { qty: Number(e.target.value) })} /></div><div><Label>Discount %</Label><Input type="number" min="0" max={maximumDiscount} step="0.01" disabled={item.operator_type !== "OCEAN_ROVER" || maximumDiscount === 0} title={`Maximum ${maximumDiscount}% for your role`} value={item.discount_pct} onChange={(e) => updateLine(index, { discount_pct: Math.min(maximumDiscount, Number(e.target.value)) })} /></div><Button type="button" variant="ghost" onClick={() => setItems((rows) => rows.filter((_, i) => i !== index))}><Trash2 className="h-4 w-4 text-red-500" /></Button></div>)}
+          {items.map((item, index) => <div key={`${item.pricing_code ?? "OPEN"}-${index}`} className="grid items-end gap-2 rounded-lg border p-3 md:grid-cols-[1fr_90px_90px_40px]"><div><div className="flex flex-wrap gap-2 text-xs"><span className="rounded bg-teal-50 px-2 py-0.5 text-teal-700">{item.service_group}</span><span className="text-gray-500">{item.pricing_code ?? "OPEN RATE"}</span><span className="text-gray-500">{item.operator_type.replaceAll("_", " ")}</span></div><p className="mt-1 font-medium">{item.description}</p><p className="text-xs text-gray-500">Rate {formatTHB(item.unit_price)} / {item.unit} · Cost {formatTHB(item.direct_cost)} · Discount {item.discount_pct}%</p>{item.unit.toLowerCase().includes("stand/wk") && <p className="text-xs font-medium text-amber-700">Qty is stand-weeks: 7 stands × 3 weeks = 21</p>}{item.pricing_code && <p className="text-xs text-gray-400">Revenue {item.revenue_gl_code ?? "—"} · Cost {item.cost_gl_code ?? "—"} · {item.pnl_category ?? "P&L not set"}</p>}</div><div><Label>{item.unit.toLowerCase().includes("stand/wk") ? "Stand-weeks" : "Qty / duration"}</Label><Input type="number" min="0.001" step="0.001" value={item.qty} onChange={(e) => updateLine(index, { qty: Number(e.target.value) })} /></div><div><Label>Discount %</Label><Input type="number" min="0" max={maximumDiscount} step="0.01" disabled={item.operator_type !== "OCEAN_ROVER" || maximumDiscount === 0} title={`Maximum ${maximumDiscount}% for your role`} value={item.discount_pct} onChange={(e) => updateLine(index, { discount_pct: Math.min(maximumDiscount, Number(e.target.value)) })} /></div><Button type="button" variant="ghost" onClick={() => setItems((rows) => rows.filter((_, i) => i !== index))}><Trash2 className="h-4 w-4 text-red-500" /></Button></div>)}
           {!items.length && <p className="py-6 text-center text-sm text-gray-400">Add services in the order they should appear on the quotation.</p>}
           <p className="text-right font-semibold">Preview subtotal: {formatTHB(total)}</p>
         </CardContent></Card>

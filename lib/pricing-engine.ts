@@ -31,6 +31,19 @@ export type PricingResult = {
   reason: string | null
 }
 
+/**
+ * Older rate-card rows use LOA_RATE_* while newer catalog rows use PER_FOOT.
+ * The billing unit is a second safety signal so a ft/day, ft/week, ft/month
+ * or ft/round-trip row can never silently fall back to quantity 1.
+ */
+export function isPerFootRate(method: string | null | undefined, unit: string | null | undefined) {
+  const normalizedMethod = String(method ?? "").toUpperCase()
+  const normalizedUnit = String(unit ?? "").toLowerCase().replace(/\s+/g, "")
+  return ["PER_FOOT", "LOA_RATE_QTY", "LOA_RATE_DAYS"].includes(normalizedMethod)
+    || /^ft\//.test(normalizedUnit)
+    || normalizedUnit === "ft"
+}
+
 const requiredPositive = (value: number | null | undefined, label: string) => {
   if (value == null || !Number.isFinite(value) || value <= 0) throw new Error(`${label} is required for this calculation method.`)
   return value
@@ -124,6 +137,10 @@ export function storageDurationMultiplier(unit: string, days: number): number {
   if (/month/i.test(unit)) {
     if (days % 30 !== 0) throw new Error("Monthly per-foot storage requires complete 30-day periods. Use an approved daily rate or request a package quotation for the remainder.")
     return days / 30
+  }
+  if (/week/i.test(unit) || /\/wk\b/i.test(unit)) {
+    if (days % 7 !== 0) throw new Error("Weekly per-foot storage requires complete 7-day periods. Use an approved daily rate or request a package quotation for the remainder.")
+    return days / 7
   }
   if (/day/i.test(unit)) return days
   throw new Error("An approved storage billing period is required.")

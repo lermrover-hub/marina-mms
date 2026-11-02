@@ -3,6 +3,7 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import {
   calculateDepositRequired,
+  BILLING_SCENARIOS,
   canConfirmServiceOrder,
   defaultPaymentMode,
   deriveCreditSchedule,
@@ -39,11 +40,26 @@ test("service and work orders remain blocked until the payment gate passes", () 
 test("credit cycle is 30 days and good customers receive at most 7 post-launch days", () => {
   assert.deepEqual(deriveCreditSchedule("2026-09-01", null, false), {
     firstCycleDueDate: "2026-10-01",
-    firstReminderDate: "2026-09-26",
+    firstReminderDate: "2026-09-24",
     launchWithinFirstCycle: false,
     finalDueDate: "2026-10-01",
   })
   assert.equal(deriveCreditSchedule("2026-09-01", "2026-09-20", true)?.finalDueDate, "2026-09-27")
+})
+
+test("recurring billing scenarios are explicit and reminders lead by seven days", () => {
+  assert.deepEqual(BILLING_SCENARIOS, ["REPAIR_HOLD_30D", "SPACE_LEASE"])
+  const requestRoute = readFileSync("app/api/db/service-requests/route.ts", "utf8")
+  const recurringRoute = readFileSync("app/api/billing/recurring/route.ts", "utf8")
+  const notificationsPage = readFileSync("app/(dashboard)/notifications/page.tsx", "utf8")
+  const migration = readFileSync("supabase/migrations/20261030120000_add_billing_scenarios_and_block_wet_berth.sql", "utf8")
+  assert.match(requestRoute, /billing_scenario: billingScenario/)
+  assert.match(requestRoute, /reminder_lead_days: 7/)
+  assert.match(recurringRoute, /Wet Berth is blocked until construction is complete/)
+  assert.match(recurringRoute, /reminderLeadDays = Math\.max\(1, Number\(contract\.reminder_lead_days \?\? 7\)\)/)
+  assert.match(notificationsPage, /daysUntilDue <= 7/)
+  assert.match(migration, /billing_scenario text/)
+  assert.match(migration, /reminder_lead_days integer not null default 7/)
 })
 
 test("vessel movement supports road tow without requiring haul-out or launch", () => {
@@ -243,4 +259,13 @@ test("rate card items are routed to the approved workflow sections", () => {
   assert.deepEqual(serviceCategories(rateCardItemsForSection(rows, "YARD")), ["Wash"])
   assert.equal(storagePeriodMatches(rows[2], "MONTHLY"), true)
   assert.equal(storagePeriodMatches(rows[2], "DAILY"), false)
+})
+
+test("LOA_RATE_QTY catalog rates use the vessel LOA instead of defaulting to one unit", () => {
+  const page = readFileSync("app/(dashboard)/service-requests/new/page.tsx", "utf8")
+  const route = readFileSync("app/api/db/service-requests/route.ts", "utf8")
+  assert.match(page, /isPerFootRate\(method, price\.unit\)/)
+  assert.match(route, /isPerFootRate\(method, price\?\.unit\)/)
+  assert.match(page, /stand-weeks/)
+  assert.match(page, /row\.qty \+ 1/)
 })

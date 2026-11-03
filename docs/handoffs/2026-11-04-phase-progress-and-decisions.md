@@ -19,8 +19,8 @@
 | 1. Audit and backup | Complete for current staging snapshot | v3.7 audit and pricing backup are recorded in `docs/pricing-v3.7/`; source workbook reachability and Finance count decisions remain documented gates. |
 | 2. Pricing governance | Implemented in code and tests | Wet berth fail-closed, price-status/quoteability gate, legacy calc mapping, manager-review escalation, Full/Pilot selection and v3.7 storage snapshot notes. |
 | 3. Rate-card reconciliation | Staging sync recorded; count reconciliation still open | The latest read-only staging query shows **165 active / 60 retired / 225 total** rows. Older v3.7 audit notes cite 126 canonical codes and 39 retired aliases, so no further retirement or merge is safe until Finance confirms the row-by-row canonical list. No production import. |
-| 4. Quotation, recurring billing and finance | In progress / controlled preview | Calendar-month recurring path retained; monthly P&L Preview now reads invoices and completed work-order costs. Payment confirmation, account close and Work Order delivery remain Preview Safe Mode gates. |
-| 5. Preview and release readiness | Not production-ready | Run tests, typecheck, build and Preview verification. Production remains out of scope until Finance/Manager sign-off and staging E2E evidence are complete. |
+| 4. Quotation, recurring billing and finance | Staging E2E verified; production gate pending | Calendar-month recurring path retained; Monthly P&L Preview and CSV export are available. Synthetic payment/account close reached `PAID` with zero balance and an invoice→quotation→Work Order link. Real customer messaging/payment remains disabled. |
+| 5. Preview and release readiness | Preview verified; not production-ready | Tests, typecheck and Vercel Preview are green. Production remains out of scope until Finance/Manager sign-off and rate-count reconciliation are complete. |
 
 ## Monthly P&L scope
 
@@ -28,9 +28,21 @@ The new `/reports/pnl` view is a **management P&L preview**, not a statutory led
 
 ## Validation recorded in this phase
 
-- `npm test`: 143 passed, 0 failed.
+- `npm test`: 146 passed, 0 failed.
 - `npx tsc --noEmit`: passed.
 - `npm run build`: local Node 24.15.0 hit the existing Next/Webpack `WasmHash` runtime error; the same commit built successfully on Vercel Preview (`READY`).
 - No Supabase migration was executed in this phase.
 - Latest read-only staging pricing snapshot: 165 active, 60 retired, 225 total. This is evidence for reconciliation only; it did not modify Supabase.
 - No Production data, quotation, invoice or deployment was modified.
+
+## Staging E2E payment/account-close evidence — 4 November 2026
+
+Using the existing synthetic Alex/Jaguar staging records only (no real customer, message or bank transfer):
+
+1. The approved quotation was marked `ACCEPTED` for the controlled test, then converted through `mms_convert_accepted_quotation_to_invoice`.
+2. Invoice `INV-STG-ALEX-20261104` was created for THB 36,915 including VAT.
+3. The full amount was recorded through `mms_record_confirmed_payment` with reference `STAGING-E2E-ALEX-20261104` and note `SIMULATED staging payment only`.
+4. Read-back verified `status=PAID`, `paid_amount=36915`, `outstanding_balance=0`.
+5. The invoice is linked to quotation `DRAFT-1792256148720`, Work Order `WO-STG-145223-01` (`OPEN`) and Service Request `SR-145223`.
+
+This proves the accounting close and traceability chain in staging. It does not represent a real bank settlement and must not be copied to Production.

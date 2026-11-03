@@ -47,3 +47,15 @@ Using the existing synthetic Alex/Jaguar staging records only (no real customer,
 5. The invoice is linked to quotation `DRAFT-1792256148720`, Work Order `WO-STG-145223-01` (`OPEN`) and Service Request `SR-145223`.
 
 This proves the accounting close and traceability chain in staging. It does not represent a real bank settlement and must not be copied to Production.
+
+## Final Preview handoff — 4 November 2026
+
+- Branch: `codex/v37-catalog-admin`
+- Commit: `622d563` (`fix: align service storage with approved v3.7 tiers`)
+- Pull Request: https://github.com/lermrover-hub/marina-mms/pull/6
+- Vercel Preview: https://marina-mms-git-codex-v37-catalog-admin-lermrover-hubs-projects.vercel.app
+- GitHub Vercel status for commit `622d563`: `success` (deployment `FCFhg3JB1deNwCb4gSSuV7PxVDgo`)
+- HTTP smoke check: `/login` returned `200`; protected `/reports/pnl` returned `307` to `/login` when unauthenticated.
+- Staging read-back: `pricing_master` = 126 active `ORM-PRICE-2026-v3.7` rows, 0 active legacy rows, 99 retired rows, 225 total; reconciliation backup = 225 rows.
+
+The Preview is usable for authenticated browser testing. Production deployment and production database writes remain intentionally disabled.

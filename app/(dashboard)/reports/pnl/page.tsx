@@ -1,7 +1,7 @@
 "use client"
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { ArrowLeft, RefreshCw } from "lucide-react"
+import { ArrowLeft, Download, RefreshCw } from "lucide-react"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -35,7 +35,7 @@ export default function PnlReportPage() {
   const maxRevenue = Math.max(...(data?.monthly ?? []).map(row => row.revenue), 1)
 
   return <div className="space-y-6">
-    <PageHeader title="Monthly P&L Preview" description="Management view from posted invoices and completed work orders" actions={<div className="flex gap-2"><Button variant="ghost" size="sm" asChild><Link href="/reports"><ArrowLeft className="mr-1 h-4 w-4" />Reports</Link></Button><select className="rounded-md border px-3 py-1.5 text-sm" value={year} onChange={event => setYear(Number(event.target.value))}>{[2024, 2025, 2026, 2027].map(item => <option key={item} value={item}>{item}</option>)}</select><Button size="sm" variant="outline" onClick={() => load(year)}><RefreshCw className="h-4 w-4" /></Button></div>} />
+    <PageHeader title="Monthly P&L Preview" description="Management view from posted invoices and completed work orders" actions={<div className="flex flex-wrap gap-2"><Button variant="ghost" size="sm" asChild><Link href="/reports"><ArrowLeft className="mr-1 h-4 w-4" />Reports</Link></Button><select className="rounded-md border px-3 py-1.5 text-sm" value={year} onChange={event => setYear(Number(event.target.value))}>{[2024, 2025, 2026, 2027].map(item => <option key={item} value={item}>{item}</option>)}</select><Button size="sm" variant="outline" asChild><a href={`/api/db/reports/pnl?year=${year}&format=csv`}><Download className="mr-1 h-4 w-4" />CSV</a></Button><Button size="sm" variant="outline" onClick={() => load(year)}><RefreshCw className="h-4 w-4" /></Button></div>} />
     {loading && <div className="p-12 text-center text-sm text-gray-400">Loading…</div>}
     {error && <Card><CardContent className="p-6 text-sm text-red-700">{error}</CardContent></Card>}
     {data && !loading && <>

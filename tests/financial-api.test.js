@@ -133,3 +133,14 @@ test("atomic finance migrations lock records and restrict RPC execution", () => 
     assert.match(migration, /GRANT EXECUTE ON FUNCTION[\s\S]*TO service_role/)
   }
 })
+
+test("monthly P&L exposes an accounting-safe preview and CSV export", () => {
+  const pnlRoute = read("../app/api/db/reports/pnl/route.ts")
+  const pnlPage = read("../app/(dashboard)/reports/pnl/page.tsx")
+  assert.match(pnlRoute, /Net invoiced subtotal excluding VAT and invoice discount/)
+  assert.match(pnlRoute, /Completed\/closed work-order labor, material and contractor totals/)
+  assert.match(pnlRoute, /unmapped or unposted costs are excluded, not estimated/)
+  assert.match(pnlRoute, /format\"\) === \"csv\"/)
+  assert.match(pnlRoute, /Content-Disposition.*pnl-\$\{year\}\.csv/)
+  assert.match(pnlPage, /reports\/pnl\?year=\$\{year\}&format=csv/)
+})

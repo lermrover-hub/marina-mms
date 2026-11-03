@@ -14,6 +14,10 @@ type MonthRow = {
   workOrderCount: number
 }
 
+function csvCell(value: unknown) {
+  return `"${String(value ?? "").replace(/"/g, '""')}"`
+}
+
 /**
  * Monthly management P&L preview.
  *
@@ -95,7 +99,7 @@ export async function GET(req: Request) {
       workOrderCount: result.workOrderCount + row.workOrderCount,
     }), { revenue: 0, collected: 0, directCost: 0, grossProfit: 0, invoiceCount: 0, workOrderCount: 0 })
 
-    return NextResponse.json({
+    const responseBody = {
       year,
       basis: {
         revenue: "Net invoiced subtotal excluding VAT and invoice discount",
@@ -104,7 +108,29 @@ export async function GET(req: Request) {
       },
       monthly,
       summary: { ...summary, margin: summary.revenue > 0 ? Math.round((summary.grossProfit / summary.revenue) * 100) : 0 },
-    })
+    }
+
+    if (searchParams.get("format") === "csv") {
+      const headers = ["month", "revenue_ex_vat", "collected", "direct_cost", "gross_profit", "gross_margin_pct", "invoice_count", "work_order_count"]
+      const rows = monthly.map((row) => [
+        `${year}-${String(row.month).padStart(2, "0")}`,
+        row.revenue,
+        row.collected,
+        row.directCost,
+        row.grossProfit,
+        row.margin,
+        row.invoiceCount,
+        row.workOrderCount,
+      ].map(csvCell).join(","))
+      return new NextResponse(`\uFEFF${[headers.join(","), ...rows].join("\r\n")}`, {
+        headers: {
+          "Content-Type": "text/csv; charset=utf-8",
+          "Content-Disposition": `attachment; filename="pnl-${year}.csv"`,
+        },
+      })
+    }
+
+    return NextResponse.json(responseBody)
   } catch (error) {
     return NextResponse.json({ error: String(error) }, { status: 500 })
   }

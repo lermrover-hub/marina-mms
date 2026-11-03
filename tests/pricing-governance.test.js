@@ -22,6 +22,9 @@ test("rate mode selection never stacks an extra discount", () => {
 test("only active approved or manager-review rows are quoteable", () => {
   assert.equal(isQuotableRate({ is_active: true, price_status: "ACTIVE", quote_allowed: "YES" }), true)
   assert.equal(isQuotableRate({ is_active: true, price_status: "ACTIVE", quote_allowed: "MANAGER_REVIEW" }), true)
+  assert.equal(isQuotableRate({ is_active: true, price_status: "APPROVED_CONFIRMED_LAUNCH", quote_allowed: "YES" }), true)
+  assert.equal(isQuotableRate({ is_active: true, price_status: "SOFT_APPROVED_STAGING", quote_allowed: "YES" }), true)
   assert.equal(isQuotableRate({ is_active: true, price_status: "CONTACT_ONLY", quote_allowed: "YES" }), false)
+  assert.equal(isQuotableRate({ is_active: true, price_status: "BLOCKED", quote_allowed: "YES" }), false)
   assert.equal(isQuotableRate({ is_active: false, price_status: "ACTIVE", quote_allowed: "YES" }), false)
 })

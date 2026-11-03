@@ -48,7 +48,11 @@ export function selectedRateThb(row: { rate_thb: number | string; full_rate_thb?
 
 export function isQuotableRate(row: { is_active?: boolean | null; price_status?: string | null; quote_allowed?: string | null }) {
   if (row.is_active === false) return false
-  if (String(row.price_status ?? "ACTIVE").toUpperCase() !== "ACTIVE") return false
+  const status = String(row.price_status ?? "ACTIVE").toUpperCase()
+  // v3.7 uses explicit APPROVED_* workflow statuses for rates that are safe
+  // to quote, while PENDING/BLOCKED/CONTACT/MANUAL rows must remain gated.
+  const approvedStatus = status === "ACTIVE" || status === "APPROVED" || status.startsWith("APPROVED_") || status === "SOFT_APPROVED_STAGING"
+  if (!approvedStatus) return false
   return ["YES", "MANAGER_REVIEW"].includes(String(row.quote_allowed ?? "YES").toUpperCase())
 }
 

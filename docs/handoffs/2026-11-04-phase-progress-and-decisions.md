@@ -30,5 +30,6 @@ The new `/reports/pnl` view is a **management P&L preview**, not a statutory led
 
 - `npm test`: 143 passed, 0 failed.
 - `npx tsc --noEmit`: passed.
+- `npm run build`: local Node 24.15.0 hit the existing Next/Webpack `WasmHash` runtime error; the same commit built successfully on Vercel Preview (`READY`).
 - No Supabase migration was executed in this phase.
 - No Production data, quotation, invoice or deployment was modified.

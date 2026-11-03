@@ -88,7 +88,32 @@ export async function POST(req: Request) {
       .select()
       .single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json(data, { status: 201 })
+
+    // Keep the accounting chain traversable after a Work Order is created.
+    // The quotation remains the commercial source of truth, while any invoice
+    // already converted from that quotation receives the same WO link. Older
+    // staging schemas may not expose one of these compatibility columns, so a
+    // link failure is returned as a visible warning rather than hiding it.
+    const accountingLinkWarnings: string[] = []
+    if (body.quotation_id) {
+      const quotationLink = await supabase
+        .from("mms_quotations")
+        .update({ work_order_id: data.id, updated_at: now })
+        .eq("id", body.quotation_id)
+      if (quotationLink.error) accountingLinkWarnings.push(`Quotation link: ${quotationLink.error.message}`)
+
+      const invoiceLink = await supabase
+        .from("mms_invoices")
+        .update({ work_order_id: data.id, updated_at: now })
+        .eq("quotation_id", body.quotation_id)
+        .is("work_order_id", null)
+      if (invoiceLink.error) accountingLinkWarnings.push(`Invoice link: ${invoiceLink.error.message}`)
+    }
+
+    return NextResponse.json(
+      accountingLinkWarnings.length ? { ...data, accounting_link_warnings: accountingLinkWarnings } : data,
+      { status: 201 },
+    )
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 })
   }

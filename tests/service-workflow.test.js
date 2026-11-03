@@ -247,6 +247,15 @@ test("approval and customer delivery gate payment and work order creation", () =
   assert.match(detailPage, /disabled=\{busy \|\| !quotationDelivered\}/)
 })
 
+test("Work Order creation links the quotation and any converted invoice for accounting traceability", () => {
+  const workOrderRoute = readFileSync("app/api/db/work-orders/route.ts", "utf8")
+  assert.match(workOrderRoute, /mms_quotations/)
+  assert.match(workOrderRoute, /update\(\{ work_order_id: data\.id, updated_at: now \}\)/)
+  assert.match(workOrderRoute, /mms_invoices/)
+  assert.match(workOrderRoute, /eq\("quotation_id", body\.quotation_id\)/)
+  assert.match(workOrderRoute, /is\("work_order_id", null\)/)
+})
+
 test("rate card items are routed to the approved workflow sections", () => {
   const rows = [
     { code: "HAUL", serviceNameEn: "Haul out", category: "Haul", unit: "trip", rateThb: 1, directCostThb: 0, serviceGroup: "2. Haul-out", subgroup: "Haul" },

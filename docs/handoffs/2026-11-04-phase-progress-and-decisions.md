@@ -18,7 +18,7 @@
 |---|---|---|
 | 1. Audit and backup | Complete for current staging snapshot | v3.7 audit and pricing backup are recorded in `docs/pricing-v3.7/`; source workbook reachability and Finance count decisions remain documented gates. |
 | 2. Pricing governance | Implemented in code and tests | Wet berth fail-closed, price-status/quoteability gate, legacy calc mapping, manager-review escalation, Full/Pilot selection and v3.7 storage snapshot notes. |
-| 3. Rate-card reconciliation | Staging sync recorded | 126 canonical codes and 39 retired aliases are recorded by the v3.7 staging audit. No production import. |
+| 3. Rate-card reconciliation | Staging sync recorded; count reconciliation still open | The latest read-only staging query shows **165 active / 60 retired / 225 total** rows. Older v3.7 audit notes cite 126 canonical codes and 39 retired aliases, so no further retirement or merge is safe until Finance confirms the row-by-row canonical list. No production import. |
 | 4. Quotation, recurring billing and finance | In progress / controlled preview | Calendar-month recurring path retained; monthly P&L Preview now reads invoices and completed work-order costs. Payment confirmation, account close and Work Order delivery remain Preview Safe Mode gates. |
 | 5. Preview and release readiness | Not production-ready | Run tests, typecheck, build and Preview verification. Production remains out of scope until Finance/Manager sign-off and staging E2E evidence are complete. |
 
@@ -32,4 +32,5 @@ The new `/reports/pnl` view is a **management P&L preview**, not a statutory led
 - `npx tsc --noEmit`: passed.
 - `npm run build`: local Node 24.15.0 hit the existing Next/Webpack `WasmHash` runtime error; the same commit built successfully on Vercel Preview (`READY`).
 - No Supabase migration was executed in this phase.
+- Latest read-only staging pricing snapshot: 165 active, 60 retired, 225 total. This is evidence for reconciliation only; it did not modify Supabase.
 - No Production data, quotation, invoice or deployment was modified.

@@ -51,10 +51,11 @@ This proves the accounting close and traceability chain in staging. It does not 
 ## Final Preview handoff — 4 November 2026
 
 - Branch: `codex/v37-catalog-admin`
-- Commit: `622d563` (`fix: align service storage with approved v3.7 tiers`)
+- Code commit: `622d563` (`fix: align service storage with approved v3.7 tiers`)
+- Final handoff commit: `d0455a1` (`docs: record final v3.7 preview handoff`)
 - Pull Request: https://github.com/lermrover-hub/marina-mms/pull/6
 - Vercel Preview: https://marina-mms-git-codex-v37-catalog-admin-lermrover-hubs-projects.vercel.app
-- GitHub Vercel status for commit `622d563`: `success` (deployment `FCFhg3JB1deNwCb4gSSuV7PxVDgo`)
+- GitHub Vercel status for commit `d0455a1`: `success` (deployment `TZ2ZMW7G9DKU2RzgTrZRqNHjB42z`)
 - HTTP smoke check: `/login` returned `200`; protected `/reports/pnl` returned `307` to `/login` when unauthenticated.
 - Staging read-back: `pricing_master` = 126 active `ORM-PRICE-2026-v3.7` rows, 0 active legacy rows, 99 retired rows, 225 total; reconciliation backup = 225 rows.
 

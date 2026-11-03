@@ -21,7 +21,7 @@ export function normalizeCalculationMethod(method: string | null | undefined, un
   const normalizedUnit = String(unit ?? "").toLowerCase().replace(/\s+/g, "")
   if (raw === "FLAT_QTY") return "PER_UNIT"
   if (raw === "FLAT_DAYS") return "PER_DAY"
-  if (raw === "LOA_RATE_QTY" || raw === "LOA_RATE_DAYS") return "PER_FOOT"
+  if (raw === "LOA_RATE_QTY" || raw === "LOA_RATE_DAYS" || raw === "LOA_MULTIPLIER") return "PER_FOOT"
   if (raw === "MANUAL") return "MANUAL_QUOTE"
   if (raw === "TIER4_LOA_DYNAMIC") return "TIER4_LOA_DYNAMIC"
   const canonical: PricingCalculationMethod[] = [

@@ -192,7 +192,11 @@ export async function POST(req: Request) {
         const price = priceByCode.get(code)
         if (!price) throw new Error(`Approved v3.7 rate ${code} is not active.`)
         if (!isQuotableRate({ ...price, is_active: true })) throw new Error(`Storage rate ${code} is not approved for automatic quotation.`)
-        return { code, rateThb: selectedRateThb(price, rateMode), fullRateThb: Number(price.full_rate_thb), unit: String(price.unit) }
+        const method = normalizeCalculationMethod(price.calc_type, price.unit, price.code)
+        const rateThb = method === "TIER4_LOA_DYNAMIC"
+          ? tier4StorageRate(String(price.unit), Number(boat.loa_ft ?? 0))
+          : selectedRateThb(price, rateMode)
+        return { code, rateThb, fullRateThb: Number(price.full_rate_thb), unit: String(price.unit) }
       })
       const packages = lowestStoragePackage(automaticStorage.days, rates)
       const storageLines = packages.map((pack, index) => {

@@ -39,7 +39,7 @@ export type PricingResult = {
 export function isPerFootRate(method: string | null | undefined, unit: string | null | undefined) {
   const normalizedMethod = String(method ?? "").toUpperCase()
   const normalizedUnit = String(unit ?? "").toLowerCase().replace(/\s+/g, "")
-  return ["PER_FOOT", "LOA_RATE_QTY", "LOA_RATE_DAYS"].includes(normalizedMethod)
+  return ["PER_FOOT", "LOA_RATE_QTY", "LOA_RATE_DAYS", "LOA_MULTIPLIER"].includes(normalizedMethod)
     || /^ft\//.test(normalizedUnit)
     || normalizedUnit === "ft"
 }

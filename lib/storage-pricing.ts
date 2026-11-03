@@ -9,14 +9,20 @@ export function speedboatStorageClass(loaFt: number): StorageClass {
   if (!Number.isFinite(loaFt) || loaFt <= 0) throw new Error("A valid speedboat LOA is required for storage pricing.")
   if (loaFt <= 27) return "SB1"
   if (loaFt <= 40) return "SB2"
-  if (loaFt <= 47) return "SB3"
+  if (loaFt <= 50) return "SB3"
   if (loaFt <= 60) return "SB4"
-  throw new Error("Speedboats over 60 ft are outside the configured v3.6 storage range.")
+  throw new Error("Speedboats over 60 ft are outside the configured v3.7 storage range.")
 }
 
 export function storageRateCodes(storageClass: StorageClass, slot?: StorageSlot | null): string[] {
-  const prefix = storageClass === "SB4" ? `SB4_${validateSb4Slot(slot)}` : `${storageClass}_STORAGE`
-  return [`${prefix}_DAY`, `${prefix}_WEEK`, `${prefix}_MONTH`]
+  if (storageClass === "SB4") {
+    // v3.7 uses one LOA-based Tier 4 rate family. The physical slot is still
+    // validated separately because storage eligibility never authorizes haul-out.
+    validateSb4Slot(slot)
+    return ["STORE_SB_T4_D", "STORE_SB_T4_W", "STORE_SB_T4_M"]
+  }
+  const tier = storageClass.slice(2)
+  return [`STORE_SB_T${tier}_D`, `STORE_SB_T${tier}_W`, `STORE_SB_T${tier}_M`]
 }
 
 export function validateSb4Storage(slot?: StorageSlot | null, method?: StorageMethod | null): "W4" | "B1" {
@@ -32,9 +38,9 @@ function validateSb4Slot(slot?: StorageSlot | null): "W4" | "B1" {
 }
 
 function periodDaysFromCode(code: string): 1 | 7 | 30 {
-  if (code.endsWith("_DAY")) return 1
-  if (code.endsWith("_WEEK")) return 7
-  if (code.endsWith("_MONTH")) return 30
+  if (code.endsWith("_DAY") || code.endsWith("_D")) return 1
+  if (code.endsWith("_WEEK") || code.endsWith("_W")) return 7
+  if (code.endsWith("_MONTH") || code.endsWith("_M")) return 30
   throw new Error(`Unsupported storage package code: ${code}`)
 }
 

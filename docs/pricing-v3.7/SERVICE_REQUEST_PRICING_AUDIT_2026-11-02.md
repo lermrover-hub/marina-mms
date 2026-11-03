@@ -44,3 +44,9 @@ Before the write, `public.pricing_master_backup_v37_20261102` was created with 1
 ## Remaining approval
 
 No production release is implied. The staged database changes are reversible from `public.pricing_master_backup_v37_20261102` if a later approved rollback is required. Production promotion remains a separate approval gate.
+
+## Follow-up reconciliation — 2026-11-04
+
+The approved workbook and the latest rate summary were re-read locally and hashed in `SOURCE_MANIFEST.md`. They confirm 126 canonical v3.7 codes, 107 quoteable rows and 19 manager/capacity-review rows. A fresh staging backup was created as `public.pricing_master_backup_v37_reconcile_20261104` with 225 rows. The remaining 39 active non-v3.7 rows were retired without deletion (`is_active=false`, `quote_allowed=NO`, `price_status=LEGACY_ALIAS`). Existing quotation and service-request references remain intact.
+
+The application now uses the v3.7 storage code families (`STORE_SB_T1_*` through `STORE_SB_T4_*`), Tier 3 = 41–50 ft, Tier 4 = 51–60 ft, and the actual-LOA Tier 4 storage formula. Tier 4 ramp/haul classification returns a special manager-review code rather than auto-mapping a legacy 3-engine ramp code.

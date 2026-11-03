@@ -16,9 +16,9 @@
 
 | Phase | Status | Evidence / remaining gate |
 |---|---|---|
-| 1. Audit and backup | Complete for current staging snapshot | v3.7 audit and pricing backup are recorded in `docs/pricing-v3.7/`; source workbook reachability and Finance count decisions remain documented gates. |
+| 1. Audit and backup | Complete for current staging snapshot | The approved workbooks are now reachable and hashed in `docs/pricing-v3.7/SOURCE_MANIFEST.md`. The v3.7 source resolves the earlier 126/132 ambiguity in favor of 126 canonical codes. |
 | 2. Pricing governance | Implemented in code and tests | Wet berth fail-closed, price-status/quoteability gate, legacy calc mapping, manager-review escalation, Full/Pilot selection and v3.7 storage snapshot notes. |
-| 3. Rate-card reconciliation | Staging sync recorded; count reconciliation still open | The latest read-only staging query shows **165 active / 60 retired / 225 total** rows. Older v3.7 audit notes cite 126 canonical codes and 39 retired aliases, so no further retirement or merge is safe until Finance confirms the row-by-row canonical list. No production import. |
+| 3. Rate-card reconciliation | Complete in staging; Production untouched | A fresh backup of all 225 rows was created in `public.pricing_master_backup_v37_reconcile_20261104`. The 126 v3.7 rows remain active; the 39 non-v3.7 active legacy rows were retired with `is_active=false`, `quote_allowed=NO`, and `price_status=LEGACY_ALIAS`. Existing quotation and service-request references remain preserved. |
 | 4. Quotation, recurring billing and finance | Staging E2E verified; production gate pending | Calendar-month recurring path retained; Monthly P&L Preview and CSV export are available. Synthetic payment/account close reached `PAID` with zero balance and an invoice→quotation→Work Order link. Real customer messaging/payment remains disabled. |
 | 5. Preview and release readiness | Preview verified; not production-ready | Tests, typecheck and Vercel Preview are green. Production remains out of scope until Finance/Manager sign-off and rate-count reconciliation are complete. |
 
@@ -28,11 +28,12 @@ The new `/reports/pnl` view is a **management P&L preview**, not a statutory led
 
 ## Validation recorded in this phase
 
-- `npm test`: 146 passed, 0 failed.
+- `npm test`: 145 passed, 0 failed.
+- `node --test ai-agents/tests/speedboat-classification.test.js`: 20 passed, 0 failed.
 - `npx tsc --noEmit`: passed.
 - `npm run build`: local Node 24.15.0 hit the existing Next/Webpack `WasmHash` runtime error; the same commit built successfully on Vercel Preview (`READY`).
 - No Supabase migration was executed in this phase.
-- Latest read-only staging pricing snapshot: 165 active, 60 retired, 225 total. This is evidence for reconciliation only; it did not modify Supabase.
+- Latest staging pricing snapshot after the approved staging-only reconciliation: 126 active v3.7 rows, 99 retired rows, 225 total. The reconciliation backup contains 225 rows. No Production data, quotation, invoice or deployment was modified.
 - No Production data, quotation, invoice or deployment was modified.
 
 ## Staging E2E payment/account-close evidence — 4 November 2026

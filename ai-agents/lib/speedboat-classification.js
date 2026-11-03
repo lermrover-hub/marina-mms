@@ -26,7 +26,7 @@ export function isSpeedboatType(value) {
 function loaToEngineGroup(loaFt) {
   if (loaFt <= 27) return 1
   if (loaFt <= 40) return 2
-  if (loaFt <= 47) return 3
+  if (loaFt <= 50) return 3
   return 4
 }
 
@@ -37,9 +37,10 @@ function groupToBaseRisk(group) {
   return "High"
 }
 
-function groupToRampCode(group) {
+function groupToRampCode(group, loaFt) {
   if (group === 1) return "RAMP_1OB"
   if (group === 2) return "RAMP_2OB"
+  if (loaFt > 47) return "RAMP_SB_SPECIAL"
   return "RAMP_3OB"
 }
 
@@ -76,7 +77,7 @@ export function classifySpeedboat({ loaFt = 0, engines = null, beamFt = null, dr
   const loaGroup = loaToEngineGroup(loa)
   const baseRisk = groupToBaseRisk(loaGroup)
   const { flag: effectiveRiskFlag, reasons: escalationReasons } = escalateRisk(baseRisk, { beamFt, draftFt, weightKg })
-  const rampCode = groupToRampCode(loaGroup)
+  const rampCode = groupToRampCode(loaGroup, loa)
 
   let mismatchWarning = null
   if (outsideConfiguredRange) {

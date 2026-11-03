@@ -249,14 +249,18 @@ export default function NewServiceRequestPage() {
   function addOptimizedStorage() {
     setError(null)
     try {
-      if (!selectedStorageClass) throw new Error(storageClassificationError ?? "Automatic v3.6 storage pricing requires a classified speedboat.")
+      if (!selectedStorageClass) throw new Error(storageClassificationError ?? "Automatic v3.7 storage pricing requires a classified speedboat.")
       const slot = selectedStorageClass === "SB4" ? (storageSlotCode || null) : "ANY_APPROVED"
       if (selectedStorageClass === "SB4") validateSb4Storage(slot, storageMethod || null)
       const codes = storageRateCodes(selectedStorageClass, slot)
       const rates = codes.map((code) => {
         const price = prices.find((row) => row.code === code)
-        if (!price) throw new Error(`Approved v3.6 rate ${code} is not loaded. Ask Finance/Admin to reconcile the staging Rate Card.`)
-        return { code, rateThb: price.rateThb, fullRateThb: null, unit: price.unit }
+        if (!price) throw new Error(`Approved v3.7 rate ${code} is not loaded. Ask Finance/Admin to reconcile the staging Rate Card.`)
+        const method = String(price.calcType ?? "FLAT_QTY").toUpperCase()
+        const rateThb = method === "TIER4_LOA_DYNAMIC"
+          ? tier4StorageRate(price.unit, Number(selectedBoat?.loa_ft ?? 0))
+          : price.rateThb
+        return { code, rateThb, fullRateThb: null, unit: price.unit }
       })
       const packages = lowestStoragePackage(storageDays, rates)
       const storageLines = packages.map((pack) => {

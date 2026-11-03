@@ -20,6 +20,7 @@ test("per-foot safeguards cover weekly yacht rates and stale calc types", () => 
   assert.equal(tier4StorageRate("THB/day", 55), 1750)
   assert.equal(tier4StorageRate("THB/7 days", 55), 11030)
   assert.equal(tier4StorageRate("THB/30 days", 60), 51000)
+  assert.equal(tier4StorageRate("THB/30 days", 55), 44630)
   assert.throws(() => tier4StorageRate("THB/day", 61), /51 to 60/)
 })
 

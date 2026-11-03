@@ -38,7 +38,7 @@ export interface SpeedboatClassification {
   loaFt: number
   primaryRiskFlag: RiskFlag
   effectiveRiskFlag: RiskFlag    // after beam/draft/weight escalation
-  rampCode: "RAMP_1OB" | "RAMP_2OB" | "RAMP_3OB"
+  rampCode: "RAMP_1OB" | "RAMP_2OB" | "RAMP_3OB" | "RAMP_SB_SPECIAL"
   escalationReasons: string[]
   mismatchWarning: string | null
   outsideConfiguredRange: boolean
@@ -54,7 +54,7 @@ export function isSpeedboatType(value: unknown): boolean {
 function loaToEngineGroup(loaFt: number): EngineGroup {
   if (loaFt <= 27) return 1
   if (loaFt <= 40) return 2
-  if (loaFt <= 47) return 3
+  if (loaFt <= 50) return 3
   return 4
 }
 
@@ -71,9 +71,11 @@ function groupToBaseRisk(group: EngineGroup): RiskFlag {
 /** Engine group → ramp code */
 function groupToRampCode(
   group: EngineGroup,
+  loaFt: number,
 ): SpeedboatClassification["rampCode"] {
   if (group === 1) return "RAMP_1OB"
   if (group === 2) return "RAMP_2OB"
+  if (loaFt > 47) return "RAMP_SB_SPECIAL"
   return "RAMP_3OB"
 }
 
@@ -138,7 +140,7 @@ export function classifySpeedboat(
       `LOA (${loaFt} ft) takes priority. Verify boat data.`
   }
 
-  const rampCode = groupToRampCode(loaGroup)
+  const rampCode = groupToRampCode(loaGroup, loaFt)
 
   const label =
     `Engine Group ${loaGroup} | LOA ${loaFt} ft | ` +

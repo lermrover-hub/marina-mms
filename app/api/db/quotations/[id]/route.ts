@@ -19,6 +19,7 @@ import {
 } from "@/lib/quotation-workflow"
 import { minimumQuotationApprover } from "@/lib/service-workflow"
 import { QUOTATION_PRICE_EDIT_ROLES, roleAllowed } from "@/lib/workflow-access"
+import { isQuotableRate, isWetBerthEnabled, resolveRateMode, selectedRateThb } from "@/lib/pricing-governance"
 
 const supabase = createServerClient()
 
@@ -111,7 +112,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       const customerId = String(body.customer_id ?? "").trim()
       const boatId = body.boat_id ? String(body.boat_id) : null
       const rawItems: Record<string, unknown>[] = Array.isArray(body.items) ? body.items : []
-      const normalizedItems = rawItems.map((item: Record<string, unknown>, index: number) => {
+      let normalizedItems = rawItems.map((item: Record<string, unknown>, index: number) => {
         const qty = Number(item.qty ?? item.quantity ?? 1)
         const unitPrice = Number(item.unitPrice ?? item.unit_price ?? 0)
         if (!Number.isFinite(qty) || qty <= 0 || !Number.isFinite(unitPrice) || unitPrice < 0) {
@@ -128,7 +129,40 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       if (normalizedItems.length === 0) {
         return NextResponse.json({ error: "At least one quotation line is required." }, { status: 400 })
       }
+      if (rawItems.some((item) => /wet\s*berth/i.test(`${item.code ?? item.pricing_code ?? ""} ${item.description ?? ""} ${item.category ?? ""}`)) && !isWetBerthEnabled()) {
+        return NextResponse.json({ error: "Wet Berth is unavailable until construction is complete.", code: "WET_BERTH_UNAVAILABLE" }, { status: 409 })
+      }
 
+      const [{ data: customer }, { data: boat }] = await Promise.all([
+        supabase.from("mms_customers").select("company_name,first_name,last_name").eq("id", customerId).maybeSingle(),
+        boatId
+          ? supabase.from("mms_boats").select("name").eq("id", boatId).maybeSingle()
+          : Promise.resolve({ data: null }),
+      ])
+      if (!customer) return NextResponse.json({ error: "Customer not found" }, { status: 400 })
+      const customerName = customer.company_name ??
+        ([customer.first_name, customer.last_name].filter(Boolean).join(" ") || null)
+
+      const pricingCodes = [...new Set(normalizedItems.map((item) => item.pricingCode).filter((code): code is string => Boolean(code)))]
+      const { data: pricingRows, error: pricingError } = pricingCodes.length
+        ? await supabase
+            .from("pricing_master")
+            .select("id,code,full_rate_thb,rate_thb,pilot_rate_thb,direct_cost_thb,revenue_gl_code,cost_gl_code,pnl_category,cost_pnl_category,source_version,effective_date,updated_at,is_active,quote_allowed,price_status")
+            .in("code", pricingCodes)
+        : { data: [], error: null }
+      if (pricingError) throw pricingError
+      const pricingByCode = new Map((pricingRows ?? []).map((row) => [row.code, row]))
+      const missingCodes = pricingCodes.filter((code) => !pricingByCode.has(code))
+      if (missingCodes.length) {
+        return NextResponse.json({ error: `Unknown pricing code: ${missingCodes.join(", ")}` }, { status: 400 })
+      }
+
+      const rateMode = resolveRateMode(body.rate_mode)
+      normalizedItems = normalizedItems.map((item) => {
+        const pricing = item.pricingCode ? pricingByCode.get(item.pricingCode) : null
+        if (pricing && !isQuotableRate(pricing)) throw new Error(`${pricing.code} is not approved for quotation.`)
+        return { ...item, unitPrice: pricing ? selectedRateThb(pricing, rateMode) : item.unitPrice }
+      })
       const subtotal = normalizedItems.reduce((sum, item) => sum + item.qty * item.unitPrice, 0)
       const discountType = String(body.discount_type ?? "NONE").toUpperCase()
       const discountValue = Number(body.discount_value ?? 0)
@@ -150,30 +184,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         return NextResponse.json({ error: "Invalid quotation financial values" }, { status: 400 })
       }
 
-      const [{ data: customer }, { data: boat }] = await Promise.all([
-        supabase.from("mms_customers").select("company_name,first_name,last_name").eq("id", customerId).maybeSingle(),
-        boatId
-          ? supabase.from("mms_boats").select("name").eq("id", boatId).maybeSingle()
-          : Promise.resolve({ data: null }),
-      ])
-      if (!customer) return NextResponse.json({ error: "Customer not found" }, { status: 400 })
-      const customerName = customer.company_name ??
-        ([customer.first_name, customer.last_name].filter(Boolean).join(" ") || null)
-
-      const pricingCodes = [...new Set(normalizedItems.map((item) => item.pricingCode).filter((code): code is string => Boolean(code)))]
-      const { data: pricingRows, error: pricingError } = pricingCodes.length
-        ? await supabase
-            .from("pricing_master")
-            .select("id,code,full_rate_thb,rate_thb,direct_cost_thb,revenue_gl_code,cost_gl_code,pnl_category,cost_pnl_category,source_version,effective_date,updated_at")
-            .in("code", pricingCodes)
-        : { data: [], error: null }
-      if (pricingError) throw pricingError
-      const pricingByCode = new Map((pricingRows ?? []).map((row) => [row.code, row]))
-      const missingCodes = pricingCodes.filter((code) => !pricingByCode.has(code))
-      if (missingCodes.length) {
-        return NextResponse.json({ error: `Unknown pricing code: ${missingCodes.join(", ")}` }, { status: 400 })
-      }
-
       const itemRows = normalizedItems.map((item, index) => {
         const pricing = item.pricingCode ? pricingByCode.get(item.pricingCode) : null
         return {
@@ -187,7 +197,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           pricing_master_id: pricing?.id ?? null,
           pricing_code: pricing?.code ?? null,
           full_rate_snapshot_thb: pricing?.full_rate_thb ?? null,
-          current_rate_snapshot_thb: pricing?.rate_thb ?? null,
+          current_rate_snapshot_thb: item.unitPrice,
           direct_cost_snapshot_thb: pricing?.direct_cost_thb ?? null,
           revenue_gl_code: pricing?.revenue_gl_code ?? null,
           cost_gl_code: pricing?.cost_gl_code ?? null,

@@ -1,6 +1,6 @@
 # Marina MMS — User Manual
 **Ocean Rover Marina & Boat Yard Management System**
-Version 1.0 | May 2026
+Version 1.1 | 30 October 2026
 
 *คู่มือการใช้งานระบบบริหารงานมารีน่าและอู่เรือ*
 
@@ -1321,8 +1321,48 @@ Turn individual notifications on or off by toggling the switch. Adjust lead time
 
 ---
 
+## Version 1.1 — Berth release, B2 slot and monthly storage rules / กฎปรับปรุง 30 ตุลาคม 2026
+
+### Berth Management and Berth Map must use the same slot master
+
+Berth Map and **Marina Operations → Berth Management** read the same `mms_berths` slot master. A slot shown on the map must also be present on the management board. If a physical slot is added or renamed, a Super Admin must add/update the master slot before staff create an assignment.
+
+The staging slot list now includes **B2** as an available dry-storage / boat-stand slot (maximum LOA 60 ft). Do not create a second alias such as `B-2`; use the canonical code `B2` in assignments, quotations and invoices.
+
+### Check-out / launch date and the next free day
+
+Assignment dates are inclusive. If a boat checks out or is launched on **18/10/2026**, set the assignment **End Date = 18/10/2026** and mark it **Completed / Check-out**. The slot is physically occupied through the end of 18/10, and **19/10/2026 is the first available white day** for a new assignment. Do not leave a far-future placeholder end date on a completed booking.
+
+The map may continue to show physical occupancy until the actual launch date. This is separate from billing: a tide-only delay does **not** create an automatic waiver. Finance follows the approved quotation or contract; if management grants relief, an authorised user applies the normal discount workflow and records the reason (for example `TIDE_DELAY_DISCOUNT`). Do not remove storage days or invent a credit automatically.
+
+### Monthly storage: choose the correct quotation scenario
+
+Before preparing a quotation, ask why the vessel will remain ashore and whether the end date is known.
+
+| Situation | Required scenario | Quotation and recurring billing rule |
+|---|---|---|
+| Repair / waiting for imported parts; launch date unknown | **Repair hold / parts delay (`REPAIR_HOLD_30D`)** | Issue quotation and receive the required payment before the operation. Anchor the first cycle to the first haul-out / yard-start date. The next cycle is due **30 days later**; send the Finance reminder **7 days before** the due date. Do not wait for a final launch date. |
+| Owner away or uses the boat infrequently for about 3–6 months | **Space lease (`SPACE_LEASE`)** | Create a clear Dry Storage contract with slot, start/end period, rate and billing cycle. Recurring invoices come from that contract and the reminder is **7 days before** each due date. Do not also create a second service-payment-plan storage charge. |
+
+Use the approved monthly package / pilot rate snapshot saved on the quotation. A rate change later must not change an issued quotation or invoice. Finance should reconcile each recurring invoice against the contract before issuing it and close the customer balance only after the payment is posted and allocated.
+
+### Wet Berth restriction
+
+Wet Berth is not operational while construction has not started. Keep it blocked in inquiry, quotation/contract creation and recurring billing. Do not offer or invoice a new Wet Berth service; retain historical records for audit only.
+
+### Staff key-in checklist for a monthly storage booking
+
+1. Select the existing customer and boat; confirm LOA, beam, draft, weight and storage method.
+2. Select the canonical slot (`B2`, `C-8`, etc.) from the slot list; never type a visual alias.
+3. Select the reason: repair hold or space lease. For a repair hold, enter the first yard-start date and leave the launch date open when it is genuinely unknown. For a space lease, enter the contract period.
+4. Select the approved rate/pilot-rate snapshot and billing cycle. Confirm the 30-day package rule and that no duplicate storage or trailer add-on is included.
+5. Submit the Service Request → Draft Quotation → approval → customer delivery → Payment Gate workflow. The Work Order remains locked until the required payment is recorded.
+6. Finance records and allocates the payment, generates the recurring invoice/reminder, and closes the account only after the final invoice is paid and reconciled. Any tide-delay relief must appear as an approved discount in the same audit trail.
+
+---
+
 *Document prepared for Ocean Rover Marina & Boat Yard Management System*
 *URL: https://marina-mms.vercel.app*
 *GitHub: https://github.com/lermrover-hub/marina-mms*
-*Version 1.0 — May 2026*
+*Version 1.1 — 30 October 2026*
 *For technical support, contact your system administrator or open an issue on GitHub.*

@@ -23,6 +23,13 @@ test("per-foot safeguards cover weekly yacht rates and stale calc types", () => 
   assert.throws(() => tier4StorageRate("THB/day", 61), /51 to 60/)
 })
 
+test("weekly yacht and boat-stand quantities multiply instead of defaulting to one", () => {
+  const yachtLoa = 40
+  const yachtWeeklyRate = 220
+  assert.equal(yachtLoa * yachtWeeklyRate * storageDurationMultiplier("THB/ft/week", 21), 26400)
+  assert.equal(calculatePrice("PER_WEEK", 5400, { quantity: 3 }).amountThb, 16200)
+})
+
 test("calculation methods cover flat, dimensions, time, unit and cost-plus", () => {
   assert.equal(calculatePrice("FLAT_RATE", 12000).amountThb, 12000)
   assert.equal(calculatePrice("PER_FOOT", 315, { loaFt: 40 }).amountThb, 12600)

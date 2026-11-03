@@ -13,7 +13,6 @@ import {
 type ServiceCategory =
   | "RAMP_LAUNCH"
   | "RAMP_HAUL_OUT"
-  | "WET_BERTH"
   | "DRY_STORAGE"
   | "BOAT_REPAIR"
   | "OTHER"
@@ -84,14 +83,6 @@ const SERVICE_OPTIONS: {
     icon: Anchor,
     desc: "Pull your vessel out of the water and onto land.",
     color: "border-blue-300 bg-blue-50 hover:border-blue-500",
-  },
-  {
-    value: "WET_BERTH",
-    label: "Wet Berth",
-    labelTh: "จอดเรือในน้ำ",
-    icon: Ship,
-    desc: "Monthly or annual berth in our protected marina basin.",
-    color: "border-cyan-300 bg-cyan-50 hover:border-cyan-500",
   },
   {
     value: "DRY_STORAGE",
@@ -684,8 +675,7 @@ export default function BookingInquiryPage() {
                   </div>
                 </div>
 
-                {(form.serviceCategory === "WET_BERTH" ||
-                  form.serviceCategory === "DRY_STORAGE") && (
+                {form.serviceCategory === "DRY_STORAGE" && (
                   <div className="w-40">
                     <Label>Duration (days / months)</Label>
                     <FieldInput

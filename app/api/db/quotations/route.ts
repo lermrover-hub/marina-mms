@@ -4,6 +4,7 @@ import { customerScope, PORTAL_READ_ROLES, QUOTATION_WRITE_ROLES, requireApiActo
 import { validateQuotationCreateInput } from "@/lib/quotation-validation"
 import { CUSTOMER_VISIBLE_QUOTATION_STATUSES } from "@/lib/quotation-workflow"
 import { minimumQuotationApprover } from "@/lib/service-workflow"
+import { assertWetBerthUnavailable, isQuotableRate, resolveRateMode, selectedRateThb } from "@/lib/pricing-governance"
 
 export const dynamic = "force-dynamic"
 
@@ -54,6 +55,13 @@ export async function POST(req: Request) {
     if ("error" in access) return access.error
     const body = await req.json()
     const supabase = createServerClient()
+
+    const requestedItems = Array.isArray(body.items) ? body.items as Record<string, unknown>[] : []
+    const wetBerthRequested = requestedItems.some((item) => /wet\s*berth/i.test(`${item.category ?? ""} ${item.description ?? ""} ${item.pricingCode ?? item.pricing_code ?? ""}`))
+    if (wetBerthRequested) {
+      return NextResponse.json({ error: "Wet Berth is unavailable until construction is complete.", code: "WET_BERTH_UNAVAILABLE" }, { status: 409 })
+    }
+    const rateMode = resolveRateMode(body.rate_mode)
 
     const validationError = validateQuotationCreateInput(body)
     if (validationError) {
@@ -127,6 +135,23 @@ export async function POST(req: Request) {
       }
     })
 
+    const pricingCodes = [...new Set(normalizedItems.map((item) => item.pricingCode).filter((code): code is string => Boolean(code)))]
+    const { data: pricingRows, error: pricingError } = pricingCodes.length > 0
+      ? await supabase
+          .from("pricing_master")
+          .select("id,code,full_rate_thb,rate_thb,pilot_rate_thb,direct_cost_thb,revenue_gl_code,cost_gl_code,pnl_category,cost_pnl_category,source_version,effective_date,updated_at,is_active,quote_allowed,price_status")
+          .in("code", pricingCodes)
+      : { data: [], error: null }
+    if (pricingError) return NextResponse.json({ error: pricingError.message }, { status: 500 })
+    const pricingByCode = new Map((pricingRows ?? []).map((row) => [row.code, row]))
+    const missingPricingCodes = pricingCodes.filter((code) => !pricingByCode.has(code))
+    if (missingPricingCodes.length > 0) return NextResponse.json({ error: `Unknown pricing code: ${missingPricingCodes.join(", ")}` }, { status: 400 })
+    for (const item of normalizedItems) {
+      const pricing = item.pricingCode ? pricingByCode.get(item.pricingCode) : null
+      if (pricing && !isQuotableRate(pricing)) return NextResponse.json({ error: `Pricing code ${pricing.code} is not approved for automatic quotation.` }, { status: 409 })
+      if (pricing) item.unitPrice = selectedRateThb(pricing, rateMode)
+    }
+
     const calculatedSubtotal = normalizedItems.reduce((sum, item) => sum + item.qty * item.unitPrice, 0)
     const subtotal = normalizedItems.length > 0 ? calculatedSubtotal : Number(body.subtotal ?? 0)
     const hasExplicitDiscountType = body.discount_type !== undefined && body.discount_type !== null
@@ -196,41 +221,22 @@ export async function POST(req: Request) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
     if (normalizedItems.length > 0) {
-      const pricingCodes = [...new Set(normalizedItems.map((item) => item.pricingCode).filter((code): code is string => Boolean(code)))]
-      const { data: pricingRows, error: pricingError } = pricingCodes.length > 0
-        ? await supabase
-            .from("pricing_master")
-            .select("id,code,full_rate_thb,rate_thb,direct_cost_thb,revenue_gl_code,cost_gl_code,pnl_category,cost_pnl_category,source_version,effective_date,updated_at")
-            .in("code", pricingCodes)
-        : { data: [], error: null }
-
-      if (pricingError) {
-        await supabase.from("mms_quotations").delete().eq("id", data.id)
-        return NextResponse.json({ error: pricingError.message }, { status: 500 })
-      }
-
-      const pricingByCode = new Map((pricingRows ?? []).map((row) => [row.code, row]))
-      const missingPricingCodes = pricingCodes.filter((code) => !pricingByCode.has(code))
-      if (missingPricingCodes.length > 0) {
-        await supabase.from("mms_quotations").delete().eq("id", data.id)
-        return NextResponse.json({ error: `Unknown pricing code: ${missingPricingCodes.join(", ")}` }, { status: 400 })
-      }
-
       const items = normalizedItems.map((item, index) => {
         const pricing = item.pricingCode ? pricingByCode.get(item.pricingCode) : null
+        const authoritativeUnitPrice = pricing ? selectedRateThb(pricing, rateMode) : item.unitPrice
 
         return {
           quotation_id: data.id,
           description: item.description ?? "",
           qty: item.qty,
           unit: item.unit ?? "item",
-          unit_price: item.unitPrice,
+          unit_price: authoritativeUnitPrice,
           discount_pct: 0,
           taxable: vatAmount > 0,
           pricing_master_id: pricing?.id ?? null,
           pricing_code: pricing?.code ?? null,
           full_rate_snapshot_thb: pricing?.full_rate_thb ?? null,
-          current_rate_snapshot_thb: pricing?.rate_thb ?? null,
+          current_rate_snapshot_thb: pricing ? authoritativeUnitPrice : null,
           direct_cost_snapshot_thb: pricing?.direct_cost_thb ?? null,
           revenue_gl_code: pricing?.revenue_gl_code ?? null,
           cost_gl_code: pricing?.cost_gl_code ?? null,

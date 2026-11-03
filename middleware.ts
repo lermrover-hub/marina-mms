@@ -45,7 +45,13 @@ export default auth((req) => {
     pathname === "/api/billing/recurring" ||
     pathname === "/api/billing/service-payment-reminders" ||
     pathname.startsWith("/_next") ||
-    pathname === "/favicon.ico"
+    pathname === "/favicon.ico" ||
+    pathname === "/manifest.json" ||
+    pathname === "/icon.png" ||
+    pathname === "/apple-icon.png" ||
+    pathname.startsWith("/icons/") ||
+    pathname.startsWith("/orm-") ||
+    pathname === "/ocean-rover-marina-gold.jpg"
   ) {
     return NextResponse.next()
   }

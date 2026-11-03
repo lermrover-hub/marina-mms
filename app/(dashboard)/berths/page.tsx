@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import type { Berth, Boat, Customer } from "@/lib/supabase"
 import { useApiList } from "@/hooks/useApiList"
 import { exportRowsCsv } from "@/lib/client-export"
+import { PhotoBerthMap } from "@/components/berths/PhotoBerthMap"
 
 const STATUS_STYLE: Record<string, string> = {
   AVAILABLE: "opacity-100",
@@ -69,6 +70,7 @@ function MapSlot({
     <div
       className={`absolute flex items-center justify-center border-2 text-[11px] font-medium text-gray-900 transition hover:z-20 hover:shadow-lg ${slotFill(berth)} ${statusClass} ${className}`}
       style={style}
+      data-slot-status={berth?.status ?? "UNCONFIGURED"}
       title={berth ? `${berth.code} - ${berth.status}` : label}
     >
       <span className={rotateLabel ? "-rotate-90 whitespace-nowrap" : "text-center leading-tight"}>
@@ -95,7 +97,7 @@ function HardstandPlan({ berths }: { berths: Berth[] }) {
     return map
   }, [berths])
   const get = (code: string) => byCode.get(code)
-  const washSlots = ["Wash-1", "Wash-2", "Wash-3"]
+  const workshopSlots = ["W1", "W2", "W3"]
   const cRow1 = Array.from({ length: 9 }, (_, index) => `C-${index + 1}`)
   const cRow2 = Array.from({ length: 9 }, (_, index) => `C-${index + 10}`)
 
@@ -115,6 +117,7 @@ function HardstandPlan({ berths }: { berths: Berth[] }) {
       <div
         className={`absolute flex items-start justify-center border border-black bg-neutral-100 px-2 py-3 text-xl font-medium text-black transition hover:z-20 hover:bg-teal-50 hover:shadow-md ${berth ? STATUS_STYLE[berth.status] ?? "" : ""} ${className}`}
         style={style}
+        data-slot-status={berth?.status ?? "UNCONFIGURED"}
         title={berth ? `${berth.code} - ${berth.status}` : code}
       >
         {children ?? code}
@@ -133,7 +136,7 @@ function HardstandPlan({ berths }: { berths: Berth[] }) {
             </h2>
 
             <div className="absolute left-[125px] top-[108px] h-[235px] w-[288px] border border-black bg-neutral-100" />
-            {washSlots.map((code, index) => (
+            {workshopSlots.map((code, index) => (
               <YardSlot
                 key={code}
                 code={code}
@@ -145,7 +148,7 @@ function HardstandPlan({ berths }: { berths: Berth[] }) {
               className="items-center py-0 text-xl"
               style={{ left: 125, top: 264, width: 288, height: 78 }}
             >
-              Wash-4
+              W4
             </YardSlot>
 
             <div className="absolute left-[528px] top-[108px] h-[235px] w-[585px] border border-black bg-neutral-100" />
@@ -649,7 +652,7 @@ export default function BerthsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Berth Map"
-        description="Phase 2 hardstand, workshop, speedboat, and big-yacht berth layout"
+        description="Hardstand & Boat Yard Layout · Workshop and dry-storage spaces"
         actions={
           <>
             <Button variant="outline" size="sm" className="gap-2" onClick={handleExport}>
@@ -672,13 +675,19 @@ export default function BerthsPage() {
         }
       />
 
+      <div className="orm-map-legend" aria-label="Slot status legend">
+        {[["AVAILABLE", "Available"], ["OCCUPIED", "Occupied"], ["RESERVED", "Reserved"], ["MAINTENANCE", "Maintenance"], ["BLOCKED", "Blocked"], ["UNCONFIGURED", "Not configured"]].map(([status, label]) => (
+          <span key={status}><i data-slot-status={status} aria-hidden="true" />{label}</span>
+        ))}
+      </div>
+
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         {[
           { label: "Total", value: stats.total, className: "bg-gray-100 text-gray-900" },
-          { label: "Available", value: stats.available, className: "bg-green-100 text-green-800" },
-          { label: "Occupied", value: stats.occupied, className: "bg-blue-100 text-blue-800" },
-          { label: "Reserved", value: stats.reserved, className: "bg-amber-100 text-amber-800" },
-          { label: "Maintenance", value: stats.maintenance, className: "bg-red-100 text-red-800" },
+          { label: "Available", value: stats.available, className: "bg-slate-100 text-slate-800" },
+          { label: "Occupied", value: stats.occupied, className: "bg-green-100 text-green-800" },
+          { label: "Reserved", value: stats.reserved, className: "bg-blue-100 text-blue-800" },
+          { label: "Maintenance", value: stats.maintenance, className: "bg-amber-100 text-amber-800" },
         ].map((item) => (
           <Card key={item.label}>
             <CardContent className={`p-4 ${item.className}`}>
@@ -701,8 +710,8 @@ export default function BerthsPage() {
 
       {!loading && !error && (
         <div className="space-y-5">
-          <HardstandPlan berths={berths} />
-          <BerthMap berths={berths} />
+          <PhotoBerthMap berths={berths} />
+          <details><summary className="cursor-pointer py-3 text-sm font-medium">Existing capacity and zone reference</summary><HardstandPlan berths={berths} /><BerthMap berths={berths} /></details>
         </div>
       )}
 

@@ -92,6 +92,7 @@ const REPORT_GROUPS = [
     title: "Financial Reports", icon: DollarSign, color: "bg-green-100 text-green-700",
     reports: [
       { name: "Monthly Revenue Report",    description: "Revenue by month and business unit", available: true,  href: "/reports/revenue" },
+      { name: "Monthly P&L Preview",       description: "Net revenue, direct cost and gross profit", available: true, href: "/reports/pnl" },
       { name: "Outstanding Invoice Report",description: "Unpaid and overdue invoices",         available: true,  href: "/invoices" },
       { name: "Customer Aging Report",     description: "Accounts receivable aging",           available: true,  href: "/reports/aging" },
       { name: "Payment Summary",           description: "All payments by method and date",     available: true,  href: "/payments" },

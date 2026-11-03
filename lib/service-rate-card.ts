@@ -9,6 +9,7 @@ export type ServiceRateCardItem = {
   subgroup?: string | null
   revenueGlCode?: string | null
   costGlCode?: string | null
+  catalogCategory?: string
   pnlCategory?: string | null
 }
 
@@ -29,7 +30,11 @@ export function rateCardItemsForSection<T extends ServiceRateCardItem>(items: T[
 }
 
 export function serviceCategories(items: ServiceRateCardItem[]) {
-  return [...new Set(items.map((item) => item.subgroup || item.category).filter(Boolean))].sort()
+  return [...new Set(items.map(serviceCategoryForRate).filter(Boolean))].sort()
+}
+
+export function serviceCategoryForRate(item: ServiceRateCardItem) {
+  return item.catalogCategory || item.subgroup || item.category
 }
 
 export function storagePeriodMatches(item: ServiceRateCardItem, period: string) {

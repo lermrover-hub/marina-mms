@@ -371,6 +371,9 @@ export default function SettingsPage() {
         title="Settings"
         description="System configuration and administration"
       />
+      <Link href="/settings/service-catalog" className="inline-flex rounded-lg border px-4 py-2 text-sm underline">
+        ประเภทเรือและกลุ่มบริการ / Service Catalog (Super Admin)
+      </Link>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
         {/* Settings nav */}

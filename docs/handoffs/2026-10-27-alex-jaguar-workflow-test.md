@@ -145,6 +145,10 @@ Vercel Preview deployment `https://marina-c87zyfmu1-lermrover-hubs-projects.verc
 
 The synthetic Alex/Jaguar Service Request currently has canonical DB state `QUOTATION_DRAFT`, `insurance_status=VERIFIED`, `payment_mode=FULL_PREPAYMENT`, `payment_gate_status=AWAITING_PAYMENT`, and `quotation_id=NULL`; the legacy marker still contains the prior `CREDIT` and quotation ID values. This is the exact dual-source mismatch the code fix prevents from being silently presented as current state. The linked synthetic quotation remains internally `APPROVED` with no customer delivery timestamp. No real payment or customer message was recorded.
 
+## 2026-10-30 — staging-only continuation through Work Order
+
+The canonical links for this explicitly marked `STAGING E2E TEST ONLY` record were repaired in the staging database from the matching quotation record; no production data was touched. The quotation is now `SENT` with a safe-delivery marker and no customer message was sent. The payment plan uses `CREDIT` and `CREDIT_APPROVED` as a simulation-only Finance gate; no invoice or payment transaction was created. The Service Request is `SERVICE_ORDER_CONFIRMED`, and the resulting staging Work Order is `WO-STG-145223-01` with status `OPEN`, linked to `SR-145223` and `DRAFT-1792256148720`. This validates the canonical metadata path through customer-delivery gate → Finance → Service Order → Work Order without enabling real messaging or payment.
+
 ## Controlled quotation test delivery (2026-10-29)
 
 During Preview testing, quotations may be sent by email to the controlled test
@@ -165,3 +169,9 @@ The Preview branch now has the two test-recipient flags plus the Staging
 Supabase service-role and Auth secrets configured. A fresh deployment is
 required after this environment update; the earlier deployment was built
 before the secrets were attached and is not valid evidence.
+## 2026-10-30 — recurring billing rule clarification
+
+- `REPAIR_HOLD_30D`: for urgent repairs / imported-parts delays (often 45+ days), quote first, clear the payment gate, then start the haul-out/yard work. The first cycle is anchored to the first yard-start date and is due after 30 days even when launch is still open.
+- `SPACE_LEASE`: for an owner away or using the vessel infrequently for roughly 3–6 months, use an explicit Dry Storage space-rental contract. Recurring invoices come from that contract and must not duplicate a service-payment plan.
+- Finance reminder lead is 7 days before due date. Wet Berth is blocked because construction is not operational.
+- Staging migration `add_billing_scenarios_and_block_wet_berth` was applied to project `zanlunbgupdtqznruzok`; no production schema or records were changed.

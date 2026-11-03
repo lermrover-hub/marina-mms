@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase-server"
 import { customerScope, OPERATIONS_WRITE_ROLES, PORTAL_READ_ROLES, requireApiActor } from "@/lib/api-auth"
+import { toErrorMessage } from "@/lib/error-message"
+import { ensureOwnerCaptainContact, ownerDisplayName, type OwnerCaptainSource } from "@/lib/owner-captain-contact"
 
 export const dynamic = "force-dynamic"
 
@@ -36,17 +38,23 @@ export async function POST(req: Request) {
     const boatType = body.boat_type === "SPEED_BOAT" ? "SPEEDBOAT" : body.boat_type
     const supabase = createServerClient()
     let ownerName: string | null = null
+    let owner: OwnerCaptainSource | null = null
     if (body.owner_id) {
-      const { data: owner, error: ownerError } = await supabase
+      const { data: ownerRecord, error: ownerError } = await supabase
         .from("mms_customers")
-        .select("id,first_name,last_name,company_name")
+        .select("id,first_name,last_name,company_name,phone,email,line_user_id,whatsapp_number")
         .eq("id", body.owner_id)
         .maybeSingle()
       if (ownerError) return NextResponse.json({ error: ownerError.message }, { status: 500 })
-      if (!owner) return NextResponse.json({ error: "Selected owner was not found" }, { status: 400 })
-      ownerName = owner.company_name ?? ([owner.first_name, owner.last_name].filter(Boolean).join(" ") || null)
+      if (!ownerRecord) return NextResponse.json({ error: "Selected owner was not found" }, { status: 400 })
+      owner = ownerRecord
+      ownerName = owner.company_name ?? ownerDisplayName(owner)
     }
-    const captainContactId = body.captain_contact_id ? String(body.captain_contact_id) : null
+    let captainContactId = body.captain_contact_id ? String(body.captain_contact_id) : null
+    if (body.owner_is_captain === true) {
+      if (!owner) return NextResponse.json({ error: "Select the boat owner before choosing owner as captain." }, { status: 400 })
+      captainContactId = await ensureOwnerCaptainContact(supabase, owner)
+    }
     if (captainContactId) {
       if (!body.owner_id) return NextResponse.json({ error: "Select the boat owner before assigning a captain." }, { status: 400 })
       const { data: captain, error: captainError } = await supabase
@@ -98,6 +106,6 @@ export async function POST(req: Request) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json(data, { status: 201 })
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: toErrorMessage(e, "Unable to register boat.") }, { status: 500 })
   }
 }

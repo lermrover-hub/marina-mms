@@ -210,7 +210,7 @@ test("speedboat storage quotation uses canonical v3.6 packages and server-side W
   assert.match(route, /lowestStoragePackage/)
   assert.match(route, /berth\.status !== "AVAILABLE"/)
   assert.match(route, /normalizedItems\.filter\(\(item\) => item\.service_group !== "STORAGE"\)/)
-  assert.match(route, /unit_price: Number\(price\.rate_thb\)/)
+  assert.match(route, /unit_price: selectedRateThb\(price, rateMode\)/)
 })
 
 test("service request supports normal storage/yard routes and the optional stored-vessel service route", () => {

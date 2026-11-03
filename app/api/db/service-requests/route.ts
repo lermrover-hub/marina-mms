@@ -9,6 +9,7 @@ import { classifySpeedboat, isSpeedboatType } from "@/lib/speedboat-classificati
 import { lowestStoragePackage, speedboatStorageClass, storageRateCodes, validateSb4Storage, type StorageClass, type StorageMethod, type StorageSlot } from "@/lib/storage-pricing"
 import { assertNoDuplicateChargeCodes, evaluateStandardRampHaulOut, isPerFootRate, storageDurationMultiplier, tier4StorageRate } from "@/lib/pricing-engine"
 import { withCatalogRates } from "@/lib/catalog-rate-card"
+import { assertWetBerthUnavailable, isQuotableRate, isWetBerthEnabled, normalizeCalculationMethod, requiresManagerReview, resolveRateMode, selectedRateThb } from "@/lib/pricing-governance"
 
 export const dynamic = "force-dynamic"
 
@@ -41,7 +42,14 @@ export async function POST(req: Request) {
   let createdRampBookingIds: string[] = []
   try {
     const body = await req.json()
+    try { assertWetBerthUnavailable(body.service_type ?? body.service_category ?? body.category) }
+    catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : String(error), code: "WET_BERTH_UNAVAILABLE" }, { status: 409 }) }
+    const rateMode = resolveRateMode(body.rate_mode)
     const items: RequestItem[] = Array.isArray(body.items) ? body.items : []
+    const hasWetBerthItem = items.some((item) => /wet\s*berth/i.test(`${item.pricing_code ?? ""} ${item.description ?? ""} ${item.service_group ?? ""}`))
+    if (hasWetBerthItem && !isWetBerthEnabled()) {
+      return NextResponse.json({ error: "Wet Berth is unavailable until construction is complete.", code: "WET_BERTH_UNAVAILABLE" }, { status: 409 })
+    }
     if (!body.customer_id || !body.boat_id) return NextResponse.json({ error: "Customer and boat are required." }, { status: 400 })
     if (!["RAMP_SERVICE", "SERVICE_TYPE"].includes(body.request_type)) return NextResponse.json({ error: "Select Ramp Service or Service Type." }, { status: 400 })
     let operationalContact: { id: string; full_name: string; phone: string | null; email: string | null; preferred_channel: string } | null = null
@@ -141,21 +149,21 @@ export async function POST(req: Request) {
           : price?.service_group?.startsWith("4.") ? "STORAGE" : "YARD"
       if (!["RAMP", "STORAGE", "YARD"].includes(canonicalGroup)) throw new Error(`Line ${index + 1}: select its workflow section.`)
       const operatorType = canonicalGroup === "YARD" ? String(item.operator_type ?? body.operator_type ?? "OCEAN_ROVER") : "OCEAN_ROVER"
-      if (!isOpenRate && price?.quote_allowed === "NO") throw new Error(`Line ${index + 1}: ${price.code} is reference-only and cannot be quoted.`)
+      if (!isOpenRate && !isQuotableRate({ ...price!, is_active: true })) throw new Error(`Line ${index + 1}: ${price!.code} is not approved for automatic quotation.`)
       let qty = Number(item.qty ?? 1)
       const directCost = Number(isOpenRate ? item.direct_cost ?? 0 : price?.direct_cost_thb ?? 0)
       const markupPct = Number(item.markup_pct ?? body.markup_pct ?? 0)
       const discountPct = Number(item.discount_pct ?? 0)
       const maximumDiscount = maxOperationalDiscountForRole(access.actor.role)
       if (discountPct > maximumDiscount) throw new Error(`Line ${index + 1}: ${access.actor.role} may enter at most ${maximumDiscount}% discount.`)
-      const method = String(price?.calc_type ?? "FLAT_QTY").toUpperCase()
+      const method = isOpenRate ? "FLAT_RATE" : normalizeCalculationMethod(price?.calc_type, price?.unit, price?.code)
       let basePrice = isOpenRate
         ? Number(item.unit_price ?? 0)
         : operatorType === "OCEAN_ROVER_SUBCONTRACTOR"
           ? directCost * (1 + markupPct / 100)
           : method === "TIER4_LOA_DYNAMIC"
             ? tier4StorageRate(String(price?.unit ?? ""), Number(boat.loa_ft ?? 0))
-            : Number(price?.rate_thb ?? 0)
+            : selectedRateThb(price!, rateMode)
       if (!isOpenRate && operatorType !== "OCEAN_ROVER_SUBCONTRACTOR") {
         if (method === "FLAT_RATE") qty = 1
         // Both the calculation method and billing unit are authoritative
@@ -182,13 +190,14 @@ export async function POST(req: Request) {
     if (automaticStorage) {
       const rates = automaticStorage.codes.map((code) => {
         const price = priceByCode.get(code)
-        if (!price) throw new Error(`Approved v3.6 rate ${code} is not active.`)
-        return { code, rateThb: Number(price.rate_thb), fullRateThb: Number(price.full_rate_thb), unit: String(price.unit) }
+        if (!price) throw new Error(`Approved v3.7 rate ${code} is not active.`)
+        if (!isQuotableRate({ ...price, is_active: true })) throw new Error(`Storage rate ${code} is not approved for automatic quotation.`)
+        return { code, rateThb: selectedRateThb(price, rateMode), fullRateThb: Number(price.full_rate_thb), unit: String(price.unit) }
       })
       const packages = lowestStoragePackage(automaticStorage.days, rates)
       const storageLines = packages.map((pack, index) => {
         const price = priceByCode.get(pack.code)!
-        return { pricing_master_id: price.id, pricing_code: price.code, description: String(price.service_name_en), service_group: "STORAGE", operator_type: "OCEAN_ROVER", qty: pack.qty, unit: String(price.unit), unit_price: Number(price.rate_thb), direct_cost: Number(price.direct_cost_thb ?? 0), markup_pct: 0, discount_pct: 0, insurance_required: false, sort_order: index + 1, price }
+        return { pricing_master_id: price.id, pricing_code: price.code, description: String(price.service_name_en), service_group: "STORAGE", operator_type: "OCEAN_ROVER", qty: pack.qty, unit: String(price.unit), unit_price: selectedRateThb(price, rateMode), direct_cost: Number(price.direct_cost_thb ?? 0), markup_pct: 0, discount_pct: 0, insurance_required: false, sort_order: index + 1, price }
       })
       normalizedItems = [...normalizedItems.filter((item) => item.service_group !== "STORAGE"), ...storageLines]
     }
@@ -203,15 +212,14 @@ export async function POST(req: Request) {
       hullConfiguration: String(boat.boat_type ?? ""),
     })
     const hasWaterMovement = body.haul_out === true || body.launch === true || normalizedItems.some((item) => /haul|launch|^RAMP_/i.test(`${item.pricing_code ?? ""} ${item.description}`))
-    const rampPrices = normalizedItems.filter((item) => item.service_group === "RAMP").map((item) => item.price).filter(Boolean)
-    const hasManagerReviewRampRate = rampPrices.some((price) => price?.quote_allowed === "MANAGER_REVIEW" || price?.quote_allowed === "CONTACT")
+    const hasManagerReviewRate = normalizedItems.some((item) => item.price && requiresManagerReview(item.price))
     if (hasWaterMovement && standardRampAssessment.blockers.length) {
       return NextResponse.json({
         error: `Automatic standard haul-out quotation blocked. Manual handling assessment required: ${standardRampAssessment.blockers.join(" ")}`,
         code: "MANUAL_HANDLING_ASSESSMENT_REQUIRED",
       }, { status: 422 })
     }
-    const operationalApprovalRequired = Boolean(automaticStorage?.reviewWarning) || (hasWaterMovement && (standardRampAssessment.approvalRequired || hasManagerReviewRampRate))
+    const operationalApprovalRequired = Boolean(automaticStorage?.reviewWarning) || normalizedItems.some((item) => item.price && requiresManagerReview(item.price)) || (hasWaterMovement && standardRampAssessment.approvalRequired)
     const paymentMode = String(body.payment_mode ?? defaultPaymentMode(serviceType, operatorType))
     const yardStartDate = movement.error ? null : movement.yardStartDate
     const exitDate = movement.error ? null : movement.exitDate
@@ -220,7 +228,7 @@ export async function POST(req: Request) {
       ? deriveRampServicePlan("BOAT_STORAGE", "STORAGE_MONTHLY", yardStartDate)
       : null
     const now = new Date().toISOString()
-    const storageNote = automaticStorage ? `Storage v3.6: ${automaticStorage.storageClass}; ${automaticStorage.days} day(s); slot ${automaticStorage.slot}; method ${automaticStorage.method ?? "approved slot"}.${automaticStorage.reviewWarning ? ` Manager review: ${automaticStorage.reviewWarning}` : ""}` : null
+    const storageNote = automaticStorage ? `Storage v3.7: ${automaticStorage.storageClass}; ${automaticStorage.days} day(s); slot ${automaticStorage.slot}; method ${automaticStorage.method ?? "approved slot"}.${automaticStorage.reviewWarning ? ` Manager review: ${automaticStorage.reviewWarning}` : ""}` : null
     const operationalNote = operationalApprovalRequired ? `Operational approval required: ${[...standardRampAssessment.blockers, ...standardRampAssessment.checks].join(" ")}` : null
     const visibleNotes = [body.location ? `Location: ${body.location}` : null, storageNote, operationalNote, body.notes ?? null].filter(Boolean).join("\n") || null
     const contractorCost = normalizedItems.reduce((sum, item) => sum + item.qty * item.direct_cost, 0)
@@ -316,7 +324,7 @@ export async function POST(req: Request) {
       quote_number: `DRAFT-${Date.now()}`, customer_id: serviceRequest.customer_id, customer_name: serviceRequest.customer_name, boat_id: serviceRequest.boat_id, boat_name: serviceRequest.boat_name, sr_id: serviceRequest.id, title: serviceRequest.title,
       execution_type: serviceRequest.execution_type, contractor_cost_estimate: committedCost, contractor_markup_pct: Number(body.markup_pct ?? 0), status: "DRAFT",
       subtotal: grossSubtotal, discount: discountAmount, vat_amount: vatAmount, total_amount: totalAmount, deposit_amount: depositAmount, valid_until: body.valid_until ?? null,
-      notes: `Auto-generated from ${serviceRequest.reference}. Review before Submit for Approval.`, created_at: now, updated_at: now,
+      notes: `Auto-generated from ${serviceRequest.reference}. Rate mode: ${rateMode}. Review before Submit for Approval.`, created_at: now, updated_at: now,
     }
     const firstQuotation = await supabase.from("mms_quotations").insert({ ...baseQuotation, internal_approval_status: "NOT_SUBMITTED", required_approver_role: operationalApprovalRequired ? "GENERAL_MANAGER" : minimumQuotationApprover(maxDiscountPct, hasNoChargeLine), max_discount_pct: maxDiscountPct, has_no_charge_line: hasNoChargeLine, payment_mode: paymentMode }).select().single()
     let quotation = firstQuotation.data
@@ -354,7 +362,7 @@ export async function POST(req: Request) {
     if (rampInsert.error) throw rampInsert.error
     createdRampBookingIds = (rampInsert.data ?? []).map((row) => row.id)
 
-    const quotationRows = normalizedItems.map((item, index) => ({ quotation_id: quotation.id, description: item.description, qty: item.qty, unit: item.unit, unit_price: item.unit_price, discount_pct: item.discount_pct, taxable: true, pricing_master_id: item.pricing_master_id, pricing_code: item.pricing_code, full_rate_snapshot_thb: item.price?.full_rate_thb ?? item.unit_price, current_rate_snapshot_thb: item.price?.rate_thb ?? item.unit_price, direct_cost_snapshot_thb: item.direct_cost, revenue_gl_code: item.price?.revenue_gl_code ?? null, cost_gl_code: item.price?.cost_gl_code ?? null, pnl_category: item.price?.pnl_category ?? null, cost_pnl_category: item.price?.cost_pnl_category ?? null, pricing_source_version: item.price?.source_version ?? null, pricing_effective_date: item.price?.effective_date ?? null, pricing_updated_at: item.price?.updated_at ?? null, sort_order: index + 1 }))
+    const quotationRows = normalizedItems.map((item, index) => ({ quotation_id: quotation.id, description: item.description, qty: item.qty, unit: item.unit, unit_price: item.unit_price, discount_pct: item.discount_pct, taxable: true, pricing_master_id: item.pricing_master_id, pricing_code: item.pricing_code, full_rate_snapshot_thb: item.price?.full_rate_thb ?? item.unit_price, current_rate_snapshot_thb: item.unit_price, direct_cost_snapshot_thb: item.direct_cost, revenue_gl_code: item.price?.revenue_gl_code ?? null, cost_gl_code: item.price?.cost_gl_code ?? null, pnl_category: item.price?.pnl_category ?? null, cost_pnl_category: item.price?.cost_pnl_category ?? null, pricing_source_version: item.price?.source_version ?? null, pricing_effective_date: item.price?.effective_date ?? null, pricing_updated_at: item.price?.updated_at ?? null, sort_order: index + 1 }))
     const firstQuoteItems = await supabase.from("mms_quotation_items").insert(quotationRows)
     if (firstQuoteItems.error && isMissingWorkflowSchema(firstQuoteItems.error)) {
       const basicRows = normalizedItems.map((item, index) => ({ quotation_id: quotation.id, description: item.description, qty: item.qty, unit: item.unit, unit_price: item.unit_price, discount_pct: item.discount_pct, taxable: true, sort_order: index + 1 }))

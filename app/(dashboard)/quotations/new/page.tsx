@@ -46,11 +46,11 @@ interface PricingOption {
 const CATEGORIES = [
   "Ramp Access", "Haul-out", "Towing Truck Cost", "Yard Services",
   "Storage - Speedboat", "Storage - Small Craft", "Repair Yard",
-  "Wash & Cleaning", "Utilities", "Wet Berth", "OT / After-Hours Labor",
+  "Wash & Cleaning", "Utilities", "OT / After-Hours Labor",
   "VAT & Discounts", "Additional Rates", "Paint Services",
   "Engine", "Electrical", "Fiberglass", "Painting", "Paint & Coating",
   "Antifouling", "Interior", "Canvas", "Stainless / Metal", "Cleaning",
-  "Plumbing", "Generator", "Air Conditioning", "Berth Fee", "Ramp Service",
+  "Plumbing", "Generator", "Air Conditioning", "Ramp Service",
   "Labour", "Material", "Other",
 ]
 

@@ -15,6 +15,9 @@ export const SERVICE_OPERATORS = [
 ] as const
 
 export type PaymentMode = "FULL_PREPAYMENT" | "DEPOSIT" | "CREDIT"
+export const BILLING_SCENARIOS = ["REPAIR_HOLD_30D", "SPACE_LEASE"] as const
+export type BillingScenario = typeof BILLING_SCENARIOS[number]
+export const DEFAULT_REMINDER_LEAD_DAYS = 7
 export type PaymentGateStatus =
   | "AWAITING_PAYMENT"
   | "DEPOSIT_PAID"
@@ -106,7 +109,7 @@ export function deriveCreditSchedule(yardStartDate: string, launchDate?: string 
   const launchWithinFirstCycle = Boolean(launchDate && launchDate <= firstCycleDueDate)
   return {
     firstCycleDueDate,
-    firstReminderDate: addUtcDays(firstCycleDueDate, -5),
+    firstReminderDate: addUtcDays(firstCycleDueDate, -DEFAULT_REMINDER_LEAD_DAYS),
     launchWithinFirstCycle,
     finalDueDate: launchDate
       ? (goodCredit ? addUtcDays(launchDate, 7) : launchDate)

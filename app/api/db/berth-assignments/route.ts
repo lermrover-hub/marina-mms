@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase-server"
+import { validateBerthAssignmentDates } from "@/lib/berth-assignment-validation"
 
 const supabase = createServerClient()
 
@@ -34,6 +35,8 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json()
+    const dateError = validateBerthAssignmentDates(body)
+    if (dateError) return NextResponse.json({ error: dateError }, { status: 400 })
     const { data, error } = await supabase
       .from("mms_berth_assignments")
       .insert(body)
@@ -52,6 +55,8 @@ export async function PATCH(req: Request) {
     const id = searchParams.get("id")
     if (!id) return NextResponse.json({ error: "id required" }, { status: 400 })
     const body = await req.json()
+    const dateError = validateBerthAssignmentDates(body)
+    if (dateError) return NextResponse.json({ error: dateError }, { status: 400 })
     const { data, error } = await supabase
       .from("mms_berth_assignments")
       .update({ ...body, updated_at: new Date().toISOString() })

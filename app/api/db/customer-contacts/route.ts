@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase-server"
 import { customerScope, OPERATIONS_WRITE_ROLES, PORTAL_READ_ROLES, requireApiActor } from "@/lib/api-auth"
+import { toErrorMessage } from "@/lib/error-message"
 
 export const dynamic = "force-dynamic"
 
@@ -27,7 +28,7 @@ export async function GET(req: Request) {
     if (error) throw error
     return NextResponse.json(data ?? [])
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 })
+    return NextResponse.json({ error: toErrorMessage(error, "Unable to load contacts.") }, { status: 500 })
   }
 }
 
@@ -70,6 +71,6 @@ export async function POST(req: Request) {
     if (error) throw error
     return NextResponse.json(data, { status: 201 })
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 })
+    return NextResponse.json({ error: toErrorMessage(error, "Unable to save contact.") }, { status: 500 })
   }
 }

@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CaptainContactFields } from "@/components/shared/CaptainContactFields"
+import { toErrorMessage } from "@/lib/error-message"
 import type { Customer } from "@/lib/supabase"
 import { ftToM, mToFt } from "@/lib/utils"
 
@@ -141,6 +142,7 @@ export default function NewBoatPage() {
   const [specialHandling, setSpecial]     = useState("")
   const [notes, setNotes]                 = useState("")
   const [captainContactId, setCaptainContactId] = useState("")
+  const [ownerIsCaptain, setOwnerIsCaptain] = useState(false)
   const [captainEffectiveFrom, setCaptainEffectiveFrom] = useState("")
   const [captainEffectiveTo, setCaptainEffectiveTo] = useState("")
 
@@ -204,9 +206,10 @@ export default function NewBoatPage() {
         insurance_expiry: insuranceExpiry || null,
         special_handling: specialHandling || null,
         notes: notes || null,
+        owner_is_captain: ownerIsCaptain,
         captain_contact_id: captainContactId || null,
-        captain_effective_from: captainContactId ? captainEffectiveFrom || null : null,
-        captain_effective_to: captainContactId ? captainEffectiveTo || null : null,
+        captain_effective_from: captainContactId || ownerIsCaptain ? captainEffectiveFrom || null : null,
+        captain_effective_to: captainContactId || ownerIsCaptain ? captainEffectiveTo || null : null,
         status: "ACTIVE",
       }
       const res = await fetch("/api/db/boats", {
@@ -215,10 +218,10 @@ export default function NewBoatPage() {
         body: JSON.stringify(body),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data?.error ?? "Save failed")
+      if (!res.ok) throw new Error(toErrorMessage(data, "Save failed"))
       router.push(ownerId ? `/customers/${ownerId}?boat_created=${data.id}` : data?.id ? `/boats/${data.id}` : "/boats")
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : String(error))
+      setSaveError(toErrorMessage(error, "Save failed"))
       setSaving(false)
     }
   }
@@ -262,7 +265,7 @@ export default function NewBoatPage() {
                         <option>Loading customers…</option>
                       </select>
                     ) : (
-                      <SelectField value={ownerId} onChange={(value) => { setOwnerId(value); setCaptainContactId("") }} placeholder="— Select owner —"
+                      <SelectField value={ownerId} onChange={(value) => { setOwnerId(value); setCaptainContactId(""); setOwnerIsCaptain(false) }} placeholder="— Select owner —"
                         options={customers.map((c) => ({
                           value: c.id,
                           label: c.company_name ?? ([c.first_name, c.last_name].filter(Boolean).join(" ") || c.id),
@@ -325,6 +328,9 @@ export default function NewBoatPage() {
                   onEffectiveFromChange={setCaptainEffectiveFrom}
                   effectiveTo={captainEffectiveTo}
                   onEffectiveToChange={setCaptainEffectiveTo}
+                  ownerIsCaptain={ownerIsCaptain}
+                  onOwnerIsCaptainChange={setOwnerIsCaptain}
+                  owner={customers.find((customer) => customer.id === ownerId) ?? null}
                 />
               </CardContent>
             </Card>

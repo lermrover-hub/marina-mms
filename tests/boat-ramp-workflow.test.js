@@ -2,6 +2,7 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { calculateRampCustomerCharge, deriveRampServicePlan, rampServiceLabel } from "../lib/ramp-booking-service.ts"
+import { toErrorMessage } from "../lib/error-message.ts"
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8")
 
@@ -61,6 +62,8 @@ test("captain is an owner contact with history and a service-request snapshot", 
   const serviceRoute = read("../app/api/db/service-requests/route.ts")
   const boatForm = read("../app/(dashboard)/boats/new/page.tsx")
   const serviceForm = read("../app/(dashboard)/service-requests/new/page.tsx")
+  const captainFields = read("../components/shared/CaptainContactFields.tsx")
+  const ownerCaptain = read("../lib/owner-captain-contact.ts")
 
   assert.match(migration, /CREATE TABLE public\.mms_customer_contacts/)
   assert.match(migration, /CREATE TABLE public\.mms_boat_captain_history/)
@@ -71,5 +74,15 @@ test("captain is an owner contact with history and a service-request snapshot", 
   assert.match(contactRoute, /requireApiActor\(OPERATIONS_WRITE_ROLES\)/)
   assert.match(serviceRoute, /operational_contact_name: operationalContact\?\.full_name/)
   assert.match(boatForm, /CaptainContactFields/)
+  assert.match(boatForm, /owner_is_captain: ownerIsCaptain/)
+  assert.match(captainFields, /Owner is the captain \/ เจ้าของเรือเป็นกัปตัน/)
+  assert.match(ownerCaptain, /role_title: "OWNER_CAPTAIN"/)
+  assert.match(ownerCaptain, /operational_notifications: true/)
   assert.match(serviceForm, /Defaults from the selected boat/)
+})
+
+test("structured API errors remain readable instead of object text", () => {
+  assert.equal(toErrorMessage({ error: { message: "Contact table is unavailable" } }, "Fallback"), "Contact table is unavailable")
+  assert.equal(toErrorMessage({ message: "Validation failed" }, "Fallback"), "Validation failed")
+  assert.equal(toErrorMessage({}, "Fallback"), "Fallback")
 })

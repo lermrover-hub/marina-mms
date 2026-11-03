@@ -16,7 +16,6 @@ export const dynamic = "force-dynamic"
 const ALLOWED_SERVICE_CATEGORIES = new Set([
   "RAMP_LAUNCH",
   "RAMP_HAUL_OUT",
-  "WET_BERTH",
   "DRY_STORAGE",
   "BOAT_REPAIR",
   "OTHER",

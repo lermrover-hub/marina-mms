@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase-server"
 import { concealOtherCustomer, OPERATIONS_WRITE_ROLES, PORTAL_READ_ROLES, requireApiActor } from "@/lib/api-auth"
+import { toErrorMessage } from "@/lib/error-message"
+import { ensureOwnerCaptainContact, type OwnerCaptainSource } from "@/lib/owner-captain-contact"
 
 export const dynamic = "force-dynamic"
 
@@ -32,7 +34,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (!existing) return NextResponse.json({ error: "Boat not found" }, { status: 404 })
 
     const ownerId = body.owner_id === undefined ? existing.owner_id : body.owner_id || null
-    const captainContactId = body.captain_contact_id === undefined ? undefined : body.captain_contact_id || null
+    let captainContactId = body.captain_contact_id === undefined ? undefined : body.captain_contact_id || null
+    if (body.owner_is_captain === true) {
+      if (!ownerId) return NextResponse.json({ error: "Select the boat owner before choosing owner as captain." }, { status: 400 })
+      const { data: owner, error: ownerError } = await supabase
+        .from("mms_customers")
+        .select("id,first_name,last_name,company_name,phone,email,line_user_id,whatsapp_number")
+        .eq("id", ownerId)
+        .maybeSingle()
+      if (ownerError) throw ownerError
+      if (!owner) return NextResponse.json({ error: "Selected owner was not found" }, { status: 400 })
+      captainContactId = await ensureOwnerCaptainContact(supabase, owner as OwnerCaptainSource)
+    }
     if (captainContactId) {
       const { data: captain, error: captainError } = await supabase.from("mms_customer_contacts").select("id,customer_id,is_active").eq("id", captainContactId).maybeSingle()
       if (captainError) throw captainError
@@ -46,6 +59,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       "notes", "status", "captain_contact_id", "captain_effective_from", "captain_effective_to",
     ]
     const update: Record<string, unknown> = Object.fromEntries(allowed.filter((key) => body[key] !== undefined).map((key) => [key, body[key]]))
+    if (body.owner_is_captain === true) update.captain_contact_id = captainContactId
     if (body.captain_contact_id !== undefined && !captainContactId) {
       update.captain_contact_id = null
       update.captain_effective_from = null
@@ -56,6 +70,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (error) throw error
     return NextResponse.json(data)
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 })
+    return NextResponse.json({ error: toErrorMessage(error, "Unable to update boat.") }, { status: 500 })
   }
 }

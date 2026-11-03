@@ -1,6 +1,7 @@
 "use client"
 import React, { useState } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { cn } from "@/lib/utils"
@@ -168,6 +169,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ onClose }: SidebarProps) {
+  const marineTheme = true
   const { data: session } = useSession()
   const role = (session?.user as { role?: string } | undefined)?.role ?? ""
   return (
@@ -175,7 +177,13 @@ export function Sidebar({ onClose }: SidebarProps) {
            style={{ backgroundColor: "var(--color-sidebar)" }}>
 
       {/* Brand */}
-      <div className="flex h-16 items-center gap-3 border-b border-[#e5dfd2] px-4">
+      {marineTheme ? (
+        <Link href="/dashboard" onClick={onClose} className="orm-brand" aria-label="Ocean Rover Marina dashboard">
+          <Image src="/orm-marina-approved.png" alt="Ocean Rover Marina — Samui Yacht Club" width={1763} height={890} priority unoptimized className="orm-brand-logo" />
+          <span className="orm-brand-title">Marina MMS</span>
+          <span className="orm-brand-caption">MARINA MANAGEMENT SYSTEM</span>
+        </Link>
+      ) : <div className="flex h-16 items-center gap-3 border-b border-[#e5dfd2] px-4">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-ocean-turquoise">
           <Anchor className="h-5 w-5 text-white" />
         </div>
@@ -183,7 +191,7 @@ export function Sidebar({ onClose }: SidebarProps) {
           <p className="text-sm font-bold text-[#1f2933] leading-tight">Marina MMS</p>
           <p className="text-xs text-[#13988f]">Management System</p>
         </div>
-      </div>
+      </div>}
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">

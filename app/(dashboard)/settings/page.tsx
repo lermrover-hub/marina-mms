@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
-import { supabase } from "@/lib/supabase"
 import type { Staff, DocumentTemplate } from "@/lib/supabase"
 import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher"
 import { useLocale } from "@/lib/i18n/LocaleContext"
@@ -57,7 +56,7 @@ const TEMPLATE_TYPES: { type: string; label: string; description: string }[] = [
   { type: "CONTRACT_BERTH",   label: "Berth Contract",        description: "Wet berth rental contract" },
   { type: "CONTRACT_STORAGE", label: "Storage Contract",      description: "Dry storage rental contract" },
   { type: "WORK_ORDER",       label: "Work Order",            description: "Boat yard work order / ใบสั่งงาน" },
-  { type: "RAMP_CONFIRM",     label: "Ramp Confirmation",     description: "Launch / retrieval confirmation" },
+  { type: "RAMP_CONFIRM",     label: "Ramp Confirmation",     description: "Launch / haul-out confirmation" },
   { type: "INCIDENT",         label: "Incident Report",       description: "Safety incident report form" },
   { type: "OTHER",            label: "Other",                 description: "General purpose templates" },
 ]
@@ -263,20 +262,16 @@ export default function SettingsPage() {
     setUploadingType(templateType)
     setTemplateError(null)
     try {
-      // 1. Upload file to Supabase Storage
-      const storagePath = `${templateType.toLowerCase()}/${Date.now()}-${file.name}`
-      const { data: storageData, error: storageErr } = await supabase.storage
-        .from("mms-templates")
-        .upload(storagePath, file, { upsert: false, contentType: file.type })
-      if (storageErr) throw new Error(storageErr.message)
+      // 1. Upload through the authenticated server API; the browser never receives service credentials.
+      const uploadForm = new FormData()
+      uploadForm.set("bucket", "mms-templates")
+      uploadForm.set("folder", templateType.toLowerCase())
+      uploadForm.set("file", file)
+      const uploadRes = await fetch("/api/storage", { method: "POST", body: uploadForm })
+      const uploadData = await uploadRes.json()
+      if (!uploadRes.ok) throw new Error(uploadData?.error ?? "Storage upload failed")
 
-      // 2. Get public URL
-      const { data: urlData } = supabase.storage
-        .from("mms-templates")
-        .getPublicUrl(storageData.path)
-      const publicUrl = urlData?.publicUrl ?? ""
-
-      // 3. Save template record to DB
+      // 2. Save template record to DB
       const res = await fetch("/api/db/document-templates", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -285,10 +280,10 @@ export default function SettingsPage() {
           name:          `${TEMPLATE_TYPES.find(t => t.type === templateType)?.label ?? templateType} — Sample`,
           language:      "TH/EN",
           file_name:     file.name,
-          file_url:      publicUrl,
+          file_url:      uploadData.url,
           file_size:     file.size,
           mime_type:     file.type,
-          uploaded_by:   "Admin",
+          uploaded_by:   uploadData.uploadedBy,
           is_active:     true,
         }),
       })
@@ -329,17 +324,15 @@ export default function SettingsPage() {
     setSignatureUploading(true)
     setSignatureError(null)
     try {
-      const ext = file.name.split(".").pop() ?? "png"
-      const storagePath = `signatures/company-esign.${ext}`
-      const { data: storageData, error: storageErr } = await supabase.storage
-        .from("mms-templates")
-        .upload(storagePath, file, { upsert: true, contentType: file.type })
-      if (storageErr) throw new Error(storageErr.message)
-
-      const { data: urlData } = supabase.storage
-        .from("mms-templates")
-        .getPublicUrl(storageData.path)
-      const publicUrl = urlData?.publicUrl ?? ""
+      const uploadForm = new FormData()
+      uploadForm.set("bucket", "mms-templates")
+      uploadForm.set("folder", "signatures")
+      uploadForm.set("file", file)
+      const uploadResponse = await fetch("/api/storage", { method: "POST", body: uploadForm })
+      const upload = await uploadResponse.json()
+      if (!uploadResponse.ok) throw new Error(upload?.error ?? "Upload failed")
+      const publicUrl = String(upload?.url ?? "")
+      if (!publicUrl) throw new Error("Upload returned no signature URL")
 
       const res = await fetch("/api/settings/signature", {
         method: "POST",
@@ -378,6 +371,9 @@ export default function SettingsPage() {
         title="Settings"
         description="System configuration and administration"
       />
+      <Link href="/settings/service-catalog" className="inline-flex rounded-lg border px-4 py-2 text-sm underline">
+        ประเภทเรือและกลุ่มบริการ / Service Catalog (Super Admin)
+      </Link>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
         {/* Settings nav */}
@@ -1439,7 +1435,7 @@ export default function SettingsPage() {
                       { agent: "Comms Agent",     reads: "Language mode, tone, max words, phone → shapes every customer message" },
                       { agent: "Finance Agent",   reads: "Overdue warning days, escalation threshold → controls when reminders and alerts fire" },
                       { agent: "HR Agent",        reads: "Language, KPI count, onboarding duration, and instructions → controls management drafts" },
-                      { agent: "Tide Agent",      reads: "Ramp offset, safety clearance, trailer height → used in launch/retrieval safety formula" },
+                      { agent: "Tide Agent",      reads: "Ramp offset, safety clearance, trailer height → used in launch/haul-out safety formula" },
                       { agent: "Marina Agent",    reads: "Contract & insurance expiry days → controls when renewal alerts are sent" },
                     ].map(({ agent, reads }) => (
                       <div key={agent} className="rounded-lg border border-gray-100 bg-gray-50 p-3">

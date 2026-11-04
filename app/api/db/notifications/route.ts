@@ -7,6 +7,7 @@
 
 import { NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase-server"
+import { STAFF_ROLES, requireApiActor } from "@/lib/api-auth"
 
 const supabase = createServerClient()
 
@@ -60,6 +61,8 @@ function isTableMissing(error: { code?: string; message?: string } | null): bool
 // ─── handler ─────────────────────────────────────────────────────────────────
 
 export async function GET(req: Request) {
+  const access = await requireApiActor(STAFF_ROLES)
+  if ("error" in access) return access.error
   const { searchParams } = new URL(req.url)
   const unreadOnly = searchParams.get("unread") === "true"
 
@@ -67,6 +70,7 @@ export async function GET(req: Request) {
   let query = supabase
     .from("mms_notifications")
     .select("*")
+    .or(`target_role.is.null,target_role.eq.${access.actor.role}`)
     .order("read", { ascending: true })
     .order("created_at", { ascending: false })
 
@@ -74,7 +78,22 @@ export async function GET(req: Request) {
     query = query.eq("read", false)
   }
 
-  const { data, error } = await query
+  let { data, error } = await query
+
+  if (
+    error &&
+    (error.code === "PGRST204" || error.code === "42703" || error.message?.includes("target_role"))
+  ) {
+    let fallbackQuery = supabase
+      .from("mms_notifications")
+      .select("*")
+      .order("read", { ascending: true })
+      .order("created_at", { ascending: false })
+    if (unreadOnly) fallbackQuery = fallbackQuery.eq("read", false)
+    const fallback = await fallbackQuery
+    data = fallback.data
+    error = fallback.error
+  }
 
   if (isTableMissing(error)) {
     // Table not yet created — serve mock data

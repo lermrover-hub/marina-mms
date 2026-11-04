@@ -189,39 +189,6 @@ export async function getPayment(id: string) {
   return data as Payment | null
 }
 
-export async function createPayment(payment: Omit<Payment, "id" | "created_at">) {
-  const { data, error } = await supabase
-    .from("mms_payments")
-    .insert(payment)
-    .select()
-    .single()
-  if (error) throw error
-  return data as Payment
-}
-
-export async function updateInvoiceAfterPayment(invoiceId: string, newPaidAmount: number) {
-  // Fetch current invoice totals
-  const { data: inv, error: fetchErr } = await supabase
-    .from("mms_invoices")
-    .select("total_amount, paid_amount")
-    .eq("id", invoiceId)
-    .single()
-  if (fetchErr) throw fetchErr
-
-  const totalPaid = (inv.paid_amount ?? 0) + newPaidAmount
-  const outstanding = Math.max(0, (inv.total_amount ?? 0) - totalPaid)
-  const status = outstanding <= 0 ? "PAID" : totalPaid > 0 ? "PARTIALLY_PAID" : "ISSUED"
-
-  const { data, error } = await supabase
-    .from("mms_invoices")
-    .update({ paid_amount: totalPaid, outstanding_balance: outstanding, status })
-    .eq("id", invoiceId)
-    .select()
-    .single()
-  if (error) throw error
-  return data
-}
-
 // ── Material Usage ────────────────────────────────────────────────────────────
 export async function getMaterialUsage(workOrderId: string) {
   const { data, error } = await supabase
@@ -233,6 +200,24 @@ export async function getMaterialUsage(workOrderId: string) {
   return data as MaterialUsage[]
 }
 
+async function syncWorkOrderMaterialCost(workOrderId: string) {
+  const { data: materials, error: materialError } = await supabase
+    .from("mms_material_usage")
+    .select("total_cost")
+    .eq("work_order_id", workOrderId)
+  if (materialError) throw materialError
+
+  const totalMaterialCost = (materials ?? []).reduce(
+    (sum, material) => sum + Number(material.total_cost ?? 0),
+    0,
+  )
+  const { error: workOrderError } = await supabase
+    .from("mms_work_orders")
+    .update({ total_material_cost: totalMaterialCost, updated_at: new Date().toISOString() })
+    .eq("id", workOrderId)
+  if (workOrderError) throw workOrderError
+}
+
 export async function createMaterialUsage(item: Omit<MaterialUsage, "id" | "total_cost" | "created_at" | "updated_at">) {
   const total_cost = item.quantity * item.unit_cost
   const { data, error } = await supabase
@@ -241,15 +226,24 @@ export async function createMaterialUsage(item: Omit<MaterialUsage, "id" | "tota
     .select()
     .single()
   if (error) throw error
+  await syncWorkOrderMaterialCost(item.work_order_id)
   return data as MaterialUsage
 }
 
 export async function deleteMaterialUsage(id: string) {
+  const { data: existing, error: existingError } = await supabase
+    .from("mms_material_usage")
+    .select("work_order_id")
+    .eq("id", id)
+    .single()
+  if (existingError) throw existingError
+
   const { error } = await supabase
     .from("mms_material_usage")
     .delete()
     .eq("id", id)
   if (error) throw error
+  await syncWorkOrderMaterialCost(existing.work_order_id)
 }
 
 // ── Report Stats ──────────────────────────────────────────────────────────────

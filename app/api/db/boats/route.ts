@@ -1,16 +1,22 @@
 import { NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase-server"
+import { customerScope, OPERATIONS_WRITE_ROLES, PORTAL_READ_ROLES, requireApiActor } from "@/lib/api-auth"
+import { toErrorMessage } from "@/lib/error-message"
+import { ensureOwnerCaptainContact, ownerDisplayName, type OwnerCaptainSource } from "@/lib/owner-captain-contact"
 
 export const dynamic = "force-dynamic"
 
 export async function GET(req: Request) {
   try {
+    const access = await requireApiActor(PORTAL_READ_ROLES)
+    if ("error" in access) return access.error
     const { searchParams } = new URL(req.url)
-    const ownerId = searchParams.get("owner_id")
+    const scope = customerScope(access.actor, searchParams.get("owner_id") ?? searchParams.get("customer_id"))
+    if ("error" in scope) return scope.error
     const supabase = createServerClient()
 
     let query = supabase.from("mms_boats").select("*").order("name")
-    if (ownerId) query = query.eq("owner_id", ownerId)
+    if (scope.customerId) query = query.eq("owner_id", scope.customerId)
 
     const { data, error } = await query
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -22,14 +28,51 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    const access = await requireApiActor(OPERATIONS_WRITE_ROLES)
+    if ("error" in access) return access.error
     const body = await req.json()
+    const name = typeof body.name === "string" ? body.name.trim() : ""
+    if (!name) {
+      return NextResponse.json({ error: "Boat name is required" }, { status: 400 })
+    }
     const boatType = body.boat_type === "SPEED_BOAT" ? "SPEEDBOAT" : body.boat_type
     const supabase = createServerClient()
+    let ownerName: string | null = null
+    let owner: OwnerCaptainSource | null = null
+    if (body.owner_id) {
+      const { data: ownerRecord, error: ownerError } = await supabase
+        .from("mms_customers")
+        .select("id,first_name,last_name,company_name,phone,email,line_user_id,whatsapp_number")
+        .eq("id", body.owner_id)
+        .maybeSingle()
+      if (ownerError) return NextResponse.json({ error: ownerError.message }, { status: 500 })
+      if (!ownerRecord) return NextResponse.json({ error: "Selected owner was not found" }, { status: 400 })
+      owner = ownerRecord
+      ownerName = owner.company_name ?? ownerDisplayName(owner)
+    }
+    let captainContactId = body.captain_contact_id ? String(body.captain_contact_id) : null
+    if (body.owner_is_captain === true) {
+      if (!owner) return NextResponse.json({ error: "Select the boat owner before choosing owner as captain." }, { status: 400 })
+      captainContactId = await ensureOwnerCaptainContact(supabase, owner)
+    }
+    if (captainContactId) {
+      if (!body.owner_id) return NextResponse.json({ error: "Select the boat owner before assigning a captain." }, { status: 400 })
+      const { data: captain, error: captainError } = await supabase
+        .from("mms_customer_contacts")
+        .select("id,customer_id,is_active")
+        .eq("id", captainContactId)
+        .maybeSingle()
+      if (captainError) return NextResponse.json({ error: captainError.message }, { status: 500 })
+      if (!captain || captain.customer_id !== body.owner_id || !captain.is_active) {
+        return NextResponse.json({ error: "Selected captain is not an active contact of this boat owner." }, { status: 400 })
+      }
+    }
     const { data, error } = await supabase
       .from("mms_boats")
       .insert({
         owner_id: body.owner_id ?? null,
-        name: body.name,
+        owner_name: ownerName,
+        name,
         boat_type: boatType ?? "OTHER",
         usage_type: body.usage_type ?? null,
         brand: body.brand ?? null,
@@ -51,6 +94,9 @@ export async function POST(req: Request) {
         insurance_expiry: body.insurance_expiry ?? null,
         special_handling: body.special_handling ?? null,
         notes: body.notes ?? null,
+        captain_contact_id: captainContactId,
+        captain_effective_from: captainContactId ? body.captain_effective_from ?? null : null,
+        captain_effective_to: captainContactId ? body.captain_effective_to ?? null : null,
         status: body.status ?? "ACTIVE",
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -60,6 +106,6 @@ export async function POST(req: Request) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json(data, { status: 201 })
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: toErrorMessage(e, "Unable to register boat.") }, { status: 500 })
   }
 }

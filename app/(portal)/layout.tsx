@@ -1,7 +1,7 @@
 "use client"
 import React, { useEffect, useState } from "react"
 import Link from "next/link"
-import { Anchor } from "lucide-react"
+import Image from "next/image"
 
 type PortalUser = {
   id: string
@@ -35,9 +35,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
       <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
           <Link href="/portal" className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-500">
-              <Anchor className="h-5 w-5 text-white" />
-            </div>
+            <Image src="/orm-marina-approved.png" alt="Ocean Rover Marina" width={100} height={51} unoptimized />
             <div>
               <p className="text-sm font-bold text-gray-900 leading-tight">Ocean Rover Marina</p>
               <p className="text-xs text-gray-500">Customer Portal</p>

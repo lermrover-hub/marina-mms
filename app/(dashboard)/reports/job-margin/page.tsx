@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react"
 import Link from "next/link"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts"
-import { TrendingUp, DollarSign, Wrench, Loader2, ArrowLeft } from "lucide-react"
+import { TrendingUp, DollarSign, Wrench, Loader2, ArrowLeft, Download } from "lucide-react"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatTHB } from "@/lib/utils"
@@ -51,9 +51,14 @@ export default function JobMarginPage() {
         description="Profitability analysis for completed work orders"
         breadcrumb={[{ label: "Reports", href: "/reports" }, { label: "Job Margin" }]}
         actions={
-          <Link href="/reports" className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-teal-600">
-            <ArrowLeft className="h-4 w-4" /> Back to Reports
-          </Link>
+          <div className="flex items-center gap-3">
+            <a href="/api/db/reports/job-margin?format=csv" className="flex items-center gap-1.5 rounded-md border border-gray-200 px-3 py-1.5 text-sm text-gray-600 hover:border-teal-300 hover:text-teal-700">
+              <Download className="h-4 w-4" /> Export CSV
+            </a>
+            <Link href="/reports" className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-teal-600">
+              <ArrowLeft className="h-4 w-4" /> Back to Reports
+            </Link>
+          </div>
         }
       />
 

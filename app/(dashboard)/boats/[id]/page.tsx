@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BoatPhotoUpload } from "@/components/shared/BoatPhotoUpload"
-import type { Boat, Quotation, Invoice } from "@/lib/supabase"
+import type { Boat, CustomerContact, Quotation, Invoice } from "@/lib/supabase"
 import { formatDate, formatFt, formatKg, formatM, formatTHB, ftToM, BOAT_TYPE_LABELS, isExpired, isExpiringSoon } from "@/lib/utils"
 
 // ─── Detail grid helper ────────────────────────────────────────────────────────
@@ -40,6 +40,7 @@ export default function BoatDetailPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading,  setLoading]  = useState(true)
   const [error,    setError]    = useState<string | null>(null)
+  const [captain, setCaptain] = useState<CustomerContact | null>(null)
 
   useEffect(() => {
     if (!id) return
@@ -58,6 +59,17 @@ export default function BoatDetailPage() {
       .catch(() => setError("Network error"))
       .finally(() => setLoading(false))
   }, [id])
+
+  useEffect(() => {
+    if (!boat?.owner_id || !boat.captain_contact_id) {
+      setCaptain(null)
+      return
+    }
+    fetch(`/api/db/customer-contacts?customer_id=${encodeURIComponent(boat.owner_id)}&active=all`)
+      .then((response) => response.json())
+      .then((rows) => setCaptain(Array.isArray(rows) ? rows.find((row) => row.id === boat.captain_contact_id) ?? null : null))
+      .catch(() => setCaptain(null))
+  }, [boat?.owner_id, boat?.captain_contact_id])
 
   if (loading) {
     return (
@@ -208,6 +220,23 @@ export default function BoatDetailPage() {
               ) : (
                 <p className="text-sm text-gray-500">{boat.owner_name ?? "No owner assigned"}</p>
               )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle>Captain / Vessel Contact</CardTitle></CardHeader>
+            <CardContent>
+              {captain ? <div className="space-y-2 text-sm">
+                <p className="font-semibold text-gray-900">{captain.full_name}</p>
+                <DetailGrid rows={[
+                  { label: "Phone", value: captain.phone },
+                  { label: "Email", value: captain.email },
+                  { label: "Preferred", value: captain.preferred_channel },
+                  { label: "Effective From", value: boat.captain_effective_from ? formatDate(boat.captain_effective_from) : null },
+                  { label: "Effective To", value: boat.captain_effective_to ? formatDate(boat.captain_effective_to) : "Current" },
+                ]} />
+                <p className="rounded bg-amber-50 px-2 py-1 text-xs text-amber-800">Operational contact only — not the billing contact.</p>
+              </div> : <p className="text-sm text-gray-500">No captain assigned.</p>}
             </CardContent>
           </Card>
         </div>

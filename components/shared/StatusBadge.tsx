@@ -35,6 +35,7 @@ const BERTH_STATUS: Record<string, { label: string; variant: Variant }> = {
 const QUOTATION_STATUS: Record<string, { label: string; variant: Variant }> = {
   DRAFT:            { label: "Draft",            variant: "default"  },
   PENDING_APPROVAL: { label: "Pending Approval", variant: "warning"  },
+  APPROVED:         { label: "Approved",         variant: "success"  },
   SENT:             { label: "Sent",             variant: "info"     },
   ACCEPTED:         { label: "Accepted",         variant: "success"  },
   REJECTED:         { label: "Rejected",         variant: "danger"   },

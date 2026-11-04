@@ -92,6 +92,7 @@ const REPORT_GROUPS = [
     title: "Financial Reports", icon: DollarSign, color: "bg-green-100 text-green-700",
     reports: [
       { name: "Monthly Revenue Report",    description: "Revenue by month and business unit", available: true,  href: "/reports/revenue" },
+      { name: "Monthly P&L Preview",       description: "Net revenue, direct cost and gross profit", available: true, href: "/reports/pnl" },
       { name: "Outstanding Invoice Report",description: "Unpaid and overdue invoices",         available: true,  href: "/invoices" },
       { name: "Customer Aging Report",     description: "Accounts receivable aging",           available: true,  href: "/reports/aging" },
       { name: "Payment Summary",           description: "All payments by method and date",     available: true,  href: "/payments" },
@@ -216,6 +217,12 @@ export default function ReportsPage() {
           className="flex items-center gap-2 rounded-lg border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-medium text-teal-700 hover:bg-teal-100 transition-colors"
         >
           <TrendingUp className="h-4 w-4" /> Job Margin Analytics →
+        </Link>
+        <Link
+          href="/reports/ramp-ledger"
+          className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-100 transition-colors"
+        >
+          <DollarSign className="h-4 w-4" /> Ramp Revenue &amp; Cost Ledger →
         </Link>
       </div>
 

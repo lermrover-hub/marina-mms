@@ -109,7 +109,7 @@ export default function TideCalculatorPage() {
     <div className="space-y-6">
       <PageHeader
         title="Tide Safety Calculator"
-        description="Calculate safe launch and retrieval windows from Ko Samui 2026 tide database"
+        description="Calculate safe launch and haul-out windows based on Ko Samui 2026 tide data"
         actions={
           <Button variant="ghost" size="sm" className="gap-2" asChild>
             <Link href="/ramp-bookings">

@@ -1,0 +1,52 @@
+/* Presentation only: scoped to Dashboard and Berth Map, never pricing/workflow. */
+.orm-marine-theme {
+  --marina-gold: #0b2f5b;
+  --marina-gold-hover: #16517f;
+  --ocean-turquoise: #16517f;
+  --color-ocean-turquoise: #16517f;
+  --color-marina-gold: #b18f2f;
+  --color-sidebar: #0b2f5b;
+  --color-border: #dce5ee;
+  --text-primary: #0b2f5b;
+  --text-muted: #566b80;
+  --text-on-gold: #ffffff;
+  background: #edf3f8;
+  color: #0b2f5b;
+}
+.orm-marine-theme .ocean-rover-content { background: #f4f7fb; }
+.orm-marine-theme header { border-color: #dce5ee; box-shadow: none; flex-shrink: 0; }
+.orm-marine-theme aside { background: #0b2f5b !important; border-color: #173e68; box-shadow: none; height: 100%; }
+.orm-marine-theme aside nav a,
+.orm-marine-theme aside nav button { color: #e0e8f0; min-height: 40px; }
+.orm-marine-theme aside nav svg { color: #c3d3e2; }
+.orm-marine-theme aside nav a:hover,
+.orm-marine-theme aside nav button:hover { background: #173e68; color: #fff; }
+.orm-marine-theme aside nav a.border-l-\[3px\] { background: #38494c; border-color: #b18f2f; color: #fff; }
+.orm-marine-theme aside nav a.border-l-\[3px\] svg { color: #dcc16a; }
+.orm-marine-theme aside > div:last-child { border-color: #315171; }
+.orm-marine-theme aside > div:last-child p { color: #c3d3e2; }
+.orm-brand { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 16px; border-bottom: 1px solid #315171; }
+.orm-brand-logo { width: 190px; height: 96px; object-fit: contain; background: transparent; }
+.orm-brand-title { color: #fff; font-size: 20px; font-weight: 700; letter-spacing: .04em; }
+.orm-brand-caption { color: #c3d3e2; font-size: 9px; letter-spacing: .1em; }
+.orm-marine-theme main .backdrop-blur { border-color: #dce5ee; box-shadow: 0 4px 18px rgb(11 47 91 / 5%); backdrop-filter: none; }
+.orm-marine-theme main h1,
+.orm-marine-theme main h2,
+.orm-marine-theme main h3 { color: #0b2f5b; }
+.orm-marine-theme .bg-gray-50,
+.orm-marine-theme .bg-slate-50 { background: #f4f7fb !important; }
+.orm-marine-theme .bg-gray-100,
+.orm-marine-theme .bg-slate-100 { background: #edf3f8 !important; }
+.orm-marine-theme main .bg-teal-100 { background: #f5efd9; color: #806419 !important; }
+.orm-marine-theme main .bg-teal-100 svg { color: #957724; }
+.orm-marine-theme :focus-visible { outline-color: #16517f; }
+.orm-map-legend { display: flex; flex-wrap: wrap; gap: 12px 24px; padding: 16px; background: white; border: 1px solid #dce5ee; border-radius: 12px; }
+.orm-map-legend span { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
+.orm-map-legend i { display: inline-block; width: 18px; height: 18px; border: 1px solid; border-radius: 4px; }
+.orm-marine-theme [data-slot-status] { color: #0b2f5b; opacity: 1; box-shadow: none; }
+.orm-marine-theme [data-slot-status="AVAILABLE"] { background: #e2e8f0; border-color: #8a9aab; }
+.orm-marine-theme [data-slot-status="OCCUPIED"] { background: #bbf7d0; border-color: #15803d; }
+.orm-marine-theme [data-slot-status="RESERVED"] { background: #bfdbfe; border-color: #2563eb; }
+.orm-marine-theme [data-slot-status="MAINTENANCE"] { background: #fde68a; border-color: #a16207; }
+.orm-marine-theme [data-slot-status="BLOCKED"] { background: #e5e7eb; border-color: #64748b; border-style: dashed; }
+.orm-marine-theme [data-slot-status="UNCONFIGURED"] { background: #f8fafc; border-color: #94a3b8; border-style: dotted; color: #64748b; }

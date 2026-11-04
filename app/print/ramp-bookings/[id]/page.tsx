@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { Loader2 } from "lucide-react"
 import type { RampBooking } from "@/lib/supabase"
+import { rampServiceLabel } from "@/lib/ramp-booking-service"
 import { formatDate } from "@/lib/utils"
 import { ESignBlock, PBCompanyHeader, PBWatermark } from "@/components/print/OfficialDocumentShell"
 
@@ -16,7 +17,7 @@ function InfoRow({ label, value, highlight }: { label: string; value: string; hi
 }
 
 const OP_LABELS: Record<string, string> = {
-  LAUNCH:"Launch",  RETRIEVAL:"Retrieval",  MOVE_BOAT:"Move Boat",
+  LAUNCH:"Launch",  HAUL_OUT:"Haul-out",  MOVE_BOAT:"Move Boat",
   WASH:"Wash",      FUEL:"Fuel",            INSPECTION:"Inspection",
 }
 
@@ -95,14 +96,14 @@ export default function RampBookingPrintPage() {
     "Obtain customer signature for completion",
   ]
 
-  const RETRIEVAL_CHECKLIST = [
+  const HAUL_OUT_CHECKLIST = [
     "Confirm customer booking and vessel details",
-    "Verify tide height at time of retrieval",
+    "Verify tide height at time of haul-out",
     "Prepare trailer / support frame",
     "Brief staff on safe approach angle",
     "Clear storage area for vessel placement",
     "Take before photos (vessel in water)",
-    "Execute retrieval operation",
+    "Execute haul-out operation",
     "Secure vessel on cradle / support",
     "Inspect hull condition, note any damage",
     "Take after photos",
@@ -110,7 +111,7 @@ export default function RampBookingPrintPage() {
     "Complete operation log",
   ]
 
-  const checklist = booking.operation_type==="RETRIEVAL" ? RETRIEVAL_CHECKLIST : LAUNCH_CHECKLIST
+  const checklist = booking.operation_type==="HAUL_OUT" ? HAUL_OUT_CHECKLIST : LAUNCH_CHECKLIST
 
   return (
     <div style={{ background:"#f5f5f5", minHeight:"100vh", padding:"24px 0" }}>
@@ -162,6 +163,8 @@ export default function RampBookingPrintPage() {
             <InfoRow label="Customer"    value={booking.customer_name ?? "—"} />
             <InfoRow label="Vessel"      value={booking.boat_name ?? "—"} />
             <InfoRow label="Operation"   value={opLabel} />
+            <InfoRow label="Service"     value={rampServiceLabel(booking.service_category, booking.service_option)} />
+            <InfoRow label="Billing"     value={booking.recurring_billing && booking.next_billing_date ? `${booking.billing_cycle} · next ${formatDate(booking.next_billing_date)}` : booking.billing_cycle ?? "—"} />
             <InfoRow label="Staff"       value={booking.assigned_staff ?? "TBC"} />
           </div>
           {/* Schedule */}

@@ -71,6 +71,10 @@ export async function sendTextMessage(to: string, text: string) {
   })
 }
 
+export function isWhatsAppConfigured(): boolean {
+  return Boolean(PHONE_NUMBER_ID && ACCESS_TOKEN)
+}
+
 /**
  * Send a pre-approved template message.
  * Templates must be approved in Meta Business Manager before use.

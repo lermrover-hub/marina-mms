@@ -5,6 +5,7 @@ import { useParams } from "next/navigation"
 import { Loader2 } from "lucide-react"
 import type { Quotation, QuotationItem } from "@/lib/supabase"
 import { formatDate, formatTHB } from "@/lib/utils"
+import { calculateQuotationLineTotal } from "@/lib/quotation-workflow"
 import { ESignBlock, PBCompanyHeader, PBWatermark } from "@/components/print/OfficialDocumentShell"
 
 function PrintShell({ children }: { children: React.ReactNode }) {
@@ -133,7 +134,7 @@ export default function QuotationPrintPage() {
                   <td style={{ padding: "10px 12px", textAlign: "right" }}>{formatTHB(item.unit_price)}</td>
                   <td style={{ padding: "10px 12px", textAlign: "right" }}>{item.discount_pct ? `${item.discount_pct}%` : "-"}</td>
                   <td style={{ padding: "10px 12px", textAlign: "right" }}>{item.taxable ? "7%" : "Exempt"}</td>
-                  <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700 }}>{formatTHB(item.line_total)}</td>
+                  <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700 }}>{formatTHB(calculateQuotationLineTotal(item))}</td>
                 </tr>
               ))}
             </tbody>
@@ -207,6 +208,14 @@ export default function QuotationPrintPage() {
             </div>
             <div style={{ marginTop: 20 }}>
               <ESignBlock label="Marina Authorized Signature" companyDetails />
+              {quotation.internal_approval_status === "APPROVED" && (
+                <p style={{ margin: "8px 0 0", color: "#475569", fontSize: 10 }}>
+                  Internally approved by {quotation.internal_approval_role?.replace(/_/g, " ") ?? "authorized management"}
+                  {quotation.internal_approved_at
+                    ? ` on ${new Date(quotation.internal_approved_at).toLocaleDateString("en-GB")}`
+                    : ""}
+                </p>
+              )}
             </div>
           </div>
         </section>

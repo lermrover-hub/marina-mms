@@ -36,8 +36,8 @@ Use LOA (ft) as the primary axis. Engine count is a confirmation signal only.
 |---|---|---|---|
 | 1 Engine | ≤ 27 ft | Normal | `RAMP_1OB` |
 | 2 Engines | > 27 – 40 ft | Normal / Medium | `RAMP_2OB` |
-| 3 Engines | > 40 – 47 ft | Medium / High | `RAMP_3OB` |
-| 4 Engines | > 47 – 55 ft | High / Special Handling | `RAMP_3OB` |
+| 3 Engines | > 40 – 50 ft | Medium / High | `RAMP_3OB` through 47 ft; `RAMP_SB_SPECIAL` for 48–50 ft manager review |
+| 4 Engines | > 50 – 60 ft | High / Special Handling | `RAMP_SB_SPECIAL` manager review; never auto-map legacy ramp rates |
 
 ### Secondary Risk Escalation
 

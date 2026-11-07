@@ -11,6 +11,7 @@
     "agents:test:live": "npm.cmd --prefix ai-agents run test:live",
     "agents:dry-run": "npm.cmd --prefix ai-agents run dry-run",
     "agents:run": "npm.cmd --prefix ai-agents run run",
+    "verify:preview-env": "vercel env run -e preview --git-branch codex/v37-catalog-admin -- node scripts/verify-preview-env.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

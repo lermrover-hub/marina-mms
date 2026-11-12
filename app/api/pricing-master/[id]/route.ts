@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getPricingMasterById, updatePricingMaster } from "@/lib/pricing-master"
 import { getPricingWriteAccess } from "@/lib/pricing-access"
-import { pricingUpdateSchema, pricingValidationMessage } from "@/lib/pricing-validation"
+import { pricingUpdateSchema, pricingValidationMessage, validatePricingTransition } from "@/lib/pricing-validation"
+import { assertWetBerthUnavailable } from "@/lib/pricing-governance"
 
 export const dynamic = "force-dynamic"
 
@@ -42,10 +43,33 @@ export async function PATCH(
       return NextResponse.json({ error: pricingValidationMessage(parsed.error) }, { status: 400 })
     }
 
+    const current = await getPricingMasterById(id)
+    if (!current) {
+      return NextResponse.json({ error: "Pricing not found" }, { status: 404 })
+    }
+    for (const value of [parsed.data.category, parsed.data.serviceNameEn]) {
+      try {
+        assertWetBerthUnavailable(value)
+      } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Wet berth is unavailable" }, { status: 400 })
+      }
+    }
+    const transitionError = validatePricingTransition(current, parsed.data)
+    if (transitionError) {
+      return NextResponse.json({ error: transitionError }, { status: 400 })
+    }
+
+    // The edit form sends the current status along with other fields. Do not
+    // recalculate is_active when the workflow status was not changed.
+    const update = { ...parsed.data, priceStatus: parsed.data.priceStatus === current.priceStatus ? undefined : parsed.data.priceStatus }
+    const approvedStatus = update.priceStatus ?? current.priceStatus
+    const approvalRelevantChange = (["priceStatus", "quoteAllowed", "rateThb", "fullRateThb", "pilotRateThb", "calcType"] as const)
+      .some((field) => parsed.data[field] !== undefined && parsed.data[field] !== current[field])
+
     const pricing = await updatePricingMaster(id, {
-      ...parsed.data,
+      ...update,
       updatedBy: access.actorId,
-      approvedBy: access.actorId,
+      approvedBy: approvalRelevantChange && (approvedStatus === "ACTIVE" || approvedStatus === "APPROVED" || approvedStatus.startsWith("APPROVED_")) ? access.actorId : undefined,
     })
 
     if (!pricing) {

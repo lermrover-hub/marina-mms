@@ -217,7 +217,7 @@ export async function createPricingMaster(input: PricingMasterInput) {
       approved_at: input.approvedBy ? new Date().toISOString() : null,
       description: input.description ?? null,
       notes: input.notes ?? null,
-      is_active: (input.priceStatus ?? "INACTIVE") !== "INACTIVE",
+      is_active: (input.priceStatus ?? "INACTIVE") === "ACTIVE",
     })
     .select("*")
     .single()
@@ -255,7 +255,7 @@ export async function updatePricingMaster(id: string, input: PricingMasterUpdate
   if (input.quoteAllowed !== undefined) updates.quote_allowed = input.quoteAllowed
   if (input.priceStatus !== undefined) {
     updates.price_status = input.priceStatus
-    updates.is_active = input.priceStatus !== "INACTIVE"
+    updates.is_active = input.priceStatus === "ACTIVE"
   }
   if (input.sourceVersion !== undefined) updates.source_version = input.sourceVersion
   if (input.effectiveDate !== undefined) updates.effective_date = input.effectiveDate

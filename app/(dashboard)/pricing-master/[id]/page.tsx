@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { ArrowLeft, Save, Loader } from "lucide-react"
 import Link from "next/link"
+import { useSession } from "next-auth/react"
 import { PageHeader } from "@/components/layout/PageHeader"
 
 type PricingHistoryEntry = {
@@ -15,14 +16,13 @@ type PricingHistoryEntry = {
   created_at: string
 }
 
-const CATEGORIES = ["Ramp", "Haul-out", "Service & Equipment", "Storage", "Hardstand & Boat Stand", "Contractor for Boat Paint", "Mechanic Specialist", "Other"]
-const UNITS = ["trip", "sqm", "pkg", "hr", "day", "week", "month", "ft", "ft/day", "ft/month", "stand/week", "set", "pc", "unit"]
-const CALC_TYPES = ["FLAT_RATE", "PER_FOOT", "PER_METRE", "PER_TONNE", "PER_SQUARE_METRE", "PER_HOUR", "PER_DAY", "PER_WEEK", "PER_MONTH", "PER_UNIT", "COST_PLUS", "MANUAL_QUOTE", "FLAT_QTY", "FLAT_DAYS", "LOA_RATE_QTY", "LOA_RATE_DAYS", "MANUAL"]
+const CALC_TYPES = ["FLAT_RATE", "PER_FOOT", "PER_METRE", "PER_TONNE", "PER_SQUARE_METRE", "PER_HOUR", "PER_DAY", "PER_WEEK", "PER_MONTH", "PER_UNIT", "COST_PLUS", "MANUAL_QUOTE", "FLAT_QTY", "FLAT_DAYS", "LOA_RATE_QTY", "LOA_RATE_DAYS", "LOA_MULTIPLIER", "TIER4_LOA_DYNAMIC", "MANUAL"]
 const QUOTE_RULES = ["YES", "NO", "CONTACT", "MANAGER_REVIEW", "MANUAL"]
 const PRICE_STATUSES = ["ACTIVE", "INACTIVE", "CONTACT_ONLY", "PENDING_PAINT_TEAM", "MANUAL_QUOTE"]
 
 export default function PricingMasterEditPage() {
   const router = useRouter()
+  const { data: session } = useSession()
   const params = useParams()
   const id = params.id as string
   const isNew = id === "new"
@@ -30,7 +30,9 @@ export default function PricingMasterEditPage() {
   const [loading, setLoading] = useState(!isNew)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
+  const [savedMessage, setSavedMessage] = useState("")
   const [history, setHistory] = useState<PricingHistoryEntry[]>([])
+  const [catalogOptions, setCatalogOptions] = useState<{ categories: string[]; units: string[]; serviceGroups: string[] }>({ categories: [], units: [], serviceGroups: [] })
   const [formData, setFormData] = useState({
     code: "",
     serviceNameEn: "",
@@ -60,6 +62,27 @@ export default function PricingMasterEditPage() {
     description: "",
     notes: ""
   })
+
+  const actorRole = String((session?.user as { role?: string } | undefined)?.role ?? "").toUpperCase()
+  const canWrite = actorRole === "SUPER_ADMIN" || actorRole === "FINANCE"
+
+  useEffect(() => {
+    fetch("/api/pricing-master")
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Failed to load rate options")
+        return response.json()
+      })
+      .then((json: { data?: Array<{ category?: string; unit?: string; serviceGroup?: string }> }) => {
+        const rows = json.data ?? []
+        const unique = (values: Array<string | undefined>) => [...new Set(values.filter((value): value is string => Boolean(value)))].sort()
+        setCatalogOptions({
+          categories: unique(rows.map((row) => row.category)),
+          units: unique(rows.map((row) => row.unit)),
+          serviceGroups: unique(rows.map((row) => row.serviceGroup)),
+        })
+      })
+      .catch(() => { /* Free-text fields remain usable if suggestions are unavailable. */ })
+  }, [])
 
   // Fetch pricing data if editing
   useEffect(() => {
@@ -128,14 +151,24 @@ export default function PricingMasterEditPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
+    setSavedMessage("")
+
+    if (!canWrite) {
+      setError("Only Super Admin or Finance can change rate records.")
+      return
+    }
 
     // Validation
     if (!formData.code || !formData.serviceNameEn || !formData.category || !formData.unit || formData.rateThb === "" || !formData.calcType || !formData.serviceGroup) {
       setError("Please fill in all required fields")
       return
     }
-    if (formData.priceStatus === "ACTIVE" && formData.quoteAllowed === "YES" && Number(formData.rateThb) <= 0) {
+    if (formData.priceStatus === "ACTIVE" && ["YES", "MANAGER_REVIEW"].includes(formData.quoteAllowed) && Number(formData.rateThb) <= 0) {
       setError("Enter an approved selling price before enabling automatic quotations.")
+      return
+    }
+    if (formData.priceStatus === "ACTIVE" && ["YES", "MANAGER_REVIEW"].includes(formData.quoteAllowed) && formData.pilotRateThb !== "" && Number(formData.pilotRateThb) <= 0) {
+      setError("An active quotable pilot rate must be greater than zero.")
       return
     }
     if (!window.confirm(`${isNew ? "Create" : "Update"} ${formData.code} as ${formData.priceStatus} / ${formData.quoteAllowed}?\n\nCurrent rate: THB ${Number(formData.rateThb).toLocaleString()}\nFull rate: THB ${Number(formData.fullRateThb || formData.rateThb).toLocaleString()}\nPilot rate: ${formData.pilotRateThb ? `THB ${Number(formData.pilotRateThb).toLocaleString()}` : "not set"}\nDirect cost: ${formData.directCostThb ? `THB ${Number(formData.directCostThb).toLocaleString()}` : "not set"}`)) return
@@ -162,12 +195,17 @@ export default function PricingMasterEditPage() {
         })
       })
 
+      const result = await res.json()
       if (!res.ok) {
-        const error = await res.json()
-        throw new Error(error.error || "Failed to save pricing")
+        throw new Error(result.error || "Failed to save pricing")
       }
-
-      router.push("/pricing-master")
+      if (isNew) {
+        router.push(`/pricing-master/${result.data.id}`)
+      } else {
+        setSavedMessage(`Saved ${formData.code}. The rate record and history remain available here.`)
+        const historyResponse = await fetch(`/api/pricing-master/${id}/history`)
+        if (historyResponse.ok) setHistory((await historyResponse.json()).data ?? [])
+      }
     } catch (err: unknown) {
       console.error("Error saving pricing:", err)
       setError(err instanceof Error ? err.message : "Failed to save pricing")
@@ -191,8 +229,8 @@ export default function PricingMasterEditPage() {
           <ArrowLeft className="h-5 w-5 text-[#1f2933]" />
         </Link>
         <PageHeader
-          title={isNew ? "New Pricing" : `Edit Pricing: ${formData.code}`}
-          description={isNew ? "Create a new service pricing record" : "Update service pricing details"}
+          title={isNew ? "Add rate" : `Edit rate: ${formData.code}`}
+          description={isNew ? "Create an inactive draft rate, then review it before making it available to quotations." : "Update service, rate, cost and accounting details."}
         />
       </div>
 
@@ -201,6 +239,8 @@ export default function PricingMasterEditPage() {
           <p className="text-sm text-red-700">{error}</p>
         </div>
       )}
+      {savedMessage && <div role="status" className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800">{savedMessage}</div>}
+      {session && !canWrite && <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Only Super Admin or Finance can add or edit rates.</div>}
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-6 rounded-lg border border-[#e5dfd2] bg-white p-6 shadow-sm">
@@ -222,20 +262,16 @@ export default function PricingMasterEditPage() {
           {/* Category */}
           <div>
             <label className="block text-sm font-medium text-[#1f2933] mb-2">Category *</label>
-            <select
+            <input
+              type="text"
               name="category"
               value={formData.category}
               onChange={handleChange}
+              list="pricing-category-options"
+              placeholder="Select or type a category"
               className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm text-[#1f2933] focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20"
-            >
-              <option value="">Select category</option>
-              {formData.category && !CATEGORIES.includes(formData.category) && <option value={formData.category}>{formData.category}</option>}
-              {CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
+            />
+            <datalist id="pricing-category-options">{catalogOptions.categories.map((value) => <option key={value} value={value} />)}</datalist>
           </div>
 
           {/* Service Name EN */}
@@ -267,20 +303,16 @@ export default function PricingMasterEditPage() {
           {/* Unit */}
           <div>
             <label className="block text-sm font-medium text-[#1f2933] mb-2">Unit *</label>
-            <select
+            <input
+              type="text"
               name="unit"
               value={formData.unit}
               onChange={handleChange}
+              list="pricing-unit-options"
+              placeholder="Select or type a billing unit"
               className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm text-[#1f2933] focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20"
-            >
-              <option value="">Select unit</option>
-              {formData.unit && !UNITS.includes(formData.unit) && <option value={formData.unit}>{formData.unit}</option>}
-              {UNITS.map((u) => (
-                <option key={u} value={u}>
-                  {u}
-                </option>
-              ))}
-            </select>
+            />
+            <datalist id="pricing-unit-options">{catalogOptions.units.map((value) => <option key={value} value={value} />)}</datalist>
           </div>
 
           {/* Rate THB */}
@@ -376,6 +408,7 @@ export default function PricingMasterEditPage() {
             <select name="calcType" value={formData.calcType} onChange={handleChange}
               className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20">
               <option value="">Select calculation method</option>
+              {formData.calcType && !CALC_TYPES.includes(formData.calcType) && <option value={formData.calcType}>{formData.calcType} (existing)</option>}
               {CALC_TYPES.map(value => <option key={value} value={value}>{value}</option>)}
             </select>
           </div>
@@ -392,6 +425,7 @@ export default function PricingMasterEditPage() {
             <label className="block text-sm font-medium text-[#1f2933] mb-2">Price Status</label>
             <select name="priceStatus" value={formData.priceStatus} onChange={handleChange}
               className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20">
+              {formData.priceStatus && !PRICE_STATUSES.includes(formData.priceStatus) && <option value={formData.priceStatus}>{formData.priceStatus} (existing)</option>}
               {PRICE_STATUSES.map(value => <option key={value} value={value}>{value}</option>)}
             </select>
           </div>
@@ -410,8 +444,9 @@ export default function PricingMasterEditPage() {
 
           <div>
             <label className="block text-sm font-medium text-[#1f2933] mb-2">Service Group *</label>
-            <input type="text" name="serviceGroup" value={formData.serviceGroup} onChange={handleChange}
+            <input type="text" name="serviceGroup" value={formData.serviceGroup} onChange={handleChange} list="pricing-group-options"
               className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20" />
+            <datalist id="pricing-group-options">{catalogOptions.serviceGroups.map((value) => <option key={value} value={value} />)}</datalist>
           </div>
 
           <div>
@@ -463,7 +498,7 @@ export default function PricingMasterEditPage() {
         <div className="flex gap-3">
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || !canWrite}
             className="flex items-center justify-center gap-2 rounded-md bg-ocean-turquoise px-4 py-2 text-sm font-medium text-white hover:bg-[#0d8b81] disabled:opacity-50 transition-colors"
           >
             {submitting ? (

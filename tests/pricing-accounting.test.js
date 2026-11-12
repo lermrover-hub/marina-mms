@@ -3,7 +3,7 @@ import assert from "node:assert/strict"
 import { execFileSync } from "node:child_process"
 import { readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
-import { pricingCreateSchema, pricingUpdateSchema } from "../lib/pricing-validation.ts"
+import { pricingCreateSchema, pricingUpdateSchema, validatePricingTransition } from "../lib/pricing-validation.ts"
 
 const basePricing = {
   code: "TEST_RATE",
@@ -39,7 +39,37 @@ test("pricing accepts complimentary zero-value services", () => {
 
 test("an automatically quotable active rate requires a positive selling price", () => {
   assert.equal(pricingCreateSchema.safeParse({ ...basePricing, rateThb: 0, quoteAllowed: "YES", priceStatus: "ACTIVE" }).success, false)
+  assert.equal(pricingCreateSchema.safeParse({ ...basePricing, rateThb: 0, quoteAllowed: "MANAGER_REVIEW", priceStatus: "ACTIVE" }).success, false)
+  assert.equal(pricingCreateSchema.safeParse({ ...basePricing, pilotRateThb: 0, quoteAllowed: "YES", priceStatus: "ACTIVE" }).success, false)
   assert.equal(pricingCreateSchema.safeParse({ ...basePricing, rateThb: 0, quoteAllowed: "NO", priceStatus: "INACTIVE" }).success, true)
+})
+
+test("v3.7 approved rates remain editable without losing their workflow status", () => {
+  assert.equal(pricingUpdateSchema.safeParse({ priceStatus: "APPROVED_CONFIRMED_LAUNCH", calcType: "LOA_MULTIPLIER" }).success, true)
+  assert.equal(pricingUpdateSchema.safeParse({ priceStatus: "APPROVED_CAPACITY_REVIEW", calcType: "TIER4_LOA_DYNAMIC" }).success, true)
+  assert.equal(validatePricingTransition(
+    { priceStatus: "APPROVED_CONFIRMED_LAUNCH", quoteAllowed: "YES", rateThb: 350 },
+    { priceStatus: "APPROVED_CONFIRMED_LAUNCH", rateThb: 375 },
+  ), null)
+})
+
+test("retired legacy codes cannot be reactivated and zero-price approved quotes fail closed", () => {
+  assert.match(validatePricingTransition(
+    { priceStatus: "LEGACY_ALIAS", quoteAllowed: "NO", rateThb: 0 },
+    { priceStatus: "ACTIVE", quoteAllowed: "YES", rateThb: 100 },
+  ), /cannot be reactivated/)
+  assert.match(validatePricingTransition(
+    { priceStatus: "APPROVED", quoteAllowed: "YES", rateThb: 200 },
+    { rateThb: 0 },
+  ), /selling price/)
+  assert.match(validatePricingTransition(
+    { priceStatus: "APPROVED", quoteAllowed: "YES", rateThb: 200 },
+    { pilotRateThb: 0 },
+  ), /Pilot rate/)
+  assert.match(validatePricingTransition(
+    { priceStatus: "INACTIVE", quoteAllowed: "NO", rateThb: 0 },
+    { priceStatus: "APPROVED_CONFIRMED_LAUNCH" },
+  ), /Only ACTIVE or INACTIVE/)
 })
 
 test("pricing rejects discounts outside 0 to 100 percent", () => {

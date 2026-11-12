@@ -3,7 +3,7 @@ import { createPricingMaster, getPricingMaster } from "@/lib/pricing-master"
 import { getPricingWriteAccess } from "@/lib/pricing-access"
 import { pricingCreateSchema, pricingValidationMessage } from "@/lib/pricing-validation"
 import { withCatalogRates } from "@/lib/catalog-rate-card"
-import { isWetBerthEnabled } from "@/lib/pricing-governance"
+import { assertWetBerthUnavailable, isWetBerthEnabled } from "@/lib/pricing-governance"
 
 export const dynamic = "force-dynamic"
 
@@ -40,13 +40,20 @@ export async function POST(req: NextRequest) {
     }
 
     const input = parsed.data
+    for (const value of [input.code, input.category, input.serviceNameEn]) {
+      try {
+        assertWetBerthUnavailable(value)
+      } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Wet berth is unavailable" }, { status: 400 })
+      }
+    }
     const pricing = await createPricingMaster({
       ...input,
       discountPct: input.discountPct ?? 0,
       quoteAllowed: input.quoteAllowed ?? "NO",
       priceStatus: input.priceStatus ?? "INACTIVE",
       updatedBy: access.actorId,
-      approvedBy: input.priceStatus === "ACTIVE" && input.quoteAllowed === "YES" ? access.actorId : null,
+      approvedBy: input.priceStatus === "ACTIVE" ? access.actorId : null,
     })
 
     return NextResponse.json({ data: pricing }, { status: 201 })

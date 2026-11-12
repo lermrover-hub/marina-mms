@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react"
 import { Check, Download, Edit2, Loader2, Plus, Search, Trash2, X } from "lucide-react"
 import { PageHeader } from "@/components/layout/PageHeader"
 import Link from "next/link"
+import { useSession } from "next-auth/react"
 
 interface PricingItem {
   id: string
@@ -44,12 +45,14 @@ function EditableCell({
   placeholder = "–",
   type = "number",
   className = "",
+  disabled = false,
 }: {
   value: number | string | null
   onSave: (val: number | string | null) => Promise<void>
   placeholder?: string
   type?: "number" | "text"
   className?: string
+  disabled?: boolean
 }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft]   = useState(value != null ? String(value) : "")
@@ -81,8 +84,9 @@ function EditableCell({
   if (!editing) {
     return (
       <button
+        disabled={disabled}
         onClick={() => { setDraft(value != null ? String(value) : ""); setEditing(true) }}
-        className={`group flex items-center gap-1 rounded px-1 py-0.5 text-left hover:bg-amber-50 hover:ring-1 hover:ring-amber-300 transition-all ${className}`}
+        className={`group flex items-center gap-1 rounded px-1 py-0.5 text-left transition-all ${disabled ? "cursor-default" : "hover:bg-amber-50 hover:ring-1 hover:ring-amber-300"} ${className}`}
       >
         <span className={value == null ? "text-[#b0b8bc] italic text-xs" : ""}>
           {value != null ? (type === "number" ? `฿${Number(value).toLocaleString()}` : value) : placeholder}
@@ -125,6 +129,9 @@ function PilotBadge({ pilot, standard }: { pilot: number | null; standard: numbe
 
 // ── main page ────────────────────────────────────────────────────────────────
 export default function PricingMasterPage() {
+  const { data: session } = useSession()
+  const actorRole = String((session?.user as { role?: string } | undefined)?.role ?? "").toUpperCase()
+  const canWrite = actorRole === "SUPER_ADMIN" || actorRole === "FINANCE"
   const [list, setList]       = useState<PricingItem[]>([])
   const [filtered, setFiltered] = useState<PricingItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -215,27 +222,6 @@ export default function PricingMasterPage() {
     }
   }, [])
 
-  const restoreRow = useCallback(async (row: PricingItem) => {
-    if (!window.confirm(`Restore rate ${row.code} to the active rate card?`)) return
-    setActionError(null)
-    setSaving(row.id)
-    try {
-      const res = await fetch(`/api/pricing-master/${row.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isActive: true, priceStatus: "ACTIVE" }),
-      })
-      const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(json.error || "Failed to restore rate")
-      const updated: PricingItem = json.data
-      setList(prev => prev.map(item => item.id === row.id ? updated : item))
-    } catch (error) {
-      setActionError(error instanceof Error ? error.message : "Failed to restore rate")
-    } finally {
-      setSaving(null)
-    }
-  }, [])
-
   // ── export CSV ───────────────────────────────────────────────────────────
   const exportCsv = () => {
     const BOM = "﻿"
@@ -274,14 +260,14 @@ export default function PricingMasterPage() {
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#d7e4ef] bg-white px-4 py-3 shadow-sm">
         <div>
           <p className="font-semibold text-[#0B2F5B]">Manage rate records</p>
-          <p className="text-xs text-[#647076]">Add a new rate, edit the full record, or retire it without deleting history.</p>
+          <p className="text-xs text-[#647076]">Create a draft rate, edit its service and cost fields, or retire it without deleting history. Drafts appear under Inactive / retired.</p>
         </div>
-        <Link
+        {canWrite && <Link
           href="/pricing-master/new"
           className="inline-flex items-center gap-2 rounded-md bg-[#0B2F5B] px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#16517F]"
         >
           <Plus className="h-4 w-4" /> Add rate
-        </Link>
+        </Link>}
       </div>
 
       {actionError && (
@@ -294,9 +280,9 @@ export default function PricingMasterPage() {
       {/* ── Stats bar ──────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          { label: "Active services", value: list.filter((row) => row.isActive).length },
+          { label: "Visible active rates", value: list.filter((row) => row.isActive).length },
           { label: "Pilot rate set", value: setPilotCount, highlight: setPilotCount > 0 },
-          { label: "Retired / reference", value: list.filter((row) => !row.isActive).length },
+          { label: "Inactive / retired", value: list.filter((row) => !row.isActive).length },
           { label: "Categories", value: categories.length },
         ].map(s => (
           <div key={s.label} className="rounded-lg border border-[#e5dfd2] bg-white p-3 shadow-sm">
@@ -333,7 +319,7 @@ export default function PricingMasterPage() {
             <option value="all">All Calculation Methods</option>{calcTypes.map(method => <option key={method} value={method}>{method}</option>)}
           </select>
           <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as "active" | "retired" | "all")} className="rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm text-[#1f2933] focus:outline-none">
-            <option value="active">Active only</option><option value="retired">Retired / reference</option><option value="all">All statuses</option>
+            <option value="active">Active only</option><option value="retired">Inactive / retired</option><option value="all">All statuses</option>
           </select>
           {/* pilot filter */}
           <select value={pilotFilter} onChange={e => setPilotFilter(e.target.value as "all"|"set"|"unset")}
@@ -353,8 +339,36 @@ export default function PricingMasterPage() {
         </div>
       </div>
 
+      {/* Mobile rate cards keep record actions visible without horizontal scrolling. */}
+      <div className="space-y-3 md:hidden">
+        {loading ? <div className="rounded-lg border bg-white p-6 text-center text-sm text-[#647076]">Loading rates…</div> : filtered.length === 0 ? <div className="rounded-lg border bg-white p-6 text-center text-sm text-[#647076]">No records match</div> : filtered.map((row) => (
+          <article key={row.id} className="rounded-lg border border-[#d7e4ef] bg-white p-4 shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="break-all font-mono text-xs font-semibold text-[#0B2F5B]">{row.code}</p>
+                <h2 className="mt-1 font-semibold text-[#0B2F5B]">{row.serviceNameEn}</h2>
+                {row.serviceNameTh && <p className="text-sm text-[#647076]">{row.serviceNameTh}</p>}
+              </div>
+              <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${row.isActive ? "bg-green-100 text-green-800" : "bg-slate-100 text-slate-700"}`}>{row.isActive ? "Active" : "Inactive"}</span>
+            </div>
+            <p className="mt-2 text-xs text-[#647076]">{row.category} · {row.serviceGroup ?? "Unclassified"} · {row.calcType}</p>
+            <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
+              <div><dt className="text-xs text-[#647076]">Current rate</dt><dd className="font-semibold">฿{row.rateThb.toLocaleString()} <span className="font-normal text-[#647076]">{row.unit}</span></dd></div>
+              <div><dt className="text-xs text-[#647076]">Full rate</dt><dd className="font-semibold">฿{row.fullRateThb.toLocaleString()}</dd></div>
+              <div><dt className="text-xs text-[#647076]">Pilot rate</dt><dd>{row.pilotRateThb == null ? "Not set" : `฿${row.pilotRateThb.toLocaleString()}`}</dd></div>
+              <div><dt className="text-xs text-[#647076]">Direct cost</dt><dd>{row.directCostThb == null ? "Unknown" : `฿${row.directCostThb.toLocaleString()}`}</dd></div>
+            </dl>
+            <p className="mt-2 text-xs text-[#647076]">Quote: {row.quoteAllowed} · Status: {row.priceStatus}</p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link href={`/pricing-master/${row.id}`} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[#d7e4ef] px-4 text-sm font-medium text-[#0B2F5B]">{canWrite ? "Edit rate" : "View rate"}</Link>
+              {canWrite && row.isActive && <button type="button" onClick={() => retireRow(row)} disabled={saving === row.id} className="min-h-11 rounded-md border border-red-200 px-4 text-sm font-medium text-red-700 disabled:opacity-50">Retire rate</button>}
+            </div>
+          </article>
+        ))}
+      </div>
+
       {/* ── Table ─────────────────────────────────────────────────────── */}
-      <div className="overflow-x-auto rounded-lg border border-[#e5dfd2] bg-white shadow-sm">
+      <div className="hidden overflow-x-auto rounded-lg border border-[#e5dfd2] bg-white shadow-sm md:block">
         {loading ? (
           <div className="flex h-32 items-center justify-center gap-2 text-[#8b969a]">
             <Loader2 className="h-5 w-5 animate-spin" /> Loading…
@@ -429,6 +443,7 @@ export default function PricingMasterPage() {
                         type="number"
                         onSave={val => patchRow(row.id, { pilotRateThb: val as number | null })}
                         className="font-semibold text-amber-700"
+                        disabled={!canWrite}
                       />
                       <PilotBadge pilot={row.pilotRateThb} standard={row.rateThb} />
                     </div>
@@ -440,6 +455,7 @@ export default function PricingMasterPage() {
                       type="text"
                       onSave={val => patchRow(row.id, { pilotNotes: val as string | null })}
                       className="text-xs text-[#647076]"
+                        disabled={!canWrite}
                     />
                   </td>
                   <td className="px-4 py-2.5 text-right whitespace-nowrap">
@@ -449,9 +465,9 @@ export default function PricingMasterPage() {
                         className="inline-flex items-center gap-1 rounded-md border border-[#d7e4ef] px-2 py-1 text-xs font-medium text-[#0B2F5B] hover:bg-[#edf3f8]"
                         aria-label={`Edit ${row.code}`}
                       >
-                        <Edit2 className="h-3.5 w-3.5" /> Edit
+                        <Edit2 className="h-3.5 w-3.5" /> {canWrite ? "Edit" : "View"}
                       </Link>
-                      {row.isActive ? (
+                      {canWrite && row.isActive ? (
                         <button
                           onClick={() => retireRow(row)}
                           disabled={saving === row.id}
@@ -460,16 +476,7 @@ export default function PricingMasterPage() {
                         >
                           {saving === row.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} Retire
                         </button>
-                      ) : (
-                        <button
-                          onClick={() => restoreRow(row)}
-                          disabled={saving === row.id}
-                          className="rounded-md border border-green-200 px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-50 disabled:opacity-50"
-                          aria-label={`Restore ${row.code}`}
-                        >
-                          Restore
-                        </button>
-                      )}
+                      ) : !row.isActive ? <span className="px-2 text-xs text-[#647076]">Retired</span> : null}
                     </div>
                   </td>
                 </tr></React.Fragment>
@@ -484,11 +491,11 @@ export default function PricingMasterPage() {
         <p className="font-semibold">How pilot rates work</p>
         <ul className="list-disc list-inside space-y-0.5 text-xs text-[#647076]">
           <li>Click any cell in the <span className="font-semibold text-amber-700">Pilot Rate</span> column to set an effective rate for trial operations.</li>
-          <li>The AI quotation agent will use the pilot rate automatically when set; otherwise it falls back to the standard rate.</li>
+          <li>The developer-controlled rate mode selects Full or Pilot pricing; a pilot value is used only in Pilot mode.</li>
           <li>Default customer discount is <span className="font-semibold">0%</span>. Any quotation discount still requires the configured approval flow.</li>
           <li>Bulk discount editing is disabled. Every pilot-rate change shows an individual before/after preview and requires confirmation.</li>
           <li>Badge colour: <span className="text-green-700 font-semibold">green ≥90%</span> · <span className="text-amber-700 font-semibold">amber 70–89%</span> · <span className="text-red-700 font-semibold">red &lt;70%</span> of standard rate.</li>
-          <li>Showing <span className="font-semibold">{filtered.length}</span> of <span className="font-semibold">{list.length}</span> active pricing records.</li>
+          <li>Showing <span className="font-semibold">{filtered.length}</span> of <span className="font-semibold">{list.length}</span> visible pricing records. Blocked wet-berth rates are excluded.</li>
         </ul>
       </div>
     </div>

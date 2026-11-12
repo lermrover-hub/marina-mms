@@ -3,7 +3,7 @@ import { createPricingMaster, getPricingMaster } from "@/lib/pricing-master"
 import { getPricingWriteAccess } from "@/lib/pricing-access"
 import { pricingCreateSchema, pricingValidationMessage } from "@/lib/pricing-validation"
 import { withCatalogRates } from "@/lib/catalog-rate-card"
-import { assertWetBerthUnavailable, isWetBerthEnabled } from "@/lib/pricing-governance"
+import { assertWetBerthUnavailable, isWetBerthEnabled, resolveRateMode } from "@/lib/pricing-governance"
 
 export const dynamic = "force-dynamic"
 
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
     const visiblePricing = isWetBerthEnabled()
       ? pricing
       : pricing.filter((item) => !/wet\s*berth/i.test(`${item.code} ${item.category} ${item.serviceNameEn}`))
-    return NextResponse.json({ data: searchParams.get('catalog') === 'true' ? await withCatalogRates(visiblePricing) : visiblePricing }, { headers: { 'Cache-Control': 'no-store' } })
+    return NextResponse.json({ data: searchParams.get('catalog') === 'true' ? await withCatalogRates(visiblePricing) : visiblePricing, rateMode: resolveRateMode() }, { headers: { 'Cache-Control': 'no-store' } })
   } catch (error) {
     console.error("Error fetching pricing:", error)
     return NextResponse.json({ error: "Failed to fetch pricing" }, { status: 500 })

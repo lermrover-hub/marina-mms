@@ -16,6 +16,7 @@
 - The edit form preserves v3.7 `APPROVED_*` statuses and the `LOA_MULTIPLIER` / `TIER4_LOA_DYNAMIC` calculation labels. An unchanged status no longer recalculates `is_active`.
 - Reactivating `LEGACY_ALIAS`, `REFERENCE_ONLY` or `BLOCKED_WET_BERTH` is rejected. Active auto-quoted or manager-review rows require a positive selling rate, and an explicit pilot override must also be positive.
 - New wet-berth rates and edits that introduce wet-berth naming are rejected while the wet-berth feature remains disabled.
+- Pricing Master displays the developer-selected Full/Pilot mode and the effective rate actually returned by the server. Effective gross profit and exported CSV use that selected rate.
 
 ## Staging reconciliation
 

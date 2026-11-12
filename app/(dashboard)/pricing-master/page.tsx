@@ -133,6 +133,7 @@ export default function PricingMasterPage() {
   const actorRole = String((session?.user as { role?: string } | undefined)?.role ?? "").toUpperCase()
   const canWrite = actorRole === "SUPER_ADMIN" || actorRole === "FINANCE"
   const [list, setList]       = useState<PricingItem[]>([])
+  const [rateMode, setRateMode] = useState<"FULL" | "PILOT">("PILOT")
   const [filtered, setFiltered] = useState<PricingItem[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch]   = useState("")
@@ -150,6 +151,7 @@ export default function PricingMasterPage() {
       .then(r => r.json())
       .then(json => {
         const rows: PricingItem[] = json.data ?? []
+        if (json.rateMode === "FULL" || json.rateMode === "PILOT") setRateMode(json.rateMode)
         setList(rows)
         setFiltered(rows)
       })
@@ -261,6 +263,7 @@ export default function PricingMasterPage() {
         <div>
           <p className="font-semibold text-[#0B2F5B]">Manage rate records</p>
           <p className="text-xs text-[#647076]">Create a draft rate, edit its service and cost fields, or retire it without deleting history. Drafts appear under Inactive / retired.</p>
+          <p className="mt-1 text-xs font-semibold text-[#0B2F5B]">Quotation price mode: {rateMode}</p>
         </div>
         {canWrite && <Link
           href="/pricing-master/new"
@@ -356,6 +359,7 @@ export default function PricingMasterPage() {
               <div><dt className="text-xs text-[#647076]">Current rate</dt><dd className="font-semibold">฿{row.rateThb.toLocaleString()} <span className="font-normal text-[#647076]">{row.unit}</span></dd></div>
               <div><dt className="text-xs text-[#647076]">Full rate</dt><dd className="font-semibold">฿{row.fullRateThb.toLocaleString()}</dd></div>
               <div><dt className="text-xs text-[#647076]">Pilot rate</dt><dd>{row.pilotRateThb == null ? "Not set" : `฿${row.pilotRateThb.toLocaleString()}`}</dd></div>
+              <div><dt className="text-xs text-[#647076]">Effective ({rateMode})</dt><dd className="font-semibold">฿{row.effectiveRate.toLocaleString()}</dd></div>
               <div><dt className="text-xs text-[#647076]">Direct cost</dt><dd>{row.directCostThb == null ? "Unknown" : `฿${row.directCostThb.toLocaleString()}`}</dd></div>
             </dl>
             <p className="mt-2 text-xs text-[#647076]">Quote: {row.quoteAllowed} · Status: {row.priceStatus}</p>
@@ -393,6 +397,7 @@ export default function PricingMasterPage() {
                   Pilot Rate
                   <span className="ml-1 text-xs font-normal text-[#8b969a]">(click to edit)</span>
                 </th>
+                <th className="px-4 py-3 text-right font-semibold text-[#1f2933]">Effective ({rateMode})</th>
                 <th className="px-4 py-3 text-left font-semibold text-[#1f2933]">Pilot Notes</th>
                 <th className="px-4 py-3 text-right font-semibold text-[#1f2933]">Actions</th>
               </tr>
@@ -400,7 +405,7 @@ export default function PricingMasterPage() {
             <tbody className="divide-y divide-[#e5dfd2]">
               {filtered.map((row, index) => (
                 <React.Fragment key={row.id}>
-                {(index === 0 || filtered[index - 1].serviceGroup !== row.serviceGroup) && <tr className="bg-teal-50"><td colSpan={13} className="px-4 py-2 text-sm font-bold text-teal-900">{row.serviceGroup ?? "Unclassified services"}</td></tr>}
+                {(index === 0 || filtered[index - 1].serviceGroup !== row.serviceGroup) && <tr className="bg-teal-50"><td colSpan={14} className="px-4 py-2 text-sm font-bold text-teal-900">{row.serviceGroup ?? "Unclassified services"}</td></tr>}
                 <tr
                   className={`transition-colors ${saving === row.id ? "bg-amber-50" : row.pilotRateThb != null ? "bg-amber-50/30 hover:bg-amber-50/60" : "hover:bg-[#f9f8f5]"}`}>
                   <td className="px-4 py-2.5 font-mono text-xs font-semibold text-ocean-turquoise whitespace-nowrap">{row.code}</td>
@@ -448,6 +453,7 @@ export default function PricingMasterPage() {
                       <PilotBadge pilot={row.pilotRateThb} standard={row.rateThb} />
                     </div>
                   </td>
+                  <td className="px-4 py-2.5 text-right font-semibold text-[#0B2F5B] whitespace-nowrap">฿{row.effectiveRate.toLocaleString()}</td>
                   <td className="px-4 py-2.5 min-w-[140px]">
                     <EditableCell
                       value={row.pilotNotes}

@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto"
 import { createServerClient } from "./supabase-server"
+import { resolveRateMode, selectedRateThb } from "./pricing-governance"
 
 interface PricingMasterRow {
   id: string
@@ -109,8 +110,9 @@ function mapPricing(row: PricingMasterRow) {
   const sourceDiscountPct = row.source_discount_pct != null ? Number(row.source_discount_pct) : 0
   const directCostThb = row.direct_cost_thb != null ? Number(row.direct_cost_thb) : null
   const pilotRateThb = row.pilot_rate_thb != null ? Number(row.pilot_rate_thb) : null
-  const grossProfitThb = directCostThb == null ? null : rateThb - directCostThb
-  const grossMarginPct = grossProfitThb == null || rateThb === 0 ? null : (grossProfitThb / rateThb) * 100
+  const effectiveRate = selectedRateThb(row, resolveRateMode())
+  const grossProfitThb = directCostThb == null ? null : effectiveRate - directCostThb
+  const grossMarginPct = grossProfitThb == null || effectiveRate === 0 ? null : (grossProfitThb / effectiveRate) * 100
   return {
     id: row.id,
     code: row.code,
@@ -127,8 +129,7 @@ function mapPricing(row: PricingMasterRow) {
     grossProfitThb,
     grossMarginPct,
     pilotRateThb,
-    /** effectiveRate: use pilotRateThb when set, otherwise standard rateThb */
-    effectiveRate: pilotRateThb ?? rateThb,
+    effectiveRate,
     pilotNotes: row.pilot_notes,
     revenueGlCode: row.revenue_gl_code,
     costGlCode: row.cost_gl_code,

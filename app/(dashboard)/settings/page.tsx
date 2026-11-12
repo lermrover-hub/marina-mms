@@ -709,7 +709,7 @@ export default function SettingsPage() {
                 <div className="px-5 py-3 border-t flex items-center justify-between">
                   <p className="text-xs text-gray-400">All prices exclude VAT (7%) unless marked</p>
                   <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white gap-1" asChild>
-                    <Link href="/pricing-master">+ Add Rate</Link>
+                    <Link href="/pricing-master/new">+ Add Rate</Link>
                   </Button>
                 </div>
               </CardContent>

@@ -43,8 +43,10 @@ export async function POST(req: NextRequest) {
     const pricing = await createPricingMaster({
       ...input,
       discountPct: input.discountPct ?? 0,
+      quoteAllowed: input.quoteAllowed ?? "NO",
+      priceStatus: input.priceStatus ?? "INACTIVE",
       updatedBy: access.actorId,
-      approvedBy: access.actorId,
+      approvedBy: input.priceStatus === "ACTIVE" && input.quoteAllowed === "YES" ? access.actorId : null,
     })
 
     return NextResponse.json({ data: pricing }, { status: 201 })

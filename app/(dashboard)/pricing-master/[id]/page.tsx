@@ -15,9 +15,9 @@ type PricingHistoryEntry = {
   created_at: string
 }
 
-const CATEGORIES = ["Ramp Access", "Haul-out", "Paint Service", "Yard Services", "Storage", "Other"]
-const UNITS = ["trip", "sqm", "pkg", "hr", "day", "ft", "set", "pc", "unit"]
-const CALC_TYPES = ["FLAT_QTY", "FLAT_DAYS", "LOA_RATE_QTY", "LOA_RATE_DAYS", "MANUAL"]
+const CATEGORIES = ["Ramp", "Haul-out", "Service & Equipment", "Storage", "Hardstand & Boat Stand", "Contractor for Boat Paint", "Mechanic Specialist", "Other"]
+const UNITS = ["trip", "sqm", "pkg", "hr", "day", "week", "month", "ft", "ft/day", "ft/month", "stand/week", "set", "pc", "unit"]
+const CALC_TYPES = ["FLAT_RATE", "PER_FOOT", "PER_METRE", "PER_TONNE", "PER_SQUARE_METRE", "PER_HOUR", "PER_DAY", "PER_WEEK", "PER_MONTH", "PER_UNIT", "COST_PLUS", "MANUAL_QUOTE", "FLAT_QTY", "FLAT_DAYS", "LOA_RATE_QTY", "LOA_RATE_DAYS", "MANUAL"]
 const QUOTE_RULES = ["YES", "NO", "CONTACT", "MANAGER_REVIEW", "MANUAL"]
 const PRICE_STATUSES = ["ACTIVE", "INACTIVE", "CONTACT_ONLY", "PENDING_PAINT_TEAM", "MANUAL_QUOTE"]
 
@@ -35,24 +35,26 @@ export default function PricingMasterEditPage() {
     code: "",
     serviceNameEn: "",
     serviceNameTh: "",
-    category: "Paint Service",
-    unit: "sqm",
+    category: "",
+    unit: "",
     rateThb: "",
     fullRateThb: "",
     discountPct: "0",
     sourceDiscountPct: "0",
     directCostThb: "",
+    pilotRateThb: "",
+    pilotNotes: "",
     revenueGlCode: "",
     costGlCode: "",
     pnlCategory: "",
     costPnlCategory: "",
     costBasis: "",
-    calcType: "FLAT_QTY",
+    calcType: "",
     serviceGroup: "",
     subgroup: "",
     providerType: "",
-    quoteAllowed: "YES",
-    priceStatus: "ACTIVE",
+    quoteAllowed: "NO",
+    priceStatus: "INACTIVE",
     sourceVersion: "",
     effectiveDate: "",
     description: "",
@@ -84,6 +86,8 @@ export default function PricingMasterEditPage() {
           discountPct: String(pricing.discountPct ?? 0),
           sourceDiscountPct: String(pricing.sourceDiscountPct ?? 0),
           directCostThb: pricing.directCostThb == null ? "" : String(pricing.directCostThb),
+          pilotRateThb: pricing.pilotRateThb == null ? "" : String(pricing.pilotRateThb),
+          pilotNotes: pricing.pilotNotes || "",
           revenueGlCode: pricing.revenueGlCode || "",
           costGlCode: pricing.costGlCode || "",
           pnlCategory: pricing.pnlCategory || "",
@@ -126,10 +130,15 @@ export default function PricingMasterEditPage() {
     setError("")
 
     // Validation
-    if (!formData.code || !formData.serviceNameEn || !formData.category || !formData.unit || !formData.rateThb) {
+    if (!formData.code || !formData.serviceNameEn || !formData.category || !formData.unit || formData.rateThb === "" || !formData.calcType || !formData.serviceGroup) {
       setError("Please fill in all required fields")
       return
     }
+    if (formData.priceStatus === "ACTIVE" && formData.quoteAllowed === "YES" && Number(formData.rateThb) <= 0) {
+      setError("Enter an approved selling price before enabling automatic quotations.")
+      return
+    }
+    if (!window.confirm(`${isNew ? "Create" : "Update"} ${formData.code} as ${formData.priceStatus} / ${formData.quoteAllowed}?\n\nCurrent rate: THB ${Number(formData.rateThb).toLocaleString()}\nFull rate: THB ${Number(formData.fullRateThb || formData.rateThb).toLocaleString()}\nPilot rate: ${formData.pilotRateThb ? `THB ${Number(formData.pilotRateThb).toLocaleString()}` : "not set"}\nDirect cost: ${formData.directCostThb ? `THB ${Number(formData.directCostThb).toLocaleString()}` : "not set"}`)) return
 
     setSubmitting(true)
 
@@ -147,6 +156,8 @@ export default function PricingMasterEditPage() {
           discountPct: formData.discountPct ? parseFloat(formData.discountPct) : 0,
           sourceDiscountPct: formData.sourceDiscountPct ? parseFloat(formData.sourceDiscountPct) : 0,
           directCostThb: formData.directCostThb ? parseFloat(formData.directCostThb) : null,
+          pilotRateThb: formData.pilotRateThb ? parseFloat(formData.pilotRateThb) : null,
+          pilotNotes: formData.pilotNotes || null,
           effectiveDate: formData.effectiveDate || null,
         })
       })
@@ -217,6 +228,8 @@ export default function PricingMasterEditPage() {
               onChange={handleChange}
               className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm text-[#1f2933] focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20"
             >
+              <option value="">Select category</option>
+              {formData.category && !CATEGORIES.includes(formData.category) && <option value={formData.category}>{formData.category}</option>}
               {CATEGORIES.map((cat) => (
                 <option key={cat} value={cat}>
                   {cat}
@@ -260,6 +273,8 @@ export default function PricingMasterEditPage() {
               onChange={handleChange}
               className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm text-[#1f2933] focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20"
             >
+              <option value="">Select unit</option>
+              {formData.unit && !UNITS.includes(formData.unit) && <option value={formData.unit}>{formData.unit}</option>}
               {UNITS.map((u) => (
                 <option key={u} value={u}>
                   {u}
@@ -318,6 +333,21 @@ export default function PricingMasterEditPage() {
           </div>
 
           <div>
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Pilot / Soft Opening Rate (THB)</label>
+            <input type="number" min="0" step="0.01" name="pilotRateThb" value={formData.pilotRateThb} onChange={handleChange}
+              placeholder="Optional approved override"
+              className="w-full rounded-md border border-amber-200 bg-amber-50/30 px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-300/20" />
+            <p className="mt-1 text-xs text-[#8b969a]">Leave blank to use the current rate. This is not an extra discount.</p>
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Pilot Rate Notes</label>
+            <textarea name="pilotNotes" value={formData.pilotNotes} onChange={handleChange} rows={2}
+              placeholder="Approval reason, period or scope for the pilot rate"
+              className="w-full rounded-md border border-amber-200 bg-amber-50/30 px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-300/20" />
+          </div>
+
+          <div>
             <label className="block text-sm font-medium text-[#1f2933] mb-2">Revenue GL Code</label>
             <input type="text" name="revenueGlCode" value={formData.revenueGlCode} onChange={handleChange} placeholder="e.g. 4100"
               className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20" />
@@ -345,6 +375,7 @@ export default function PricingMasterEditPage() {
             <label className="block text-sm font-medium text-[#1f2933] mb-2">Calculation Type</label>
             <select name="calcType" value={formData.calcType} onChange={handleChange}
               className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20">
+              <option value="">Select calculation method</option>
               {CALC_TYPES.map(value => <option key={value} value={value}>{value}</option>)}
             </select>
           </div>
@@ -378,7 +409,7 @@ export default function PricingMasterEditPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[#1f2933] mb-2">Service Group</label>
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Service Group *</label>
             <input type="text" name="serviceGroup" value={formData.serviceGroup} onChange={handleChange}
               className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20" />
           </div>

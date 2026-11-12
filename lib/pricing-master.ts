@@ -49,6 +49,8 @@ interface PricingMasterInput {
   discountPct?: number | string
   sourceDiscountPct?: number | string
   directCostThb?: number | string | null
+  pilotRateThb?: number | string | null
+  pilotNotes?: string | null
   revenueGlCode?: string | null
   costGlCode?: string | null
   pnlCategory?: string | null
@@ -195,17 +197,19 @@ export async function createPricingMaster(input: PricingMasterInput) {
       discount_pct: Number(input.discountPct ?? 0),
       source_discount_pct: Number(input.sourceDiscountPct ?? 0),
       direct_cost_thb: input.directCostThb != null ? Number(input.directCostThb) : null,
+      pilot_rate_thb: input.pilotRateThb != null ? Number(input.pilotRateThb) : null,
+      pilot_notes: input.pilotNotes ?? null,
       revenue_gl_code: input.revenueGlCode ?? null,
       cost_gl_code: input.costGlCode ?? null,
       pnl_category: input.pnlCategory ?? null,
       cost_pnl_category: input.costPnlCategory ?? null,
       cost_basis: input.costBasis ?? null,
-      calc_type: input.calcType ?? "FLAT_QTY",
+      calc_type: input.calcType ?? "MANUAL_QUOTE",
       service_group: input.serviceGroup ?? null,
       subgroup: input.subgroup ?? null,
       provider_type: input.providerType ?? null,
-      quote_allowed: input.quoteAllowed ?? "YES",
-      price_status: input.priceStatus ?? "ACTIVE",
+      quote_allowed: input.quoteAllowed ?? "NO",
+      price_status: input.priceStatus ?? "INACTIVE",
       source_version: input.sourceVersion ?? null,
       effective_date: input.effectiveDate ?? new Date().toISOString().slice(0, 10),
       updated_by: input.updatedBy ?? null,
@@ -213,7 +217,7 @@ export async function createPricingMaster(input: PricingMasterInput) {
       approved_at: input.approvedBy ? new Date().toISOString() : null,
       description: input.description ?? null,
       notes: input.notes ?? null,
-      is_active: (input.priceStatus ?? "ACTIVE") !== "INACTIVE",
+      is_active: (input.priceStatus ?? "INACTIVE") !== "INACTIVE",
     })
     .select("*")
     .single()

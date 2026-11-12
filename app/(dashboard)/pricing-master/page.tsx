@@ -1,8 +1,9 @@
 "use client"
 
 import React, { useCallback, useEffect, useRef, useState } from "react"
-import { Check, Download, Edit2, Loader2, Search, X } from "lucide-react"
+import { Check, Download, Edit2, Loader2, Plus, Search, Trash2, X } from "lucide-react"
 import { PageHeader } from "@/components/layout/PageHeader"
+import Link from "next/link"
 
 interface PricingItem {
   id: string
@@ -134,6 +135,7 @@ export default function PricingMasterPage() {
   const [statusFilter, setStatusFilter] = useState<"active" | "retired" | "all">("active")
   const [pilotFilter, setPilotFilter] = useState<"all" | "set" | "unset">("all")
   const [saving, setSaving]   = useState<string | null>(null) // row id being saved
+  const [actionError, setActionError] = useState<string | null>(null)
 
   // ── fetch ────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -196,6 +198,44 @@ export default function PricingMasterPage() {
     }
   }, [list])
 
+  const retireRow = useCallback(async (row: PricingItem) => {
+    if (!window.confirm(`Retire rate ${row.code}?\n\nThis keeps quotation/invoice history and removes the rate from active pickers.`)) return
+    setActionError(null)
+    setSaving(row.id)
+    try {
+      const res = await fetch(`/api/pricing-master/${row.id}`, { method: "DELETE" })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error || "Failed to retire rate")
+      const updated: PricingItem = json.data
+      setList(prev => prev.map(item => item.id === row.id ? updated : item))
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Failed to retire rate")
+    } finally {
+      setSaving(null)
+    }
+  }, [])
+
+  const restoreRow = useCallback(async (row: PricingItem) => {
+    if (!window.confirm(`Restore rate ${row.code} to the active rate card?`)) return
+    setActionError(null)
+    setSaving(row.id)
+    try {
+      const res = await fetch(`/api/pricing-master/${row.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: true, priceStatus: "ACTIVE" }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error || "Failed to restore rate")
+      const updated: PricingItem = json.data
+      setList(prev => prev.map(item => item.id === row.id ? updated : item))
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Failed to restore rate")
+    } finally {
+      setSaving(null)
+    }
+  }, [])
+
   // ── export CSV ───────────────────────────────────────────────────────────
   const exportCsv = () => {
     const BOM = "﻿"
@@ -230,6 +270,26 @@ export default function PricingMasterPage() {
         title="Pricing Master"
         description="Accounting-ready rate card. Default customer discount is 0%; pilot rates remain an explicit temporary override."
       />
+
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#d7e4ef] bg-white px-4 py-3 shadow-sm">
+        <div>
+          <p className="font-semibold text-[#0B2F5B]">Manage rate records</p>
+          <p className="text-xs text-[#647076]">Add a new rate, edit the full record, or retire it without deleting history.</p>
+        </div>
+        <Link
+          href="/pricing-master/new"
+          className="inline-flex items-center gap-2 rounded-md bg-[#0B2F5B] px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#16517F]"
+        >
+          <Plus className="h-4 w-4" /> Add rate
+        </Link>
+      </div>
+
+      {actionError && (
+        <div className="flex items-center justify-between gap-3 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <span>{actionError}</span>
+          <button onClick={() => setActionError(null)} className="rounded p-1 hover:bg-red-100" aria-label="Dismiss error"><X className="h-4 w-4" /></button>
+        </div>
+      )}
 
       {/* ── Stats bar ──────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -320,12 +380,13 @@ export default function PricingMasterPage() {
                   <span className="ml-1 text-xs font-normal text-[#8b969a]">(click to edit)</span>
                 </th>
                 <th className="px-4 py-3 text-left font-semibold text-[#1f2933]">Pilot Notes</th>
+                <th className="px-4 py-3 text-right font-semibold text-[#1f2933]">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#e5dfd2]">
               {filtered.map((row, index) => (
                 <React.Fragment key={row.id}>
-                {(index === 0 || filtered[index - 1].serviceGroup !== row.serviceGroup) && <tr className="bg-teal-50"><td colSpan={12} className="px-4 py-2 text-sm font-bold text-teal-900">{row.serviceGroup ?? "Unclassified services"}</td></tr>}
+                {(index === 0 || filtered[index - 1].serviceGroup !== row.serviceGroup) && <tr className="bg-teal-50"><td colSpan={13} className="px-4 py-2 text-sm font-bold text-teal-900">{row.serviceGroup ?? "Unclassified services"}</td></tr>}
                 <tr
                   className={`transition-colors ${saving === row.id ? "bg-amber-50" : row.pilotRateThb != null ? "bg-amber-50/30 hover:bg-amber-50/60" : "hover:bg-[#f9f8f5]"}`}>
                   <td className="px-4 py-2.5 font-mono text-xs font-semibold text-ocean-turquoise whitespace-nowrap">{row.code}</td>
@@ -380,6 +441,36 @@ export default function PricingMasterPage() {
                       onSave={val => patchRow(row.id, { pilotNotes: val as string | null })}
                       className="text-xs text-[#647076]"
                     />
+                  </td>
+                  <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                    <div className="flex items-center justify-end gap-1">
+                      <Link
+                        href={`/pricing-master/${row.id}`}
+                        className="inline-flex items-center gap-1 rounded-md border border-[#d7e4ef] px-2 py-1 text-xs font-medium text-[#0B2F5B] hover:bg-[#edf3f8]"
+                        aria-label={`Edit ${row.code}`}
+                      >
+                        <Edit2 className="h-3.5 w-3.5" /> Edit
+                      </Link>
+                      {row.isActive ? (
+                        <button
+                          onClick={() => retireRow(row)}
+                          disabled={saving === row.id}
+                          className="inline-flex items-center gap-1 rounded-md border border-red-200 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+                          aria-label={`Retire ${row.code}`}
+                        >
+                          {saving === row.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} Retire
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => restoreRow(row)}
+                          disabled={saving === row.id}
+                          className="rounded-md border border-green-200 px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-50 disabled:opacity-50"
+                          aria-label={`Restore ${row.code}`}
+                        >
+                          Restore
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr></React.Fragment>
               ))}

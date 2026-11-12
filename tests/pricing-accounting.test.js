@@ -25,10 +25,21 @@ test("source discount is informational and does not change default discount", ()
   assert.equal(parsed.rateThb, 1_000)
 })
 
+test("pricing create supports an explicit pilot rate and notes", () => {
+  const parsed = pricingCreateSchema.parse({ ...basePricing, pilotRateThb: 900, pilotNotes: "Approved staging pilot" })
+  assert.equal(parsed.pilotRateThb, 900)
+  assert.equal(parsed.pilotNotes, "Approved staging pilot")
+})
+
 test("pricing accepts complimentary zero-value services", () => {
   const parsed = pricingCreateSchema.parse({ ...basePricing, rateThb: 0, fullRateThb: 0 })
   assert.equal(parsed.rateThb, 0)
   assert.equal(parsed.fullRateThb, 0)
+})
+
+test("an automatically quotable active rate requires a positive selling price", () => {
+  assert.equal(pricingCreateSchema.safeParse({ ...basePricing, rateThb: 0, quoteAllowed: "YES", priceStatus: "ACTIVE" }).success, false)
+  assert.equal(pricingCreateSchema.safeParse({ ...basePricing, rateThb: 0, quoteAllowed: "NO", priceStatus: "INACTIVE" }).success, true)
 })
 
 test("pricing rejects discounts outside 0 to 100 percent", () => {

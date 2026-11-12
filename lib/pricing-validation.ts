@@ -40,10 +40,16 @@ export const pricingCreateSchema = z.object({
   category: z.string().trim().min(1).max(120),
   unit: z.string().trim().min(1).max(80),
   rateThb: money,
+  pilotRateThb: money.nullable().optional(),
+  pilotNotes: optionalText(1_000),
   description: optionalText(2_000),
   notes: optionalText(4_000),
   ...accountingFields,
   discountPct: percentage.default(0),
+}).superRefine((value, context) => {
+  if (value.priceStatus === "ACTIVE" && value.quoteAllowed === "YES" && value.rateThb <= 0) {
+    context.addIssue({ code: "custom", path: ["rateThb"], message: "An approved selling price is required for automatic quotation" })
+  }
 })
 
 export const pricingUpdateSchema = z.object({

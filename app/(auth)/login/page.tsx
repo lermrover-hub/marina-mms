@@ -2,7 +2,7 @@
 import React, { useState } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
-import { Anchor, Lock, Mail, Eye, EyeOff, AlertCircle } from "lucide-react"
+import { Lock, Mail, Eye, EyeOff, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -38,9 +38,6 @@ export default function LoginPage() {
     <div className="w-full max-w-sm">
       {/* Mobile logo */}
       <div className="flex items-center gap-3 mb-8 lg:hidden">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-navy-600">
-          <Anchor className="h-6 w-6 text-white" />
-        </div>
         <div>
           <p className="font-bold text-gray-900">Marina MMS</p>
           <p className="text-xs text-gray-500">Management System</p>

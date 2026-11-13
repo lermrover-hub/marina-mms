@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase-server"
+import { QUOTATION_WRITE_ROLES, requireApiActor } from "@/lib/api-auth"
 
 export const dynamic = "force-dynamic"
 
@@ -31,9 +32,21 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const access = await requireApiActor(QUOTATION_WRITE_ROLES)
+    if ("error" in access) return access.error
     const { id } = await params
     const body = await req.json()
     const supabase = createServerClient()
+
+    const { data: existing, error: existingError } = await supabase
+      .from("mms_quotations").select("status").eq("id", id).single()
+    if (existingError) throw existingError
+    if (existing.status !== "DRAFT") {
+      return NextResponse.json({ error: "Only a DRAFT quotation can be edited." }, { status: 409 })
+    }
+    if (body.status !== undefined) {
+      return NextResponse.json({ error: "Use the quotation approval workflow to change status." }, { status: 400 })
+    }
 
     const update: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
@@ -87,8 +100,17 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const access = await requireApiActor(QUOTATION_WRITE_ROLES)
+    if ("error" in access) return access.error
     const { id } = await params
     const supabase = createServerClient()
+
+    const { data: existing, error: existingError } = await supabase
+      .from("mms_quotations").select("status").eq("id", id).single()
+    if (existingError) throw existingError
+    if (existing.status !== "DRAFT") {
+      return NextResponse.json({ error: "Only a DRAFT quotation can be deleted." }, { status: 409 })
+    }
 
     await supabase.from("mms_quotation_items").delete().eq("quotation_id", id)
     const { data, error } = await supabase

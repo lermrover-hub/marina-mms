@@ -1,6 +1,7 @@
 "use client"
 import React from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { signOut, useSession } from "next-auth/react"
 import { Search, LogOut, User, Settings, ChevronDown, HelpCircle, Menu, X } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -25,13 +26,14 @@ export function TopBar({ title, sidebarOpen = false, onSidebarToggle }: TopBarPr
   const userRole = (session?.user as { role?: string })?.role ?? ""
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-[#d7efed] bg-white/90 px-6 shadow-[0_10px_28px_rgba(19,152,143,0.07)] backdrop-blur">
+    <header className="orm-topbar flex h-16 items-center justify-between border-b bg-white px-3 lg:px-6">
       {/* Left: hamburger + page title */}
       <div className="flex items-center gap-3">
+        <Link href="/dashboard" className="lg:hidden" aria-label="Ocean Rover Marina dashboard"><Image src="/orm-marina-approved.png" alt="Ocean Rover Marina" width={100} height={51} unoptimized /></Link>
         {/* Hamburger Icon — Mobile Only */}
         <button
           onClick={onSidebarToggle}
-          className="md:hidden flex items-center justify-center p-1 rounded-md hover:bg-gray-100 transition-colors"
+          className="lg:hidden flex items-center justify-center p-1 rounded-md hover:bg-gray-100 transition-colors"
           aria-label="Toggle sidebar"
         >
           {sidebarOpen ? (
@@ -49,7 +51,7 @@ export function TopBar({ title, sidebarOpen = false, onSidebarToggle }: TopBarPr
       <div className="flex items-center gap-3">
 
         {/* Search */}
-        <div className="relative hidden md:block">
+        <div className="relative hidden lg:block">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8b969a]" />
           <input
             type="search"
@@ -66,7 +68,7 @@ export function TopBar({ title, sidebarOpen = false, onSidebarToggle }: TopBarPr
 
         <Link
           href="/help"
-          className="hidden items-center gap-1.5 rounded-md border border-[#d7efed] bg-[#f3fbfa] px-3 py-2 text-xs font-medium text-[#126c66] transition-colors hover:bg-[#e8fbf9] md:inline-flex"
+          className="hidden items-center gap-1.5 rounded-md border border-[#d7efed] bg-[#f3fbfa] px-3 py-2 text-xs font-medium text-[#126c66] transition-colors hover:bg-[#e8fbf9] lg:inline-flex"
         >
           <HelpCircle className="h-4 w-4" />
           Help
@@ -79,7 +81,7 @@ export function TopBar({ title, sidebarOpen = false, onSidebarToggle }: TopBarPr
               <Avatar className="h-7 w-7">
                 <AvatarFallback className="text-xs">{getInitials(userName)}</AvatarFallback>
               </Avatar>
-              <div className="hidden md:block text-left">
+              <div className="hidden lg:block text-left">
                 <p className="text-sm font-medium text-[#1f2933] leading-tight">{userName}</p>
                 <p className="text-xs text-[#647076] leading-tight">{userRole.replace(/_/g, " ")}</p>
               </div>

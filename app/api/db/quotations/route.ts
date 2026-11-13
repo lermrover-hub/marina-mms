@@ -1,13 +1,18 @@
 import { NextResponse } from "next/server"
-import { isRealCustomerMessagesEnabled } from "@/lib/safe-mode"
 import { createServerClient } from "@/lib/supabase-server"
-import { sendEmail } from "@/lib/email"
-import { quotationSent } from "@/lib/email-templates"
+import { customerScope, PORTAL_READ_ROLES, QUOTATION_WRITE_ROLES, requireApiActor } from "@/lib/api-auth"
 import { validateQuotationCreateInput } from "@/lib/quotation-validation"
+import { CUSTOMER_VISIBLE_QUOTATION_STATUSES } from "@/lib/quotation-workflow"
+import { minimumQuotationApprover } from "@/lib/service-workflow"
+import { assertWetBerthUnavailable, isQuotableRate, resolveRateMode, selectedRateThb } from "@/lib/pricing-governance"
 
 export const dynamic = "force-dynamic"
 
 type QuotationLineItem = {
+  pricingMasterId?: string
+  pricing_master_id?: string
+  pricingCode?: string
+  pricing_code?: string
   description?: string
   qty?: number
   quantity?: number
@@ -18,13 +23,19 @@ type QuotationLineItem = {
 
 export async function GET(req: Request) {
   try {
+    const access = await requireApiActor(PORTAL_READ_ROLES)
+    if ("error" in access) return access.error
     const { searchParams } = new URL(req.url)
-    const customerId = searchParams.get("customer_id")
+    const scope = customerScope(access.actor, searchParams.get("customer_id"))
+    if ("error" in scope) return scope.error
     const boatId = searchParams.get("boat_id")
     const supabase = createServerClient()
 
     let query = supabase.from("mms_quotations").select("*").order("created_at", { ascending: false })
-    if (customerId) query = query.eq("customer_id", customerId)
+    if (scope.customerId) query = query.eq("customer_id", scope.customerId)
+    if (access.actor.role === "CUSTOMER") {
+      query = query.in("status", [...CUSTOMER_VISIBLE_QUOTATION_STATUSES])
+    }
     if (boatId) query = query.eq("boat_id", boatId)
 
     const { data, error } = await query
@@ -40,8 +51,17 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    const access = await requireApiActor(QUOTATION_WRITE_ROLES)
+    if ("error" in access) return access.error
     const body = await req.json()
     const supabase = createServerClient()
+
+    const requestedItems = Array.isArray(body.items) ? body.items as Record<string, unknown>[] : []
+    const wetBerthRequested = requestedItems.some((item) => /wet\s*berth/i.test(`${item.category ?? ""} ${item.description ?? ""} ${item.pricingCode ?? item.pricing_code ?? ""}`))
+    if (wetBerthRequested) {
+      return NextResponse.json({ error: "Wet Berth is unavailable until construction is complete.", code: "WET_BERTH_UNAVAILABLE" }, { status: 409 })
+    }
+    const rateMode = resolveRateMode(body.rate_mode)
 
     const validationError = validateQuotationCreateInput(body)
     if (validationError) {
@@ -100,38 +120,76 @@ export async function POST(req: Request) {
       customer?.company_name ??
       ([customer?.first_name, customer?.last_name].filter(Boolean).join(" ") || null)
 
-    const subtotal = Number(body.subtotal ?? 0)
-    const discount = Number(body.discount_amount ?? body.discount ?? 0)
-    const vatAmount = Number(body.tax_amount ?? body.vat_amount ?? 0)
-    const totalAmount = Number(body.grand_total ?? body.total_amount ?? 0)
-    const depositAmount = Number(body.deposit_req ?? body.deposit_amount ?? 0)
-    const status = body.status === "SENT" ? "SENT" : "DRAFT"
-    const discountPercent = subtotal > 0 ? (discount / subtotal) * 100 : 0
-    const discountLevel =
-      discountPercent >= 10 && discountPercent <= 15 ? "L1" :
-      discountPercent >= 6 && discountPercent < 10 ? "L2" :
-      discountPercent >= 3 && discountPercent < 6 ? "L3" :
-      discountPercent > 15 ? "BLOCKED" : null
-    const customizeBooking = String(body.customize_booking ?? "").trim()
-    const managerName = String(body.manager_approval_name ?? "").trim()
-    const managerSignature = String(body.manager_approval_signature ?? "").trim()
+    const rawItems: QuotationLineItem[] = Array.isArray(body.items) ? body.items : []
+    const normalizedItems = rawItems.map((item, index) => {
+      const qty = Number(item.qty ?? item.quantity ?? 1)
+      const unitPrice = Number(item.unitPrice ?? item.unit_price ?? 0)
+      if (!Number.isFinite(qty) || qty <= 0 || !Number.isFinite(unitPrice) || unitPrice < 0) {
+        throw new Error(`Invalid quantity or unit price at quotation line ${index + 1}`)
+      }
+      return {
+        ...item,
+        qty,
+        unitPrice,
+        pricingCode: String(item.pricingCode ?? item.pricing_code ?? "").trim() || null,
+      }
+    })
 
-    if (status === "SENT") {
-      if (!customerId) {
-        return NextResponse.json({ error: "Cannot send quotation: customer is required." }, { status: 409 })
-      }
-      const hasDeliveryChannel = !!(customer?.email || customer?.line_user_id || customer?.whatsapp_number)
-      if (!hasDeliveryChannel) {
-        return NextResponse.json({ error: "Cannot send quotation: customer has no email, LINE user ID, or WhatsApp number." }, { status: 409 })
-      }
-      if (discountLevel === "BLOCKED") {
-        return NextResponse.json({ error: "Cannot send quotation: discount above 15% is outside approval limits." }, { status: 409 })
-      }
-      if ((customizeBooking || discountPercent >= 3) && (!managerName || !managerSignature)) {
-        return NextResponse.json({ error: "Cannot send quotation: manager name and signature are required for customized booking or L1/L2/L3 discount." }, { status: 409 })
-      }
+    const pricingCodes = [...new Set(normalizedItems.map((item) => item.pricingCode).filter((code): code is string => Boolean(code)))]
+    const { data: pricingRows, error: pricingError } = pricingCodes.length > 0
+      ? await supabase
+          .from("pricing_master")
+          .select("id,code,full_rate_thb,rate_thb,pilot_rate_thb,direct_cost_thb,revenue_gl_code,cost_gl_code,pnl_category,cost_pnl_category,source_version,effective_date,updated_at,is_active,quote_allowed,price_status")
+          .in("code", pricingCodes)
+      : { data: [], error: null }
+    if (pricingError) return NextResponse.json({ error: pricingError.message }, { status: 500 })
+    const pricingByCode = new Map((pricingRows ?? []).map((row) => [row.code, row]))
+    const missingPricingCodes = pricingCodes.filter((code) => !pricingByCode.has(code))
+    if (missingPricingCodes.length > 0) return NextResponse.json({ error: `Unknown pricing code: ${missingPricingCodes.join(", ")}` }, { status: 400 })
+    for (const item of normalizedItems) {
+      const pricing = item.pricingCode ? pricingByCode.get(item.pricingCode) : null
+      if (pricing && !isQuotableRate(pricing)) return NextResponse.json({ error: `Pricing code ${pricing.code} is not approved for automatic quotation.` }, { status: 409 })
+      if (pricing) item.unitPrice = selectedRateThb(pricing, rateMode)
     }
 
+    const calculatedSubtotal = normalizedItems.reduce((sum, item) => sum + item.qty * item.unitPrice, 0)
+    const subtotal = normalizedItems.length > 0 ? calculatedSubtotal : Number(body.subtotal ?? 0)
+    const hasExplicitDiscountType = body.discount_type !== undefined && body.discount_type !== null
+    const discountType = String(body.discount_type ?? "NONE").toUpperCase()
+    const discountValue = Number(body.discount_value ?? 0)
+    const discount = discountType === "PERCENT"
+      ? Math.round(subtotal * discountValue / 100)
+      : discountType === "FIXED"
+        ? discountValue
+        : hasExplicitDiscountType
+          ? 0
+          : Number(body.discount_amount ?? body.discount ?? 0)
+    const vatRate = Number(body.tax_rate ?? 7)
+    const afterDiscount = subtotal - discount
+    const vatAmount = Math.round(afterDiscount * vatRate / 100)
+    const totalAmount = afterDiscount + vatAmount
+    const depositPct = Number(body.deposit_pct ?? 0)
+    const depositAmount = body.deposit_pct !== undefined
+      ? Math.round(totalAmount * depositPct / 100)
+      : Number(body.deposit_req ?? body.deposit_amount ?? 0)
+    const effectiveDiscountPct = subtotal > 0 ? discount / subtotal * 100 : 0
+    const hasNoChargeLine = normalizedItems.some((item) => item.unitPrice === 0)
+
+    if (
+      ![subtotal, discount, vatRate, vatAmount, totalAmount, depositAmount].every(Number.isFinite)
+      || subtotal < 0
+      || discount < 0
+      || discount > subtotal
+      || vatRate < 0
+      || vatRate > 100
+      || depositAmount < 0
+      || depositAmount > totalAmount
+    ) {
+      return NextResponse.json({ error: "Invalid quotation financial values" }, { status: 400 })
+    }
+    // Creation always starts as Draft. Submission must use the audited
+    // submit_for_approval transition on /api/db/quotations/[id].
+    const status = "DRAFT"
     const { data, error } = await supabase
       .from("mms_quotations")
       .insert({
@@ -143,6 +201,10 @@ export async function POST(req: Request) {
         sr_id: body.service_request_id ?? body.sr_id ?? null,
         title: body.title ?? null,
         status,
+        required_approver_role: minimumQuotationApprover(effectiveDiscountPct, hasNoChargeLine),
+        max_discount_pct: effectiveDiscountPct,
+        has_no_charge_line: hasNoChargeLine,
+        payment_mode: String(body.payment_mode ?? (depositAmount > 0 ? "DEPOSIT" : "FULL_PREPAYMENT")),
         subtotal,
         discount,
         vat_amount: vatAmount,
@@ -158,19 +220,31 @@ export async function POST(req: Request) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-    if (Array.isArray(body.items) && body.items.length > 0) {
-      const items = body.items.map((item: QuotationLineItem, index: number) => {
-        const qty = Number(item.qty ?? item.quantity ?? 1)
-        const unitPrice = Number(item.unitPrice ?? item.unit_price ?? 0)
+    if (normalizedItems.length > 0) {
+      const items = normalizedItems.map((item, index) => {
+        const pricing = item.pricingCode ? pricingByCode.get(item.pricingCode) : null
+        const authoritativeUnitPrice = pricing ? selectedRateThb(pricing, rateMode) : item.unitPrice
 
         return {
           quotation_id: data.id,
           description: item.description ?? "",
-          qty,
+          qty: item.qty,
           unit: item.unit ?? "item",
-          unit_price: unitPrice,
+          unit_price: authoritativeUnitPrice,
           discount_pct: 0,
           taxable: vatAmount > 0,
+          pricing_master_id: pricing?.id ?? null,
+          pricing_code: pricing?.code ?? null,
+          full_rate_snapshot_thb: pricing?.full_rate_thb ?? null,
+          current_rate_snapshot_thb: pricing ? authoritativeUnitPrice : null,
+          direct_cost_snapshot_thb: pricing?.direct_cost_thb ?? null,
+          revenue_gl_code: pricing?.revenue_gl_code ?? null,
+          cost_gl_code: pricing?.cost_gl_code ?? null,
+          pnl_category: pricing?.pnl_category ?? null,
+          cost_pnl_category: pricing?.cost_pnl_category ?? null,
+          pricing_source_version: pricing?.source_version ?? null,
+          pricing_effective_date: pricing?.effective_date ?? null,
+          pricing_updated_at: pricing?.updated_at ?? null,
           // line_total omitted — generated column in production schema
           sort_order: index + 1,
         }
@@ -185,38 +259,6 @@ export async function POST(req: Request) {
         await supabase.from("mms_quotations").delete().eq("id", data.id)
         return NextResponse.json({ error: itemError.message }, { status: 500 })
       }
-    }
-
-    // Email is only sent for explicit Send flow, and only when real messages are enabled.
-    if (isRealCustomerMessagesEnabled()) try {
-      if (status === "SENT" && data?.customer_id) {
-        const recipientEmail = customer?.email
-        const recipientName = customerName ?? "Valued Customer"
-
-        if (recipientEmail) {
-          await sendEmail({
-            to: recipientEmail,
-            subject: `Quotation ${data.quote_number ?? data.id} - Ocean Rover Marina`,
-            html: quotationSent({
-              customerName: recipientName,
-              quotationNumber: data.quote_number ?? String(data.id),
-              serviceDescription: data.title ?? "Marina Services",
-              totalAmount: Number(data.total_amount ?? 0),
-              currency: "THB",
-              validUntil: data.valid_until
-                ? new Date(data.valid_until).toLocaleDateString("en-GB", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  })
-                : "-",
-              quotationUrl: `${process.env.NEXTAUTH_URL ?? ""}/quotations/${data.id}`,
-            }),
-          })
-        }
-      }
-    } catch (emailErr) {
-      console.error("[Quotation email trigger error]", emailErr)
     }
 
     return NextResponse.json(data, { status: 201 })

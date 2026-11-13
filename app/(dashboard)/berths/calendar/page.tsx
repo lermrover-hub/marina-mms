@@ -17,7 +17,7 @@ type Assignment = {
   boat_name: string | null
   customer_name: string | null
   start_date: string
-  end_date: string
+  end_date: string | null
   status: "ACTIVE" | "RESERVED" | "COMPLETED" | "CANCELLED"
   notes: string | null
 }
@@ -134,7 +134,7 @@ export default function BerthCalendarPage() {
     const map = new Map<string, Assignment>()
     assignments.forEach(a => {
       const start = new Date(a.start_date + "T00:00:00")
-      const end   = new Date(a.end_date   + "T00:00:00")
+      const end   = new Date((a.end_date ?? rangeTo) + "T00:00:00")
       const cur   = new Date(start)
       while (cur <= end) {
         const ds = cur.toISOString().slice(0, 10)
@@ -143,7 +143,7 @@ export default function BerthCalendarPage() {
       }
     })
     return map
-  }, [assignments])
+  }, [assignments, rangeTo])
 
   // Precompute month day arrays
   const monthDays = useMemo(() =>

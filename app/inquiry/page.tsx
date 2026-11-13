@@ -12,8 +12,7 @@ import {
 
 type ServiceCategory =
   | "RAMP_LAUNCH"
-  | "RAMP_RETRIEVAL"
-  | "WET_BERTH"
+  | "RAMP_HAUL_OUT"
   | "DRY_STORAGE"
   | "BOAT_REPAIR"
   | "OTHER"
@@ -78,20 +77,12 @@ const SERVICE_OPTIONS: {
     color: "border-teal-300 bg-teal-50 hover:border-teal-500",
   },
   {
-    value: "RAMP_RETRIEVAL",
-    label: "Retrieval",
+    value: "RAMP_HAUL_OUT",
+    label: "Haul-out",
     labelTh: "นำเรือขึ้นบก",
     icon: Anchor,
     desc: "Pull your vessel out of the water and onto land.",
     color: "border-blue-300 bg-blue-50 hover:border-blue-500",
-  },
-  {
-    value: "WET_BERTH",
-    label: "Wet Berth",
-    labelTh: "จอดเรือในน้ำ",
-    icon: Ship,
-    desc: "Monthly or annual berth in our protected marina basin.",
-    color: "border-cyan-300 bg-cyan-50 hover:border-cyan-500",
   },
   {
     value: "DRY_STORAGE",
@@ -424,7 +415,7 @@ export default function BookingInquiryPage() {
 
             {/* Ramp info callout */}
             {(form.serviceCategory === "RAMP_LAUNCH" ||
-              form.serviceCategory === "RAMP_RETRIEVAL") && (
+              form.serviceCategory === "RAMP_HAUL_OUT") && (
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 flex gap-2 mb-4">
                 <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
                 <span>
@@ -684,8 +675,7 @@ export default function BookingInquiryPage() {
                   </div>
                 </div>
 
-                {(form.serviceCategory === "WET_BERTH" ||
-                  form.serviceCategory === "DRY_STORAGE") && (
+                {form.serviceCategory === "DRY_STORAGE" && (
                   <div className="w-40">
                     <Label>Duration (days / months)</Label>
                     <FieldInput
@@ -912,7 +902,7 @@ function PageShell({ children }: { children: React.ReactNode }) {
           </div>
           <h1 className="text-3xl font-bold mb-2">Request a Marina Service</h1>
           <p className="text-teal-200 text-sm max-w-md mx-auto">
-            Launch, retrieval, berth rental, dry storage, or boat repair — tell us what you need
+            Launch, haul-out, berth rental, dry storage, or boat repair — tell us what you need
             and we&#39;ll get back to you with a confirmed quote within 1 business day.
           </p>
         </div>

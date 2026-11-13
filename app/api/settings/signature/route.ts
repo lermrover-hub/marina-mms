@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase-server"
+import { isMissingWorkflowSchema } from "@/lib/service-workflow-compat"
 
 export const dynamic = "force-dynamic"
 
@@ -13,6 +14,9 @@ export async function GET() {
       .select("value")
       .eq("key", KEY)
       .maybeSingle()
+    if (error && isMissingWorkflowSchema(error)) {
+      return NextResponse.json({ url: null, unavailable: true })
+    }
     if (error) throw error
     return NextResponse.json({ url: data?.value ?? null })
   } catch (e) {

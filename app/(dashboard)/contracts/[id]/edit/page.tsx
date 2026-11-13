@@ -9,7 +9,7 @@ import { PageHeader } from "@/components/shared/PageHeader"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { Contract } from "@/lib/supabase"
 
-const CONTRACT_TYPES = ["WET_BERTH","DRY_STORAGE","RAMP_SERVICE","SERVICE_AGREEMENT"]
+const CONTRACT_TYPES = ["DRY_STORAGE","RAMP_SERVICE","SERVICE_AGREEMENT"]
 const BILLING_CYCLES = ["MONTHLY","QUARTERLY","ANNUAL","ONE_TIME"]
 const TYPE_LABELS: Record<string,string> = {
   WET_BERTH:"Wet Berth",DRY_STORAGE:"Dry Storage",
@@ -102,6 +102,8 @@ export default function ContractEditPage() {
         terms_text:          form.terms_text || null,
         special_conditions:  form.special_conditions || null,
         notes:               form.notes || null,
+        billing_scenario:    form.contract_type === "DRY_STORAGE" ? "SPACE_LEASE" : "REPAIR_HOLD_30D",
+        reminder_lead_days:  7,
       }
       const res  = await fetch(`/api/db/contracts/${id}`, {
         method: "PATCH",

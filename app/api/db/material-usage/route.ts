@@ -1,42 +1,50 @@
 import { NextResponse } from "next/server"
-import { apiErrorMessage, dbQuery } from "@/lib/postgres"
+import { OPERATIONS_WRITE_ROLES, STAFF_ROLES, requireApiActor } from "@/lib/api-auth"
+import { apiServerError, finiteNonNegative } from "@/lib/api-route-utils"
+import { createServerClient } from "@/lib/supabase-server"
 
 export const dynamic = "force-dynamic"
 
 export async function GET(request: Request) {
+  const access = await requireApiActor(STAFF_ROLES)
+  if ("error" in access) return access.error
   try {
-    const { searchParams } = new URL(request.url)
-    const workOrderId = searchParams.get("work_order_id")
+    const workOrderId = new URL(request.url).searchParams.get("work_order_id")
     if (!workOrderId) return NextResponse.json({ error: "work_order_id required" }, { status: 400 })
-    const result = await dbQuery("SELECT * FROM mms_material_usage WHERE work_order_id=$1 ORDER BY created_at", [workOrderId])
-    return NextResponse.json(result.rows)
-  } catch (e) {
-    return NextResponse.json({ error: apiErrorMessage(e) }, { status: 500 })
-  }
+    const { data, error } = await createServerClient({ requireServiceRole: true }).from("mms_material_usage").select("*").eq("work_order_id", workOrderId).order("created_at")
+    if (error) throw error
+    return NextResponse.json(data)
+  } catch (error) { return apiServerError("material-usage.get", error) }
 }
 
 export async function POST(request: Request) {
+  const access = await requireApiActor(OPERATIONS_WRITE_ROLES)
+  if ("error" in access) return access.error
   try {
     const body = await request.json()
-    if (!body.work_order_id || !String(body.item_name ?? "").trim()) return NextResponse.json({ error: "work_order_id and item_name are required" }, { status: 400 })
-    const quantity = Number(body.quantity) || 0
-    const unitCost = Number(body.unit_cost) || 0
-    const result = await dbQuery(`INSERT INTO mms_material_usage (work_order_id,item_name,description,quantity,unit,unit_cost,total_cost,supplier,charge_to_customer) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`, [body.work_order_id, body.item_name, body.description || null, quantity, body.unit || "pcs", unitCost, Number((quantity * unitCost).toFixed(2)), body.supplier || null, body.charge_to_customer !== false])
-    return NextResponse.json(result.rows[0], { status: 201 })
-  } catch (e) {
-    return NextResponse.json({ error: apiErrorMessage(e) }, { status: 500 })
-  }
+    const itemName = String(body.item_name ?? "").trim()
+    const quantity = finiteNonNegative(body.quantity ?? 0)
+    const unitCost = finiteNonNegative(body.unit_cost ?? 0)
+    if (!body.work_order_id || !itemName) return NextResponse.json({ error: "work_order_id and item_name are required" }, { status: 400 })
+    if (quantity == null || unitCost == null) return NextResponse.json({ error: "quantity and unit_cost must be non-negative" }, { status: 400 })
+    const { data, error } = await createServerClient({ requireServiceRole: true }).from("mms_material_usage").insert({
+      work_order_id: body.work_order_id, item_name: itemName, description: body.description || null,
+      quantity, unit: body.unit || "pcs", unit_cost: unitCost, total_cost: Number((quantity * unitCost).toFixed(2)),
+      supplier: body.supplier || null, charge_to_customer: body.charge_to_customer !== false,
+    }).select().single()
+    if (error) throw error
+    return NextResponse.json(data, { status: 201 })
+  } catch (error) { return apiServerError("material-usage.post", error) }
 }
 
 export async function DELETE(request: Request) {
+  const access = await requireApiActor(OPERATIONS_WRITE_ROLES)
+  if ("error" in access) return access.error
   try {
-    const { searchParams } = new URL(request.url)
-    const id = searchParams.get("id")
+    const id = new URL(request.url).searchParams.get("id")
     if (!id) return NextResponse.json({ error: "id required" }, { status: 400 })
-    const result = await dbQuery("DELETE FROM mms_material_usage WHERE id=$1", [id])
-    if (!result.rowCount) return NextResponse.json({ error: "Not found" }, { status: 404 })
-    return NextResponse.json({ success: true })
-  } catch (e) {
-    return NextResponse.json({ error: apiErrorMessage(e) }, { status: 500 })
-  }
+    const { data, error } = await createServerClient({ requireServiceRole: true }).from("mms_material_usage").delete().eq("id", id).select("id").maybeSingle()
+    if (error) throw error
+    return data ? NextResponse.json({ success: true }) : NextResponse.json({ error: "Not found" }, { status: 404 })
+  } catch (error) { return apiServerError("material-usage.delete", error) }
 }

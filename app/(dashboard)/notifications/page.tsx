@@ -23,6 +23,7 @@ type Alert = {
 }
 
 const TYPE_CONFIG: Record<string, { icon: React.ElementType; color: string; label: string }> = {
+  PAYMENT_REMINDER:  { icon: Receipt,    color: "text-blue-500 bg-blue-50",      label: "Payment Reminder" },
   OVERDUE_INVOICE:   { icon: Receipt,    color: "text-red-500 bg-red-50",     label: "Invoice Alert"    },
   CONTRACT_EXPIRY:   { icon: FileText,   color: "text-amber-500 bg-amber-50", label: "Contract Alert"   },
   INSURANCE_EXPIRY:  { icon: ShieldAlert,color: "text-amber-500 bg-amber-50", label: "Insurance Alert"  },
@@ -37,7 +38,7 @@ const PRIORITY_COLORS: Record<string, string> = {
   LOW:    "bg-gray-100 text-gray-600 border-gray-200",
 }
 
-const TYPE_FILTERS = ["ALL", "OVERDUE_INVOICE", "CONTRACT_EXPIRY", "INSURANCE_EXPIRY", "WORK_ORDER_OVERDUE", "RAMP_TODAY", "SERVICE_REQUEST"]
+const TYPE_FILTERS = ["ALL", "PAYMENT_REMINDER", "OVERDUE_INVOICE", "CONTRACT_EXPIRY", "INSURANCE_EXPIRY", "WORK_ORDER_OVERDUE", "RAMP_TODAY", "SERVICE_REQUEST"]
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -64,6 +65,20 @@ export default function NotificationsPage() {
       const invoices = await fetch("/api/db/invoices").then(r => r.json()).catch(() => [])
       if (Array.isArray(invoices)) {
         for (const inv of invoices) {
+          if (inv.due_date && !["PAID", "CANCELLED"].includes(inv.status) && (inv.outstanding_balance ?? 0) > 0) {
+            const daysUntilDue = daysBetween(today, inv.due_date)
+            if (daysUntilDue >= 0 && daysUntilDue <= 7) {
+              generated.push({
+                id: `payment-${inv.id}`,
+                type: "PAYMENT_REMINDER",
+                priority: daysUntilDue <= 2 ? "HIGH" : "MEDIUM",
+                title: "Payment Due Soon",
+                message: `${inv.invoice_number} — ${inv.customer_name ?? "—"} is due in ${daysUntilDue} day${daysUntilDue !== 1 ? "s" : ""} (${formatDate(inv.due_date)}). Outstanding: ฿${(inv.outstanding_balance ?? 0).toLocaleString()}`,
+                href: `/invoices/${inv.id}`,
+                date: inv.due_date,
+              })
+            }
+          }
           if (inv.status === "OVERDUE" || (inv.due_date && inv.due_date < today && !["PAID","CANCELLED"].includes(inv.status) && (inv.outstanding_balance ?? 0) > 0)) {
             const days = inv.due_date ? daysBetween(inv.due_date, today) : 0
             generated.push({

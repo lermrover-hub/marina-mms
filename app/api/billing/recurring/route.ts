@@ -41,8 +41,7 @@ export const dynamic = "force-dynamic"
  *
  * Two valid callers:
  *  1. Vercel Cron with Authorization: Bearer <CRON_SECRET>.
- *  2. Internal admin users — authenticated session with role SUPER_ADMIN or
- *     ADMIN (for manual triggers from the UI).
+ *  2. Internal Finance, Managing Director, or Super Admin users for manual UI runs.
  */
 async function isAuthorised(req: Request): Promise<boolean> {
   // 1. Vercel Cron secret
@@ -55,7 +54,7 @@ async function isAuthorised(req: Request): Promise<boolean> {
   const session = await auth()
   if (!session?.user) return false
   const role = (session.user as { role?: string }).role ?? ""
-  return ["SUPER_ADMIN", "ADMIN"].includes(role)
+  return ["SUPER_ADMIN", "MANAGING_DIRECTOR", "FINANCE"].includes(role)
 }
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -137,6 +136,8 @@ type ContractRow = {
   billing_cycle: string
   rate_amount: number | null
   rate_currency: string
+  billing_scenario?: string | null
+  reminder_lead_days?: number | null
 }
 
 type SkipEntry = { contract_number: string; reason: string }
@@ -163,7 +164,7 @@ export async function POST(req: Request) {
     // ── 1. Fetch active contracts ──
     let contractQuery = supabase
       .from("mms_contracts")
-      .select("id,contract_number,contract_type,customer_id,customer_name,boat_id,boat_name,berth_code,start_date,end_date,billing_cycle,rate_amount,rate_currency")
+      .select("id,contract_number,contract_type,customer_id,customer_name,boat_id,boat_name,berth_code,start_date,end_date,billing_cycle,rate_amount,rate_currency,billing_scenario,reminder_lead_days")
       .eq("status", "ACTIVE")
       .not("rate_amount", "is", null)
 
@@ -200,6 +201,10 @@ export async function POST(req: Request) {
     const skipped: SkipEntry[]  = []
 
     for (const contract of contracts as ContractRow[]) {
+      if (contract.contract_type === "WET_BERTH") {
+        skipped.push({ contract_number: contract.contract_number, reason: "Wet Berth is blocked until construction is complete; no recurring invoice generated." })
+        continue
+      }
       // Skip if already billed this period
       if (alreadyBilled.has(contract.id)) {
         skipped.push({ contract_number: contract.contract_number, reason: `Already invoiced for ${targetPeriod}` })
@@ -225,6 +230,8 @@ export async function POST(req: Request) {
       const totalAmount = parseFloat((subtotal + vatAmount).toFixed(2))
       const invoiceDate = today.toISOString().slice(0, 10)
       const dueDate     = new Date(today.getTime() + dueDaysFromCycle(contract.billing_cycle) * 86400000).toISOString().slice(0, 10)
+      const reminderLeadDays = Math.max(1, Number(contract.reminder_lead_days ?? 7))
+      const reminderDate = new Date(new Date(dueDate).getTime() - reminderLeadDays * 86400000).toISOString().slice(0, 10)
 
       const typeLabel: Record<string, string> = {
         WET_BERTH: "Wet Berth Fee", DRY_STORAGE: "Dry Storage Fee",
@@ -245,6 +252,8 @@ export async function POST(req: Request) {
           total_amount:   totalAmount,
           invoice_date:   invoiceDate,
           due_date:       dueDate,
+          reminder_date:  reminderDate,
+          reminder_lead_days: reminderLeadDays,
         })
         continue
       }
@@ -271,7 +280,7 @@ export async function POST(req: Request) {
           total_amount:        totalAmount,
           paid_amount:         0,
           outstanding_balance: totalAmount,
-          notes:               `Auto-generated recurring invoice for contract ${contract.contract_number}`,
+          notes:               `Auto-generated recurring invoice for contract ${contract.contract_number}. Finance reminder: ${reminderLeadDays} day(s) before due date (${reminderDate}).`,
         })
         .select()
         .single()

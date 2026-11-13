@@ -1,8 +1,11 @@
 "use client"
 
 import React, { useCallback, useEffect, useRef, useState } from "react"
-import { Check, Download, Edit2, Loader2, Search, X } from "lucide-react"
+import { Check, Download, Edit2, Loader2, Plus, Search, Trash2, X } from "lucide-react"
 import { PageHeader } from "@/components/layout/PageHeader"
+import Link from "next/link"
+import { useSession } from "next-auth/react"
+import { RATE_CATEGORIES, VESSEL_GROUPS } from "@/lib/pricing-display-groups"
 
 interface PricingItem {
   id: string
@@ -12,6 +15,27 @@ interface PricingItem {
   category: string
   unit: string
   rateThb: number
+  fullRateThb: number
+  discountPct: number
+  sourceDiscountPct: number
+  directCostThb: number | null
+  grossProfitThb: number | null
+  grossMarginPct: number | null
+  revenueGlCode: string | null
+  costGlCode: string | null
+  pnlCategory: string | null
+  calcType: string
+  serviceGroup: string | null
+  subgroup: string | null
+  displayCategory: string
+  displayVesselGroup: string
+  displayVesselSubtype: string | null
+  providerType: string | null
+  quoteAllowed: string
+  priceStatus: string
+  sourceVersion: string | null
+  effectiveDate: string | null
+  updatedAt: string
   pilotRateThb: number | null
   pilotNotes: string | null
   effectiveRate: number
@@ -25,12 +49,14 @@ function EditableCell({
   placeholder = "–",
   type = "number",
   className = "",
+  disabled = false,
 }: {
   value: number | string | null
   onSave: (val: number | string | null) => Promise<void>
   placeholder?: string
   type?: "number" | "text"
   className?: string
+  disabled?: boolean
 }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft]   = useState(value != null ? String(value) : "")
@@ -62,8 +88,9 @@ function EditableCell({
   if (!editing) {
     return (
       <button
+        disabled={disabled}
         onClick={() => { setDraft(value != null ? String(value) : ""); setEditing(true) }}
-        className={`group flex items-center gap-1 rounded px-1 py-0.5 text-left hover:bg-amber-50 hover:ring-1 hover:ring-amber-300 transition-all ${className}`}
+        className={`group flex items-center gap-1 rounded px-1 py-0.5 text-left transition-all ${disabled ? "cursor-default" : "hover:bg-amber-50 hover:ring-1 hover:ring-amber-300"} ${className}`}
       >
         <span className={value == null ? "text-[#b0b8bc] italic text-xs" : ""}>
           {value != null ? (type === "number" ? `฿${Number(value).toLocaleString()}` : value) : placeholder}
@@ -106,20 +133,29 @@ function PilotBadge({ pilot, standard }: { pilot: number | null; standard: numbe
 
 // ── main page ────────────────────────────────────────────────────────────────
 export default function PricingMasterPage() {
+  const { data: session } = useSession()
+  const actorRole = String((session?.user as { role?: string } | undefined)?.role ?? "").toUpperCase()
+  const canWrite = actorRole === "SUPER_ADMIN" || actorRole === "FINANCE"
   const [list, setList]       = useState<PricingItem[]>([])
+  const [rateMode, setRateMode] = useState<"FULL" | "PILOT">("PILOT")
   const [filtered, setFiltered] = useState<PricingItem[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch]   = useState("")
   const [category, setCategory] = useState("all")
+  const [serviceGroup, setServiceGroup] = useState("all")
+  const [calcType, setCalcType] = useState("all")
+  const [statusFilter, setStatusFilter] = useState<"active" | "retired" | "all">("active")
   const [pilotFilter, setPilotFilter] = useState<"all" | "set" | "unset">("all")
   const [saving, setSaving]   = useState<string | null>(null) // row id being saved
+  const [actionError, setActionError] = useState<string | null>(null)
 
   // ── fetch ────────────────────────────────────────────────────────────────
   useEffect(() => {
     fetch("/api/pricing-master")
       .then(r => r.json())
       .then(json => {
-        const rows: PricingItem[] = (json.data ?? []).filter((p: PricingItem) => p.isActive)
+        const rows: PricingItem[] = json.data ?? []
+        if (json.rateMode === "FULL" || json.rateMode === "PILOT") setRateMode(json.rateMode)
         setList(rows)
         setFiltered(rows)
       })
@@ -135,16 +171,36 @@ export default function PricingMasterPage() {
       p.serviceNameEn.toLowerCase().includes(search.toLowerCase()) ||
       (p.serviceNameTh ?? "").toLowerCase().includes(search.toLowerCase())
     )
-    if (category !== "all") f = f.filter(p => p.category === category)
+    if (category !== "all") f = f.filter(p => p.displayCategory === category)
+    if (serviceGroup !== "all") f = f.filter(p => (p.serviceGroup ?? "Unclassified") === serviceGroup)
+    if (calcType !== "all") f = f.filter(p => p.calcType === calcType)
+    if (statusFilter === "active") f = f.filter(p => p.isActive)
+    if (statusFilter === "retired") f = f.filter(p => !p.isActive)
     if (pilotFilter === "set")   f = f.filter(p => p.pilotRateThb != null)
     if (pilotFilter === "unset") f = f.filter(p => p.pilotRateThb == null)
-    setFiltered(f)
-  }, [search, category, pilotFilter, list])
+    const categoryRank = (value: string) => {
+      const index = RATE_CATEGORIES.findIndex(item => item === value)
+      return index < 0 ? RATE_CATEGORIES.length : index
+    }
+    const vesselRank = (value: string) => {
+      const index = VESSEL_GROUPS.findIndex(item => item === value)
+      return index < 0 ? VESSEL_GROUPS.length : index
+    }
+    setFiltered([...f].sort((a, b) => categoryRank(a.displayCategory) - categoryRank(b.displayCategory) || a.displayCategory.localeCompare(b.displayCategory) || vesselRank(a.displayVesselGroup) - vesselRank(b.displayVesselGroup) || a.displayVesselGroup.localeCompare(b.displayVesselGroup) || (a.displayVesselSubtype ?? "").localeCompare(b.displayVesselSubtype ?? "") || a.code.localeCompare(b.code)))
+  }, [search, category, serviceGroup, calcType, statusFilter, pilotFilter, list])
 
-  const categories = Array.from(new Set(list.map(p => p.category)))
+  const categories = [...RATE_CATEGORIES, ...Array.from(new Set(list.map(p => p.displayCategory))).filter(value => !RATE_CATEGORIES.includes(value as typeof RATE_CATEGORIES[number]))]
+  const serviceGroups = Array.from(new Set(list.map(p => p.serviceGroup ?? "Unclassified"))).sort()
+  const calcTypes = Array.from(new Set(list.map(p => p.calcType))).sort()
 
   // ── save helper ──────────────────────────────────────────────────────────
   const patchRow = useCallback(async (id: string, patch: Partial<Pick<PricingItem, "pilotRateThb" | "pilotNotes">>) => {
+    const current = list.find((row) => row.id === id)
+    if (Object.prototype.hasOwnProperty.call(patch, "pilotRateThb")) {
+      const before = current?.pilotRateThb == null ? "not set" : `THB ${current.pilotRateThb.toLocaleString()}`
+      const after = patch.pilotRateThb == null ? "not set (use approved current rate)" : `THB ${Number(patch.pilotRateThb).toLocaleString()}`
+      if (!confirm(`Preview pricing change\n\n${current?.code ?? id}\nPilot rate: ${before} → ${after}\n\nSave this approved staging change?`)) return
+    }
     setSaving(id)
     try {
       const res = await fetch(`/api/pricing-master/${id}`, {
@@ -161,43 +217,39 @@ export default function PricingMasterPage() {
     } finally {
       setSaving(null)
     }
+  }, [list])
+
+  const retireRow = useCallback(async (row: PricingItem) => {
+    if (!window.confirm(`Retire rate ${row.code}?\n\nThis keeps quotation/invoice history and removes the rate from active pickers.`)) return
+    setActionError(null)
+    setSaving(row.id)
+    try {
+      const res = await fetch(`/api/pricing-master/${row.id}`, { method: "DELETE" })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error || "Failed to retire rate")
+      const updated: PricingItem = json.data
+      setList(prev => prev.map(item => item.id === row.id ? updated : item))
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Failed to retire rate")
+    } finally {
+      setSaving(null)
+    }
   }, [])
-
-  // ── bulk: apply % discount to filtered rows ──────────────────────────────
-  const [bulkPct, setBulkPct] = useState("")
-  const applyBulkDiscount = async () => {
-    const pct = Number(bulkPct)
-    if (isNaN(pct) || pct <= 0 || pct >= 100) { alert("Enter 1–99 %"); return }
-    if (!confirm(`Set pilot rate = standard × ${(100 - pct).toFixed(0)}% for ${filtered.length} visible rows?`)) return
-    for (const row of filtered) {
-      const newRate = Math.round(row.rateThb * (1 - pct / 100))
-      await patchRow(row.id, { pilotRateThb: newRate })
-    }
-    setBulkPct("")
-  }
-
-  // ── clear pilot rates for filtered rows ──────────────────────────────────
-  const clearPilotRates = async () => {
-    const setPilot = filtered.filter(p => p.pilotRateThb != null)
-    if (setPilot.length === 0) { alert("No pilot rates set in current filter"); return }
-    if (!confirm(`Clear pilot rates for ${setPilot.length} rows? They will revert to standard rate.`)) return
-    for (const row of setPilot) {
-      await patchRow(row.id, { pilotRateThb: null, pilotNotes: null })
-    }
-  }
 
   // ── export CSV ───────────────────────────────────────────────────────────
   const exportCsv = () => {
     const BOM = "﻿"
-    const headers = ["code","category","serviceNameEn","unit","rate_thb","pilot_rate_thb","pct_of_standard","pilot_notes"]
+    const headers = ["code","display_category","display_vessel_group","display_vessel_subtype","operational_category","service_group","subgroup","calculation_method","serviceNameEn","unit","full_rate_thb","soft_or_current_rate_thb","effective_rate_thb","default_discount_pct","source_discount_pct","direct_cost_thb","gross_profit_thb","gross_margin_pct","revenue_gl_code","cost_gl_code","pnl_category","quote_allowed","price_status","source_version","effective_date","active","pilot_rate_thb","pct_of_current","pilot_notes"]
     const rows = filtered.map(p => {
       const pct = p.pilotRateThb != null && p.rateThb > 0
         ? Math.round((p.pilotRateThb / p.rateThb) * 100)
         : ""
       return [
-        p.code, p.category,
+        p.code, p.displayCategory, p.displayVesselGroup, p.displayVesselSubtype ?? "", p.category, p.serviceGroup ?? "", p.subgroup ?? "", p.calcType,
         `"${p.serviceNameEn.replace(/"/g,'""')}"`,
-        p.unit, p.rateThb,
+        p.unit, p.fullRateThb, p.rateThb, p.effectiveRate, p.discountPct, p.sourceDiscountPct,
+        p.directCostThb ?? "", p.grossProfitThb ?? "", p.grossMarginPct ?? "",
+        p.revenueGlCode ?? "", p.costGlCode ?? "", p.pnlCategory ?? "", p.quoteAllowed, p.priceStatus, p.sourceVersion ?? "", p.effectiveDate ?? "", p.isActive,
         p.pilotRateThb ?? "", pct,
         `"${(p.pilotNotes ?? "").replace(/"/g,'""')}"`,
       ].join(",")
@@ -215,16 +267,43 @@ export default function PricingMasterPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Pricing Master"
-        description="Standard rate card with pilot / trial pricing overlay. Pilot rates are used by the AI quotation agent."
+        title="Rate Management"
+        description="Manage service rates, costs, pilot rates and display categories."
       />
+
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#d7e4ef] bg-white px-4 py-3 shadow-sm">
+        <div>
+          <p className="font-semibold text-[#0B2F5B]">Manage rate records</p>
+          <p className="text-xs text-[#647076]">Create, edit, move between categories or retire rates without deleting history. Drafts appear under Inactive / retired.</p>
+          <p className="mt-1 text-xs font-semibold text-[#0B2F5B]">Quotation price mode: {rateMode}</p>
+        </div>
+        {canWrite && <Link
+          href="/pricing-master/new"
+          className="inline-flex items-center gap-2 rounded-md bg-[#0B2F5B] px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#16517F]"
+        >
+          <Plus className="h-4 w-4" /> Add rate
+        </Link>}
+      </div>
+
+      <nav aria-label="Rate categories" className="flex gap-2 overflow-x-auto pb-1">
+        <button type="button" onClick={() => setCategory("all")} className={`shrink-0 rounded-lg border px-4 py-3 text-sm font-semibold ${category === "all" ? "border-[#B18F2F] bg-[#0B2F5B] text-white" : "border-[#d7e4ef] bg-white text-[#0B2F5B]"}`}>All</button>
+        {categories.map(value => <button key={value} type="button" onClick={() => setCategory(value)} className={`shrink-0 rounded-lg border px-4 py-3 text-sm font-semibold ${category === value ? "border-[#B18F2F] bg-[#0B2F5B] text-white" : "border-[#d7e4ef] bg-white text-[#0B2F5B]"}`}>{value}</button>)}
+        <span className="shrink-0 cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-500" title="Wet berth is not in operation">Wet Berth · Blocked</span>
+      </nav>
+
+      {actionError && (
+        <div className="flex items-center justify-between gap-3 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <span>{actionError}</span>
+          <button onClick={() => setActionError(null)} className="rounded p-1 hover:bg-red-100" aria-label="Dismiss error"><X className="h-4 w-4" /></button>
+        </div>
+      )}
 
       {/* ── Stats bar ──────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          { label: "Total services", value: list.length },
+          { label: "Visible active rates", value: list.filter((row) => row.isActive).length },
           { label: "Pilot rate set", value: setPilotCount, highlight: setPilotCount > 0 },
-          { label: "Using standard rate", value: list.length - setPilotCount },
+          { label: "Inactive / retired", value: list.filter((row) => !row.isActive).length },
           { label: "Categories", value: categories.length },
         ].map(s => (
           <div key={s.label} className="rounded-lg border border-[#e5dfd2] bg-white p-3 shadow-sm">
@@ -251,8 +330,17 @@ export default function PricingMasterPage() {
           {/* category */}
           <select value={category} onChange={e => setCategory(e.target.value)}
             className="rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm text-[#1f2933] focus:outline-none">
-            <option value="all">All Categories</option>
+            <option value="all">All Display Categories</option>
             {categories.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <select value={serviceGroup} onChange={e => setServiceGroup(e.target.value)} className="rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm text-[#1f2933] focus:outline-none">
+            <option value="all">All Service Groups</option>{serviceGroups.map(group => <option key={group} value={group}>{group}</option>)}
+          </select>
+          <select value={calcType} onChange={e => setCalcType(e.target.value)} className="rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm text-[#1f2933] focus:outline-none">
+            <option value="all">All Calculation Methods</option>{calcTypes.map(method => <option key={method} value={method}>{method}</option>)}
+          </select>
+          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as "active" | "retired" | "all")} className="rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm text-[#1f2933] focus:outline-none">
+            <option value="active">Active only</option><option value="retired">Inactive / retired</option><option value="all">All statuses</option>
           </select>
           {/* pilot filter */}
           <select value={pilotFilter} onChange={e => setPilotFilter(e.target.value as "all"|"set"|"unset")}
@@ -263,24 +351,8 @@ export default function PricingMasterPage() {
           </select>
         </div>
 
-        {/* bulk tools */}
+        {/* export only; bulk discount changes are intentionally disabled */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2 py-1">
-            <span className="text-xs text-amber-700 whitespace-nowrap">Discount %</span>
-            <input
-              type="number" min="1" max="99" placeholder="e.g. 30"
-              value={bulkPct} onChange={e => setBulkPct(e.target.value)}
-              className="w-16 rounded border-0 bg-transparent text-sm text-amber-900 focus:outline-none"
-            />
-            <button onClick={applyBulkDiscount}
-              className="rounded bg-amber-500 px-2 py-0.5 text-xs font-semibold text-white hover:bg-amber-600 transition-colors">
-              Apply to {filtered.length} rows
-            </button>
-          </div>
-          <button onClick={clearPilotRates}
-            className="rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-xs text-[#647076] hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors">
-            Clear pilot rates
-          </button>
           <button onClick={exportCsv}
             className="flex items-center gap-1 rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-xs text-[#647076] hover:bg-[#f9f8f5] transition-colors">
             <Download className="h-3.5 w-3.5" /> Export CSV
@@ -288,8 +360,42 @@ export default function PricingMasterPage() {
         </div>
       </div>
 
+      {/* Mobile rate cards keep record actions visible without horizontal scrolling. */}
+      <div className="space-y-3 md:hidden">
+        {loading ? <div className="rounded-lg border bg-white p-6 text-center text-sm text-[#647076]">Loading rates…</div> : filtered.length === 0 ? <div className="rounded-lg border bg-white p-6 text-center text-sm text-[#647076]">No records match</div> : filtered.map((row, index) => (
+          <React.Fragment key={row.id}>
+          {(index === 0 || filtered[index - 1].displayCategory !== row.displayCategory) && <h2 className="rounded-lg bg-[#0B2F5B] px-4 py-3 font-bold text-white">{row.displayCategory}</h2>}
+          {(index === 0 || filtered[index - 1].displayCategory !== row.displayCategory || filtered[index - 1].displayVesselGroup !== row.displayVesselGroup) && <h3 className="px-1 pt-1 text-sm font-semibold text-[#0B2F5B]">{row.displayVesselGroup}</h3>}
+          <article className="rounded-lg border border-[#d7e4ef] bg-white p-4 shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="break-all font-mono text-xs font-semibold text-[#0B2F5B]">{row.code}</p>
+                <h2 className="mt-1 font-semibold text-[#0B2F5B]">{row.serviceNameEn}</h2>
+                {row.serviceNameTh && <p className="text-sm text-[#647076]">{row.serviceNameTh}</p>}
+              </div>
+              <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${row.isActive ? "bg-green-100 text-green-800" : "bg-slate-100 text-slate-700"}`}>{row.isActive ? "Active" : "Inactive"}</span>
+            </div>
+            <p className="mt-2 text-xs text-[#647076]">{row.displayCategory} › {row.displayVesselGroup}{row.displayVesselSubtype ? ` › ${row.displayVesselSubtype}` : ""}</p>
+            <p className="text-xs text-[#647076]">{row.unit} · {row.calcType}</p>
+            <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
+              <div><dt className="text-xs text-[#647076]">Current rate</dt><dd className="font-semibold">฿{row.rateThb.toLocaleString()} <span className="font-normal text-[#647076]">{row.unit}</span></dd></div>
+              <div><dt className="text-xs text-[#647076]">Full rate</dt><dd className="font-semibold">฿{row.fullRateThb.toLocaleString()}</dd></div>
+              <div><dt className="text-xs text-[#647076]">Pilot rate</dt><dd>{row.pilotRateThb == null ? "Not set" : `฿${row.pilotRateThb.toLocaleString()}`}</dd></div>
+              <div><dt className="text-xs text-[#647076]">Effective ({rateMode})</dt><dd className="font-semibold">฿{row.effectiveRate.toLocaleString()}</dd></div>
+              <div><dt className="text-xs text-[#647076]">Direct cost</dt><dd>{row.directCostThb == null ? "Unknown" : `฿${row.directCostThb.toLocaleString()}`}</dd></div>
+            </dl>
+            <p className="mt-2 text-xs text-[#647076]">Quote: {row.quoteAllowed} · Status: {row.priceStatus}</p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link href={`/pricing-master/${row.id}#displayCategory`} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[#d7e4ef] px-4 text-sm font-medium text-[#0B2F5B]">{canWrite ? "Edit / move rate" : "View rate"}</Link>
+              {canWrite && row.isActive && <button type="button" onClick={() => retireRow(row)} disabled={saving === row.id} className="min-h-11 rounded-md border border-red-200 px-4 text-sm font-medium text-red-700 disabled:opacity-50">Retire rate</button>}
+            </div>
+          </article>
+          </React.Fragment>
+        ))}
+      </div>
+
       {/* ── Table ─────────────────────────────────────────────────────── */}
-      <div className="overflow-x-auto rounded-lg border border-[#e5dfd2] bg-white shadow-sm">
+      <div className="hidden overflow-x-auto rounded-lg border border-[#e5dfd2] bg-white shadow-sm md:block">
         {loading ? (
           <div className="flex h-32 items-center justify-center gap-2 text-[#8b969a]">
             <Loader2 className="h-5 w-5 animate-spin" /> Loading…
@@ -303,30 +409,60 @@ export default function PricingMasterPage() {
                 <th className="px-4 py-3 text-left font-semibold text-[#1f2933]">Code</th>
                 <th className="px-4 py-3 text-left font-semibold text-[#1f2933]">Service</th>
                 <th className="px-4 py-3 text-left font-semibold text-[#1f2933]">Category</th>
+                <th className="px-4 py-3 text-left font-semibold text-[#1f2933]">Group / Method</th>
                 <th className="px-4 py-3 text-left font-semibold text-[#1f2933]">Unit</th>
-                <th className="px-4 py-3 text-right font-semibold text-[#1f2933]">Standard Rate</th>
+                <th className="px-4 py-3 text-right font-semibold text-[#1f2933]">Full Rate</th>
+                <th className="px-4 py-3 text-right font-semibold text-[#1f2933]">Current Rate</th>
+                <th className="px-4 py-3 text-right font-semibold text-[#1f2933]">Default Disc.</th>
+                <th className="px-4 py-3 text-right font-semibold text-[#1f2933]">Direct Cost</th>
+                <th className="px-4 py-3 text-right font-semibold text-[#1f2933]">GP / GM</th>
                 <th className="px-4 py-3 text-right font-semibold text-amber-700">
                   Pilot Rate
                   <span className="ml-1 text-xs font-normal text-[#8b969a]">(click to edit)</span>
                 </th>
+                <th className="px-4 py-3 text-right font-semibold text-[#1f2933]">Effective ({rateMode})</th>
                 <th className="px-4 py-3 text-left font-semibold text-[#1f2933]">Pilot Notes</th>
+                <th className="px-4 py-3 text-right font-semibold text-[#1f2933]">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#e5dfd2]">
-              {filtered.map(row => (
-                <tr key={row.id}
+              {filtered.map((row, index) => (
+                <React.Fragment key={row.id}>
+                {(index === 0 || filtered[index - 1].displayCategory !== row.displayCategory) && <tr className="bg-[#0B2F5B]"><td colSpan={14} className="px-4 py-2 text-sm font-bold text-white">{row.displayCategory}</td></tr>}
+                {(index === 0 || filtered[index - 1].displayCategory !== row.displayCategory || filtered[index - 1].displayVesselGroup !== row.displayVesselGroup) && <tr className="bg-[#edf3f8]"><td colSpan={14} className="px-4 py-2 text-xs font-semibold text-[#0B2F5B]">{row.displayVesselGroup}{VESSEL_GROUPS.includes(row.displayVesselGroup as typeof VESSEL_GROUPS[number]) ? "" : " · Custom"}</td></tr>}
+                <tr
                   className={`transition-colors ${saving === row.id ? "bg-amber-50" : row.pilotRateThb != null ? "bg-amber-50/30 hover:bg-amber-50/60" : "hover:bg-[#f9f8f5]"}`}>
                   <td className="px-4 py-2.5 font-mono text-xs font-semibold text-ocean-turquoise whitespace-nowrap">{row.code}</td>
                   <td className="px-4 py-2.5 text-[#1f2933]">
                     <div>{row.serviceNameEn}</div>
                     {row.serviceNameTh && <div className="text-xs text-[#8b969a]">{row.serviceNameTh}</div>}
+                    {(row.revenueGlCode || row.costGlCode || row.pnlCategory) && (
+                      <div className="mt-1 text-[11px] text-[#8b969a]">
+                        GL {row.revenueGlCode ?? "—"} / Cost {row.costGlCode ?? "—"} · {row.pnlCategory ?? "Unmapped P&L"}
+                      </div>
+                    )}
                   </td>
                   <td className="px-4 py-2.5">
-                    <span className="inline-block rounded-full bg-[#e8fbf9] px-2 py-0.5 text-xs font-medium text-[#126c66]">{row.category}</span>
+                    <span className="inline-block rounded-full bg-[#edf3f8] px-2 py-0.5 text-xs font-medium text-[#0B2F5B]">{row.displayCategory}</span>
                   </td>
+                  <td className="px-4 py-2.5 text-xs text-[#647076]"><div>{row.displayVesselGroup}{row.displayVesselSubtype ? ` / ${row.displayVesselSubtype}` : ""}</div><div className="font-mono">{row.calcType}</div><div>{row.quoteAllowed !== "YES" ? row.quoteAllowed : ""}</div></td>
                   <td className="px-4 py-2.5 text-[#647076] text-xs whitespace-nowrap">{row.unit}</td>
                   <td className="px-4 py-2.5 text-right font-semibold text-[#1f2933] whitespace-nowrap">
+                    ฿{row.fullRateThb.toLocaleString()}
+                  </td>
+                  <td className="px-4 py-2.5 text-right font-semibold text-[#1f2933] whitespace-nowrap">
                     ฿{row.rateThb.toLocaleString()}
+                  </td>
+                  <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                    <span className={row.discountPct === 0 ? "text-green-700" : "font-semibold text-amber-700"}>{row.discountPct.toLocaleString()}%</span>
+                  </td>
+                  <td className="px-4 py-2.5 text-right whitespace-nowrap text-[#647076]">
+                    {row.directCostThb == null ? "Unknown" : `฿${row.directCostThb.toLocaleString()}`}
+                  </td>
+                  <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                    {row.grossProfitThb == null ? "—" : (
+                      <><div>฿{row.grossProfitThb.toLocaleString()}</div><div className="text-xs text-[#8b969a]">{row.grossMarginPct?.toFixed(1)}%</div></>
+                    )}
                   </td>
                   <td className="px-4 py-2.5 text-right whitespace-nowrap">
                     <div className="flex items-center justify-end gap-1">
@@ -336,10 +472,12 @@ export default function PricingMasterPage() {
                         type="number"
                         onSave={val => patchRow(row.id, { pilotRateThb: val as number | null })}
                         className="font-semibold text-amber-700"
+                        disabled={!canWrite}
                       />
                       <PilotBadge pilot={row.pilotRateThb} standard={row.rateThb} />
                     </div>
                   </td>
+                  <td className="px-4 py-2.5 text-right font-semibold text-[#0B2F5B] whitespace-nowrap">฿{row.effectiveRate.toLocaleString()}</td>
                   <td className="px-4 py-2.5 min-w-[140px]">
                     <EditableCell
                       value={row.pilotNotes}
@@ -347,9 +485,31 @@ export default function PricingMasterPage() {
                       type="text"
                       onSave={val => patchRow(row.id, { pilotNotes: val as string | null })}
                       className="text-xs text-[#647076]"
+                        disabled={!canWrite}
                     />
                   </td>
-                </tr>
+                  <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                    <div className="flex items-center justify-end gap-1">
+                      <Link
+                        href={`/pricing-master/${row.id}`}
+                        className="inline-flex items-center gap-1 rounded-md border border-[#d7e4ef] px-2 py-1 text-xs font-medium text-[#0B2F5B] hover:bg-[#edf3f8]"
+                        aria-label={`Edit or move ${row.code}`}
+                      >
+                        <Edit2 className="h-3.5 w-3.5" /> {canWrite ? "Edit / move" : "View"}
+                      </Link>
+                      {canWrite && row.isActive ? (
+                        <button
+                          onClick={() => retireRow(row)}
+                          disabled={saving === row.id}
+                          className="inline-flex items-center gap-1 rounded-md border border-red-200 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+                          aria-label={`Retire ${row.code}`}
+                        >
+                          {saving === row.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} Retire
+                        </button>
+                      ) : !row.isActive ? <span className="px-2 text-xs text-[#647076]">Retired</span> : null}
+                    </div>
+                  </td>
+                </tr></React.Fragment>
               ))}
             </tbody>
           </table>
@@ -361,10 +521,11 @@ export default function PricingMasterPage() {
         <p className="font-semibold">How pilot rates work</p>
         <ul className="list-disc list-inside space-y-0.5 text-xs text-[#647076]">
           <li>Click any cell in the <span className="font-semibold text-amber-700">Pilot Rate</span> column to set an effective rate for trial operations.</li>
-          <li>The AI quotation agent will use the pilot rate automatically when set; otherwise it falls back to the standard rate.</li>
-          <li>Use <span className="font-semibold">Discount %</span> to apply a bulk reduction (e.g. 30% off) to all currently filtered rows at once.</li>
+          <li>The developer-controlled rate mode selects Full or Pilot pricing; a pilot value is used only in Pilot mode.</li>
+          <li>Default customer discount is <span className="font-semibold">0%</span>. Any quotation discount still requires the configured approval flow.</li>
+          <li>Bulk discount editing is disabled. Every pilot-rate change shows an individual before/after preview and requires confirmation.</li>
           <li>Badge colour: <span className="text-green-700 font-semibold">green ≥90%</span> · <span className="text-amber-700 font-semibold">amber 70–89%</span> · <span className="text-red-700 font-semibold">red &lt;70%</span> of standard rate.</li>
-          <li>Showing <span className="font-semibold">{filtered.length}</span> of <span className="font-semibold">{list.length}</span> active pricing records.</li>
+          <li>Showing <span className="font-semibold">{filtered.length}</span> of <span className="font-semibold">{list.length}</span> visible pricing records. Blocked wet-berth rates are excluded.</li>
         </ul>
       </div>
     </div>

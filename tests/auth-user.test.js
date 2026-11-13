@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-import { mapDatabaseRole } from "../lib/auth-user.ts"
+import { mapDatabaseRole } from "../lib/auth-role.ts"
 
 test("database owner receives super-admin permissions", () => {
   assert.equal(mapDatabaseRole("owner"), "SUPER_ADMIN")

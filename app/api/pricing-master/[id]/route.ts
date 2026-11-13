@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getPricingMasterById, updatePricingMaster } from "@/lib/pricing-master"
 import { getPricingWriteAccess } from "@/lib/pricing-access"
-import { pricingUpdateSchema, pricingValidationMessage, validatePricingTransition } from "@/lib/pricing-validation"
+import { pricingUpdateSchema, pricingValidationMessage, validatePricingTransition, validateDisplayPlacement } from "@/lib/pricing-validation"
 import { assertWetBerthUnavailable } from "@/lib/pricing-governance"
 
 export const dynamic = "force-dynamic"
@@ -47,7 +47,9 @@ export async function PATCH(
     if (!current) {
       return NextResponse.json({ error: "Pricing not found" }, { status: 404 })
     }
-    for (const value of [parsed.data.category, parsed.data.serviceNameEn]) {
+    const displayError = validateDisplayPlacement(parsed.data, current.displayVesselGroup)
+    if (displayError) return NextResponse.json({ error: displayError }, { status: 400 })
+    for (const value of [parsed.data.category, parsed.data.serviceNameEn, parsed.data.displayCategory]) {
       try {
         assertWetBerthUnavailable(value)
       } catch (error) {

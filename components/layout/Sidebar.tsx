@@ -59,7 +59,7 @@ const navItems: NavItem[] = [
     label: "Pricing & Quotations", icon: FileText,
     children: [
       { label: "Quotations",      href: "/quotations",       icon: FileText },
-      { label: "Pricing Master",  href: "/pricing-master",   icon: BarChart3, roles: FINANCE },
+      { label: "Rate Management", href: "/pricing-master", icon: BarChart3, roles: FINANCE },
     ],
   },
   { label: "Invoices",        href: "/invoices",    icon: Receipt },

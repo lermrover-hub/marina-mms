@@ -3,7 +3,14 @@ import assert from "node:assert/strict"
 import { execFileSync } from "node:child_process"
 import { readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
-import { pricingCreateSchema, pricingUpdateSchema, validatePricingTransition } from "../lib/pricing-validation.ts"
+import { pricingCreateSchema, pricingUpdateSchema, validatePricingTransition, validateDisplayPlacement } from "../lib/pricing-validation.ts"
+
+test("display category can move without changing price or operational routing", () => {
+  const patch = pricingUpdateSchema.parse({ displayCategory: "Yard Services", displayVesselGroup: "All Vessels", displayVesselSubtype: "" })
+  assert.deepEqual(patch, { displayCategory: "Yard Services", displayVesselGroup: "All Vessels", displayVesselSubtype: "" })
+  assert.equal(validateDisplayPlacement(patch), null)
+  assert.equal(validateDisplayPlacement({ displayVesselGroup: "Speedboat", displayVesselSubtype: "Sail Catamaran" }), "Vessel subtype does not belong to the selected vessel group.")
+})
 
 const basePricing = {
   code: "TEST_RATE",

@@ -6,6 +6,7 @@ import { ArrowLeft, Save, Loader } from "lucide-react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { PageHeader } from "@/components/layout/PageHeader"
+import { RATE_CATEGORIES, VESSEL_GROUPS, VESSEL_SUBTYPES } from "@/lib/pricing-display-groups"
 
 type PricingHistoryEntry = {
   id: string
@@ -54,6 +55,9 @@ export default function PricingMasterEditPage() {
     calcType: "",
     serviceGroup: "",
     subgroup: "",
+    displayCategory: "",
+    displayVesselGroup: "",
+    displayVesselSubtype: "",
     providerType: "",
     quoteAllowed: "NO",
     priceStatus: "INACTIVE",
@@ -119,6 +123,9 @@ export default function PricingMasterEditPage() {
           calcType: pricing.calcType || "FLAT_QTY",
           serviceGroup: pricing.serviceGroup || "",
           subgroup: pricing.subgroup || "",
+          displayCategory: pricing.displayCategory || "",
+          displayVesselGroup: pricing.displayVesselGroup || "",
+          displayVesselSubtype: pricing.displayVesselSubtype || "",
           providerType: pricing.providerType || "",
           quoteAllowed: pricing.quoteAllowed || "YES",
           priceStatus: pricing.priceStatus || "ACTIVE",
@@ -171,7 +178,7 @@ export default function PricingMasterEditPage() {
       setError("An active quotable pilot rate must be greater than zero.")
       return
     }
-    if (!window.confirm(`${isNew ? "Create" : "Update"} ${formData.code} as ${formData.priceStatus} / ${formData.quoteAllowed}?\n\nCurrent rate: THB ${Number(formData.rateThb).toLocaleString()}\nFull rate: THB ${Number(formData.fullRateThb || formData.rateThb).toLocaleString()}\nPilot rate: ${formData.pilotRateThb ? `THB ${Number(formData.pilotRateThb).toLocaleString()}` : "not set"}\nDirect cost: ${formData.directCostThb ? `THB ${Number(formData.directCostThb).toLocaleString()}` : "not set"}`)) return
+    if (!window.confirm(`${isNew ? "Create" : "Update"} ${formData.code} as ${formData.priceStatus} / ${formData.quoteAllowed}?\n\nRate Management category: ${formData.displayCategory || "Auto"}\nVessel group: ${formData.displayVesselGroup || "Auto"}${formData.displayVesselSubtype ? ` / ${formData.displayVesselSubtype}` : ""}\nCurrent rate: THB ${Number(formData.rateThb).toLocaleString()}\nFull rate: THB ${Number(formData.fullRateThb || formData.rateThb).toLocaleString()}\nPilot rate: ${formData.pilotRateThb ? `THB ${Number(formData.pilotRateThb).toLocaleString()}` : "not set"}\nDirect cost: ${formData.directCostThb ? `THB ${Number(formData.directCostThb).toLocaleString()}` : "not set"}`)) return
 
     setSubmitting(true)
 
@@ -245,6 +252,25 @@ export default function PricingMasterEditPage() {
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-6 rounded-lg border border-[#e5dfd2] bg-white p-6 shadow-sm">
         <div className="grid gap-6 sm:grid-cols-2">
+          <div className="sm:col-span-2 rounded-lg border border-[#d7e4ef] bg-[#edf3f8] p-4">
+            <h2 className="font-semibold text-[#0B2F5B]">Rate Management placement</h2>
+            <p className="mt-1 text-sm text-[#46596c]">Move a rate to another service category here. This changes where it appears in Rate Management; the operational category and quotation calculation stay as recorded below.</p>
+          </div>
+          <div>
+            <label htmlFor="displayCategory" className="mb-2 block text-sm font-medium text-[#1f2933]">Service category</label>
+            <input id="displayCategory" name="displayCategory" list="display-category-options" value={formData.displayCategory} onChange={handleChange} placeholder="Select or enter a service category" className="w-full rounded-md border border-[#d7e4ef] bg-white px-3 py-2 text-sm" />
+            <datalist id="display-category-options">{RATE_CATEGORIES.map(value => <option key={value} value={value} />)}</datalist>
+          </div>
+          <div>
+            <label htmlFor="displayVesselGroup" className="mb-2 block text-sm font-medium text-[#1f2933]">Vessel group</label>
+            <input id="displayVesselGroup" name="displayVesselGroup" list="display-vessel-group-options" value={formData.displayVesselGroup} onChange={event => setFormData(prev => ({ ...prev, displayVesselGroup: event.target.value, displayVesselSubtype: "" }))} placeholder="Select or enter a vessel group" className="w-full rounded-md border border-[#d7e4ef] bg-white px-3 py-2 text-sm" />
+            <datalist id="display-vessel-group-options">{VESSEL_GROUPS.map(value => <option key={value} value={value} />)}</datalist>
+          </div>
+          {VESSEL_SUBTYPES[formData.displayVesselGroup] && <div>
+            <label htmlFor="displayVesselSubtype" className="mb-2 block text-sm font-medium text-[#1f2933]">Vessel subtype</label>
+            <input id="displayVesselSubtype" name="displayVesselSubtype" list="display-subtype-options" value={formData.displayVesselSubtype} onChange={handleChange} placeholder="General / not specified" className="w-full rounded-md border border-[#d7e4ef] bg-white px-3 py-2 text-sm" />
+            <datalist id="display-subtype-options">{VESSEL_SUBTYPES[formData.displayVesselGroup].map(value => <option key={value} value={value} />)}</datalist>
+          </div>}
           {/* Code */}
           <div>
             <label className="block text-sm font-medium text-[#1f2933] mb-2">Code *</label>
@@ -261,7 +287,7 @@ export default function PricingMasterEditPage() {
 
           {/* Category */}
           <div>
-            <label className="block text-sm font-medium text-[#1f2933] mb-2">Category *</label>
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Operational category *</label>
             <input
               type="text"
               name="category"
@@ -443,7 +469,7 @@ export default function PricingMasterEditPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[#1f2933] mb-2">Service Group *</label>
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Operational service group *</label>
             <input type="text" name="serviceGroup" value={formData.serviceGroup} onChange={handleChange} list="pricing-group-options"
               className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20" />
             <datalist id="pricing-group-options">{catalogOptions.serviceGroups.map((value) => <option key={value} value={value} />)}</datalist>

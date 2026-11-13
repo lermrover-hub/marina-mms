@@ -5,6 +5,7 @@ import { Check, Download, Edit2, Loader2, Plus, Search, Trash2, X } from "lucide
 import { PageHeader } from "@/components/layout/PageHeader"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
+import { RATE_CATEGORIES, VESSEL_GROUPS } from "@/lib/pricing-display-groups"
 
 interface PricingItem {
   id: string
@@ -26,6 +27,9 @@ interface PricingItem {
   calcType: string
   serviceGroup: string | null
   subgroup: string | null
+  displayCategory: string
+  displayVesselGroup: string
+  displayVesselSubtype: string | null
   providerType: string | null
   quoteAllowed: string
   priceStatus: string
@@ -167,17 +171,25 @@ export default function PricingMasterPage() {
       p.serviceNameEn.toLowerCase().includes(search.toLowerCase()) ||
       (p.serviceNameTh ?? "").toLowerCase().includes(search.toLowerCase())
     )
-    if (category !== "all") f = f.filter(p => p.category === category)
+    if (category !== "all") f = f.filter(p => p.displayCategory === category)
     if (serviceGroup !== "all") f = f.filter(p => (p.serviceGroup ?? "Unclassified") === serviceGroup)
     if (calcType !== "all") f = f.filter(p => p.calcType === calcType)
     if (statusFilter === "active") f = f.filter(p => p.isActive)
     if (statusFilter === "retired") f = f.filter(p => !p.isActive)
     if (pilotFilter === "set")   f = f.filter(p => p.pilotRateThb != null)
     if (pilotFilter === "unset") f = f.filter(p => p.pilotRateThb == null)
-    setFiltered([...f].sort((a, b) => (a.serviceGroup ?? "Unclassified").localeCompare(b.serviceGroup ?? "Unclassified") || a.code.localeCompare(b.code)))
+    const categoryRank = (value: string) => {
+      const index = RATE_CATEGORIES.findIndex(item => item === value)
+      return index < 0 ? RATE_CATEGORIES.length : index
+    }
+    const vesselRank = (value: string) => {
+      const index = VESSEL_GROUPS.findIndex(item => item === value)
+      return index < 0 ? VESSEL_GROUPS.length : index
+    }
+    setFiltered([...f].sort((a, b) => categoryRank(a.displayCategory) - categoryRank(b.displayCategory) || a.displayCategory.localeCompare(b.displayCategory) || vesselRank(a.displayVesselGroup) - vesselRank(b.displayVesselGroup) || a.displayVesselGroup.localeCompare(b.displayVesselGroup) || (a.displayVesselSubtype ?? "").localeCompare(b.displayVesselSubtype ?? "") || a.code.localeCompare(b.code)))
   }, [search, category, serviceGroup, calcType, statusFilter, pilotFilter, list])
 
-  const categories = Array.from(new Set(list.map(p => p.category)))
+  const categories = [...RATE_CATEGORIES, ...Array.from(new Set(list.map(p => p.displayCategory))).filter(value => !RATE_CATEGORIES.includes(value as typeof RATE_CATEGORIES[number]))]
   const serviceGroups = Array.from(new Set(list.map(p => p.serviceGroup ?? "Unclassified"))).sort()
   const calcTypes = Array.from(new Set(list.map(p => p.calcType))).sort()
 
@@ -227,13 +239,13 @@ export default function PricingMasterPage() {
   // ── export CSV ───────────────────────────────────────────────────────────
   const exportCsv = () => {
     const BOM = "﻿"
-    const headers = ["code","category","service_group","subgroup","calculation_method","serviceNameEn","unit","full_rate_thb","soft_or_current_rate_thb","effective_rate_thb","default_discount_pct","source_discount_pct","direct_cost_thb","gross_profit_thb","gross_margin_pct","revenue_gl_code","cost_gl_code","pnl_category","quote_allowed","price_status","source_version","effective_date","active","pilot_rate_thb","pct_of_current","pilot_notes"]
+    const headers = ["code","display_category","display_vessel_group","display_vessel_subtype","operational_category","service_group","subgroup","calculation_method","serviceNameEn","unit","full_rate_thb","soft_or_current_rate_thb","effective_rate_thb","default_discount_pct","source_discount_pct","direct_cost_thb","gross_profit_thb","gross_margin_pct","revenue_gl_code","cost_gl_code","pnl_category","quote_allowed","price_status","source_version","effective_date","active","pilot_rate_thb","pct_of_current","pilot_notes"]
     const rows = filtered.map(p => {
       const pct = p.pilotRateThb != null && p.rateThb > 0
         ? Math.round((p.pilotRateThb / p.rateThb) * 100)
         : ""
       return [
-        p.code, p.category, p.serviceGroup ?? "", p.subgroup ?? "", p.calcType,
+        p.code, p.displayCategory, p.displayVesselGroup, p.displayVesselSubtype ?? "", p.category, p.serviceGroup ?? "", p.subgroup ?? "", p.calcType,
         `"${p.serviceNameEn.replace(/"/g,'""')}"`,
         p.unit, p.fullRateThb, p.rateThb, p.effectiveRate, p.discountPct, p.sourceDiscountPct,
         p.directCostThb ?? "", p.grossProfitThb ?? "", p.grossMarginPct ?? "",
@@ -255,14 +267,14 @@ export default function PricingMasterPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Pricing Master"
-        description="Accounting-ready rate card. Default customer discount is 0%; pilot rates remain an explicit temporary override."
+        title="Rate Management"
+        description="Manage service rates, costs, pilot rates and display categories."
       />
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#d7e4ef] bg-white px-4 py-3 shadow-sm">
         <div>
           <p className="font-semibold text-[#0B2F5B]">Manage rate records</p>
-          <p className="text-xs text-[#647076]">Create a draft rate, edit its service and cost fields, or retire it without deleting history. Drafts appear under Inactive / retired.</p>
+          <p className="text-xs text-[#647076]">Create, edit, move between categories or retire rates without deleting history. Drafts appear under Inactive / retired.</p>
           <p className="mt-1 text-xs font-semibold text-[#0B2F5B]">Quotation price mode: {rateMode}</p>
         </div>
         {canWrite && <Link
@@ -272,6 +284,12 @@ export default function PricingMasterPage() {
           <Plus className="h-4 w-4" /> Add rate
         </Link>}
       </div>
+
+      <nav aria-label="Rate categories" className="flex gap-2 overflow-x-auto pb-1">
+        <button type="button" onClick={() => setCategory("all")} className={`shrink-0 rounded-lg border px-4 py-3 text-sm font-semibold ${category === "all" ? "border-[#B18F2F] bg-[#0B2F5B] text-white" : "border-[#d7e4ef] bg-white text-[#0B2F5B]"}`}>All</button>
+        {categories.map(value => <button key={value} type="button" onClick={() => setCategory(value)} className={`shrink-0 rounded-lg border px-4 py-3 text-sm font-semibold ${category === value ? "border-[#B18F2F] bg-[#0B2F5B] text-white" : "border-[#d7e4ef] bg-white text-[#0B2F5B]"}`}>{value}</button>)}
+        <span className="shrink-0 cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-500" title="Wet berth is not in operation">Wet Berth · Blocked</span>
+      </nav>
 
       {actionError && (
         <div className="flex items-center justify-between gap-3 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -312,7 +330,7 @@ export default function PricingMasterPage() {
           {/* category */}
           <select value={category} onChange={e => setCategory(e.target.value)}
             className="rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm text-[#1f2933] focus:outline-none">
-            <option value="all">All Categories</option>
+            <option value="all">All Display Categories</option>
             {categories.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
           <select value={serviceGroup} onChange={e => setServiceGroup(e.target.value)} className="rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm text-[#1f2933] focus:outline-none">
@@ -344,8 +362,11 @@ export default function PricingMasterPage() {
 
       {/* Mobile rate cards keep record actions visible without horizontal scrolling. */}
       <div className="space-y-3 md:hidden">
-        {loading ? <div className="rounded-lg border bg-white p-6 text-center text-sm text-[#647076]">Loading rates…</div> : filtered.length === 0 ? <div className="rounded-lg border bg-white p-6 text-center text-sm text-[#647076]">No records match</div> : filtered.map((row) => (
-          <article key={row.id} className="rounded-lg border border-[#d7e4ef] bg-white p-4 shadow-sm">
+        {loading ? <div className="rounded-lg border bg-white p-6 text-center text-sm text-[#647076]">Loading rates…</div> : filtered.length === 0 ? <div className="rounded-lg border bg-white p-6 text-center text-sm text-[#647076]">No records match</div> : filtered.map((row, index) => (
+          <React.Fragment key={row.id}>
+          {(index === 0 || filtered[index - 1].displayCategory !== row.displayCategory) && <h2 className="rounded-lg bg-[#0B2F5B] px-4 py-3 font-bold text-white">{row.displayCategory}</h2>}
+          {(index === 0 || filtered[index - 1].displayCategory !== row.displayCategory || filtered[index - 1].displayVesselGroup !== row.displayVesselGroup) && <h3 className="px-1 pt-1 text-sm font-semibold text-[#0B2F5B]">{row.displayVesselGroup}</h3>}
+          <article className="rounded-lg border border-[#d7e4ef] bg-white p-4 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="break-all font-mono text-xs font-semibold text-[#0B2F5B]">{row.code}</p>
@@ -354,7 +375,8 @@ export default function PricingMasterPage() {
               </div>
               <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${row.isActive ? "bg-green-100 text-green-800" : "bg-slate-100 text-slate-700"}`}>{row.isActive ? "Active" : "Inactive"}</span>
             </div>
-            <p className="mt-2 text-xs text-[#647076]">{row.category} · {row.serviceGroup ?? "Unclassified"} · {row.calcType}</p>
+            <p className="mt-2 text-xs text-[#647076]">{row.displayCategory} › {row.displayVesselGroup}{row.displayVesselSubtype ? ` › ${row.displayVesselSubtype}` : ""}</p>
+            <p className="text-xs text-[#647076]">{row.unit} · {row.calcType}</p>
             <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
               <div><dt className="text-xs text-[#647076]">Current rate</dt><dd className="font-semibold">฿{row.rateThb.toLocaleString()} <span className="font-normal text-[#647076]">{row.unit}</span></dd></div>
               <div><dt className="text-xs text-[#647076]">Full rate</dt><dd className="font-semibold">฿{row.fullRateThb.toLocaleString()}</dd></div>
@@ -364,10 +386,11 @@ export default function PricingMasterPage() {
             </dl>
             <p className="mt-2 text-xs text-[#647076]">Quote: {row.quoteAllowed} · Status: {row.priceStatus}</p>
             <div className="mt-4 flex flex-wrap gap-2">
-              <Link href={`/pricing-master/${row.id}`} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[#d7e4ef] px-4 text-sm font-medium text-[#0B2F5B]">{canWrite ? "Edit rate" : "View rate"}</Link>
+              <Link href={`/pricing-master/${row.id}#displayCategory`} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[#d7e4ef] px-4 text-sm font-medium text-[#0B2F5B]">{canWrite ? "Edit / move rate" : "View rate"}</Link>
               {canWrite && row.isActive && <button type="button" onClick={() => retireRow(row)} disabled={saving === row.id} className="min-h-11 rounded-md border border-red-200 px-4 text-sm font-medium text-red-700 disabled:opacity-50">Retire rate</button>}
             </div>
           </article>
+          </React.Fragment>
         ))}
       </div>
 
@@ -405,7 +428,8 @@ export default function PricingMasterPage() {
             <tbody className="divide-y divide-[#e5dfd2]">
               {filtered.map((row, index) => (
                 <React.Fragment key={row.id}>
-                {(index === 0 || filtered[index - 1].serviceGroup !== row.serviceGroup) && <tr className="bg-teal-50"><td colSpan={14} className="px-4 py-2 text-sm font-bold text-teal-900">{row.serviceGroup ?? "Unclassified services"}</td></tr>}
+                {(index === 0 || filtered[index - 1].displayCategory !== row.displayCategory) && <tr className="bg-[#0B2F5B]"><td colSpan={14} className="px-4 py-2 text-sm font-bold text-white">{row.displayCategory}</td></tr>}
+                {(index === 0 || filtered[index - 1].displayCategory !== row.displayCategory || filtered[index - 1].displayVesselGroup !== row.displayVesselGroup) && <tr className="bg-[#edf3f8]"><td colSpan={14} className="px-4 py-2 text-xs font-semibold text-[#0B2F5B]">{row.displayVesselGroup}{VESSEL_GROUPS.includes(row.displayVesselGroup as typeof VESSEL_GROUPS[number]) ? "" : " · Custom"}</td></tr>}
                 <tr
                   className={`transition-colors ${saving === row.id ? "bg-amber-50" : row.pilotRateThb != null ? "bg-amber-50/30 hover:bg-amber-50/60" : "hover:bg-[#f9f8f5]"}`}>
                   <td className="px-4 py-2.5 font-mono text-xs font-semibold text-ocean-turquoise whitespace-nowrap">{row.code}</td>
@@ -419,9 +443,9 @@ export default function PricingMasterPage() {
                     )}
                   </td>
                   <td className="px-4 py-2.5">
-                    <span className="inline-block rounded-full bg-[#e8fbf9] px-2 py-0.5 text-xs font-medium text-[#126c66]">{row.category}</span>
+                    <span className="inline-block rounded-full bg-[#edf3f8] px-2 py-0.5 text-xs font-medium text-[#0B2F5B]">{row.displayCategory}</span>
                   </td>
-                  <td className="px-4 py-2.5 text-xs text-[#647076]"><div>{row.subgroup ?? "—"}</div><div className="font-mono">{row.calcType}</div><div>{row.quoteAllowed !== "YES" ? row.quoteAllowed : ""}</div></td>
+                  <td className="px-4 py-2.5 text-xs text-[#647076]"><div>{row.displayVesselGroup}{row.displayVesselSubtype ? ` / ${row.displayVesselSubtype}` : ""}</div><div className="font-mono">{row.calcType}</div><div>{row.quoteAllowed !== "YES" ? row.quoteAllowed : ""}</div></td>
                   <td className="px-4 py-2.5 text-[#647076] text-xs whitespace-nowrap">{row.unit}</td>
                   <td className="px-4 py-2.5 text-right font-semibold text-[#1f2933] whitespace-nowrap">
                     ฿{row.fullRateThb.toLocaleString()}
@@ -469,9 +493,9 @@ export default function PricingMasterPage() {
                       <Link
                         href={`/pricing-master/${row.id}`}
                         className="inline-flex items-center gap-1 rounded-md border border-[#d7e4ef] px-2 py-1 text-xs font-medium text-[#0B2F5B] hover:bg-[#edf3f8]"
-                        aria-label={`Edit ${row.code}`}
+                        aria-label={`Edit or move ${row.code}`}
                       >
-                        <Edit2 className="h-3.5 w-3.5" /> {canWrite ? "Edit" : "View"}
+                        <Edit2 className="h-3.5 w-3.5" /> {canWrite ? "Edit / move" : "View"}
                       </Link>
                       {canWrite && row.isActive ? (
                         <button

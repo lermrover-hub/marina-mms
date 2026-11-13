@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto"
 import { createServerClient } from "./supabase-server"
 import { resolveRateMode, selectedRateThb } from "./pricing-governance"
+import { rateDisplayPlacement } from "./pricing-display-groups"
 
 interface PricingMasterRow {
   id: string
@@ -24,6 +25,9 @@ interface PricingMasterRow {
   calc_type: string | null
   service_group: string | null
   subgroup: string | null
+  display_category: string | null
+  display_vessel_group: string | null
+  display_vessel_subtype: string | null
   provider_type: string | null
   quote_allowed: string | null
   price_status: string | null
@@ -60,6 +64,9 @@ interface PricingMasterInput {
   calcType?: string
   serviceGroup?: string | null
   subgroup?: string | null
+  displayCategory?: string | null
+  displayVesselGroup?: string | null
+  displayVesselSubtype?: string | null
   providerType?: string | null
   quoteAllowed?: string
   priceStatus?: string
@@ -91,6 +98,9 @@ interface PricingMasterUpdate {
   calcType?: string
   serviceGroup?: string | null
   subgroup?: string | null
+  displayCategory?: string | null
+  displayVesselGroup?: string | null
+  displayVesselSubtype?: string | null
   providerType?: string | null
   quoteAllowed?: string
   priceStatus?: string
@@ -113,6 +123,16 @@ function mapPricing(row: PricingMasterRow) {
   const effectiveRate = selectedRateThb(row, resolveRateMode())
   const grossProfitThb = directCostThb == null ? null : effectiveRate - directCostThb
   const grossMarginPct = grossProfitThb == null || effectiveRate === 0 ? null : (grossProfitThb / effectiveRate) * 100
+  const display = rateDisplayPlacement({
+    code: row.code,
+    category: row.category,
+    serviceGroup: row.service_group,
+    subgroup: row.subgroup,
+    serviceNameEn: row.service_name_en,
+    displayCategory: row.display_category,
+    displayVesselGroup: row.display_vessel_group,
+    displayVesselSubtype: row.display_vessel_subtype,
+  })
   return {
     id: row.id,
     code: row.code,
@@ -139,6 +159,7 @@ function mapPricing(row: PricingMasterRow) {
     calcType: row.calc_type ?? "FLAT_QTY",
     serviceGroup: row.service_group,
     subgroup: row.subgroup,
+    ...display,
     providerType: row.provider_type,
     quoteAllowed: row.quote_allowed ?? "YES",
     priceStatus: row.price_status ?? (row.is_active ? "ACTIVE" : "INACTIVE"),
@@ -208,6 +229,9 @@ export async function createPricingMaster(input: PricingMasterInput) {
       calc_type: input.calcType ?? "MANUAL_QUOTE",
       service_group: input.serviceGroup ?? null,
       subgroup: input.subgroup ?? null,
+      display_category: input.displayCategory ?? null,
+      display_vessel_group: input.displayVesselGroup ?? null,
+      display_vessel_subtype: input.displayVesselSubtype ?? null,
       provider_type: input.providerType ?? null,
       quote_allowed: input.quoteAllowed ?? "NO",
       price_status: input.priceStatus ?? "INACTIVE",
@@ -252,6 +276,9 @@ export async function updatePricingMaster(id: string, input: PricingMasterUpdate
   if (input.calcType !== undefined) updates.calc_type = input.calcType
   if (input.serviceGroup !== undefined) updates.service_group = input.serviceGroup
   if (input.subgroup !== undefined) updates.subgroup = input.subgroup
+  if (input.displayCategory !== undefined) updates.display_category = input.displayCategory
+  if (input.displayVesselGroup !== undefined) updates.display_vessel_group = input.displayVesselGroup
+  if (input.displayVesselSubtype !== undefined) updates.display_vessel_subtype = input.displayVesselSubtype
   if (input.providerType !== undefined) updates.provider_type = input.providerType
   if (input.quoteAllowed !== undefined) updates.quote_allowed = input.quoteAllowed
   if (input.priceStatus !== undefined) {

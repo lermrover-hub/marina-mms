@@ -78,7 +78,7 @@ test("storage writes use an authenticated server route and remove the public ALL
 
 test("sidebar hides finance and admin surfaces from operational roles", () => {
   const sidebar = readFileSync("components/layout/Sidebar.tsx", "utf8")
-  assert.match(sidebar, /Pricing Master[^\n]+roles: FINANCE/)
+  assert.match(sidebar, /href: "\/pricing-master"[^\n]+roles: FINANCE/)
   assert.match(sidebar, /Payments[^\n]+roles: FINANCE/)
   assert.match(sidebar, /AI Agents[^\n]+roles: ADMIN/)
   assert.match(sidebar, /Settings[^\n]+roles: ADMIN/)

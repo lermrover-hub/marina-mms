@@ -1,8 +1,12 @@
 import { z } from "zod"
+import { VESSEL_SUBTYPES } from "./pricing-display-groups.ts"
 
 const money = z.coerce.number().finite().min(0).max(999_999_999.99)
 const percentage = z.coerce.number().finite().min(0).max(100)
 const optionalText = (max: number) => z.string().trim().max(max).nullable().optional()
+const displayCategory = optionalText(120)
+const displayVesselGroup = optionalText(120)
+const displayVesselSubtype = optionalText(120)
 const effectiveDate = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "effectiveDate must use YYYY-MM-DD")
@@ -26,6 +30,9 @@ const accountingFields = {
   calcType: z.enum(PRICING_CALC_TYPES).optional(),
   serviceGroup: optionalText(120),
   subgroup: optionalText(120),
+  displayCategory,
+  displayVesselGroup,
+  displayVesselSubtype,
   providerType: optionalText(160),
   quoteAllowed: z.enum(PRICING_QUOTE_RULES).optional(),
   priceStatus: z.enum(PRICING_STATUSES).optional(),
@@ -70,6 +77,17 @@ export const pricingUpdateSchema = z.object({
   // checks transitions against the stored row before writing either status.
   priceStatus: z.string().trim().min(1).max(100).optional(),
 })
+
+export function validateDisplayPlacement(
+  value: { displayVesselGroup?: string | null; displayVesselSubtype?: string | null },
+  currentGroup?: string | null,
+): string | null {
+  const subtype = value.displayVesselSubtype
+  if (!subtype) return null
+  const group = value.displayVesselGroup || currentGroup || ""
+  if (VESSEL_SUBTYPES[group] && !VESSEL_SUBTYPES[group].includes(subtype)) return "Vessel subtype does not belong to the selected vessel group."
+  return null
+}
 
 export function validatePricingTransition(
   current: { priceStatus: string; quoteAllowed: string; rateThb: number; pilotRateThb?: number | null },

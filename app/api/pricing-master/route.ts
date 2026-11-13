@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createPricingMaster, getPricingMaster } from "@/lib/pricing-master"
 import { getPricingWriteAccess } from "@/lib/pricing-access"
-import { pricingCreateSchema, pricingValidationMessage } from "@/lib/pricing-validation"
+import { pricingCreateSchema, pricingValidationMessage, validateDisplayPlacement } from "@/lib/pricing-validation"
 import { withCatalogRates } from "@/lib/catalog-rate-card"
 import { assertWetBerthUnavailable, isWetBerthEnabled, resolveRateMode } from "@/lib/pricing-governance"
 
@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
 
     const visiblePricing = isWetBerthEnabled()
       ? pricing
-      : pricing.filter((item) => !/wet\s*berth/i.test(`${item.code} ${item.category} ${item.serviceNameEn}`))
+      : pricing.filter((item) => !/wet\s*berth/i.test(`${item.code} ${item.category} ${item.serviceNameEn} ${item.displayCategory}`))
     return NextResponse.json({ data: searchParams.get('catalog') === 'true' ? await withCatalogRates(visiblePricing) : visiblePricing, rateMode: resolveRateMode() }, { headers: { 'Cache-Control': 'no-store' } })
   } catch (error) {
     console.error("Error fetching pricing:", error)
@@ -40,7 +40,9 @@ export async function POST(req: NextRequest) {
     }
 
     const input = parsed.data
-    for (const value of [input.code, input.category, input.serviceNameEn]) {
+    const displayError = validateDisplayPlacement(input)
+    if (displayError) return NextResponse.json({ error: displayError }, { status: 400 })
+    for (const value of [input.code, input.category, input.serviceNameEn, input.displayCategory]) {
       try {
         assertWetBerthUnavailable(value)
       } catch (error) {

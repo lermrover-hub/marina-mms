@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useCallback, useEffect, useRef, useState } from "react"
-import { Check, Download, Edit2, Loader2, Plus, Search, Trash2, X } from "lucide-react"
+import { Check, ChevronDown, Download, Edit2, Loader2, Plus, Search, Trash2, X } from "lucide-react"
 import { PageHeader } from "@/components/layout/PageHeader"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
@@ -148,6 +148,7 @@ export default function PricingMasterPage() {
   const [pilotFilter, setPilotFilter] = useState<"all" | "set" | "unset">("all")
   const [saving, setSaving]   = useState<string | null>(null) // row id being saved
   const [actionError, setActionError] = useState<string | null>(null)
+  const [mobileOpenCategory, setMobileOpenCategory] = useState<string | null>(null)
 
   // ── fetch ────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -192,6 +193,13 @@ export default function PricingMasterPage() {
   const categories = [...RATE_CATEGORIES, ...Array.from(new Set(list.map(p => p.displayCategory))).filter(value => !RATE_CATEGORIES.includes(value as typeof RATE_CATEGORIES[number]))]
   const serviceGroups = Array.from(new Set(list.map(p => p.serviceGroup ?? "Unclassified"))).sort()
   const calcTypes = Array.from(new Set(list.map(p => p.calcType))).sort()
+  const mobileCategoryGroups = Array.from(new Set(filtered.map(row => row.displayCategory))).map(name => ({
+    name,
+    rows: filtered.filter(row => row.displayCategory === name),
+  }))
+  const openMobileCategory = mobileOpenCategory ?? mobileCategoryGroups[0]?.name
+
+  useEffect(() => setMobileOpenCategory(null), [category, search, serviceGroup, calcType, statusFilter, pilotFilter])
 
   // ── save helper ──────────────────────────────────────────────────────────
   const patchRow = useCallback(async (id: string, patch: Partial<Pick<PricingItem, "pilotRateThb" | "pilotNotes">>) => {
@@ -360,37 +368,56 @@ export default function PricingMasterPage() {
         </div>
       </div>
 
-      {/* Mobile rate cards keep record actions visible without horizontal scrolling. */}
+      {/* Keep comparable rate rows side by side on narrow screens. Only this table scrolls horizontally. */}
       <div className="space-y-3 md:hidden">
-        {loading ? <div className="rounded-lg border bg-white p-6 text-center text-sm text-[#647076]">Loading rates…</div> : filtered.length === 0 ? <div className="rounded-lg border bg-white p-6 text-center text-sm text-[#647076]">No records match</div> : filtered.map((row, index) => (
-          <React.Fragment key={row.id}>
-          {(index === 0 || filtered[index - 1].displayCategory !== row.displayCategory) && <h2 className="rounded-lg bg-[#0B2F5B] px-4 py-3 font-bold text-white">{row.displayCategory}</h2>}
-          {(index === 0 || filtered[index - 1].displayCategory !== row.displayCategory || filtered[index - 1].displayVesselGroup !== row.displayVesselGroup) && <h3 className="px-1 pt-1 text-sm font-semibold text-[#0B2F5B]">{row.displayVesselGroup}</h3>}
-          <article className="rounded-lg border border-[#d7e4ef] bg-white p-4 shadow-sm">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="break-all font-mono text-xs font-semibold text-[#0B2F5B]">{row.code}</p>
-                <h2 className="mt-1 font-semibold text-[#0B2F5B]">{row.serviceNameEn}</h2>
-                {row.serviceNameTh && <p className="text-sm text-[#647076]">{row.serviceNameTh}</p>}
+        {loading ? <div className="rounded-lg border bg-white p-6 text-center text-sm text-[#647076]">Loading rates…</div> : filtered.length === 0 ? <div className="rounded-lg border bg-white p-6 text-center text-sm text-[#647076]">No records match</div> : mobileCategoryGroups.map(group => (
+          <section key={group.name} className="overflow-hidden rounded-xl border border-[#d7e4ef] bg-white shadow-sm">
+            <button
+              type="button"
+              aria-expanded={openMobileCategory === group.name}
+              onClick={() => setMobileOpenCategory(openMobileCategory === group.name ? "" : group.name)}
+              className={`flex min-h-14 w-full items-center justify-between gap-3 px-4 py-3 text-left ${openMobileCategory === group.name ? "bg-[#0B2F5B] text-white" : "bg-white text-[#0B2F5B]"}`}
+            >
+              <span className="font-semibold">{group.name}</span>
+              <span className="flex items-center gap-2 text-xs"><span className="rounded-full bg-[#edf3f8] px-2 py-1 font-semibold text-[#0B2F5B]">{group.rows.length} rates</span><ChevronDown className={`h-4 w-4 transition-transform ${openMobileCategory === group.name ? "rotate-180" : ""}`} /></span>
+            </button>
+            {openMobileCategory === group.name && <>
+              <p className="border-b border-[#d7e4ef] px-4 py-2 text-xs text-[#647076]">Swipe the table sideways to compare rates, costs and status →</p>
+              <div className="max-w-full overflow-x-auto overscroll-x-contain" role="region" aria-label={`${group.name} rates; scroll horizontally`} tabIndex={0}>
+                <table className="min-w-[950px] border-collapse text-xs">
+                  <thead className="bg-[#edf3f8] text-[#0B2F5B]">
+                    <tr>
+                      <th scope="col" className="sticky left-0 z-10 min-w-32 border-b border-r border-[#d7e4ef] bg-[#edf3f8] px-3 py-3 text-left">Rate code</th>
+                      <th scope="col" className="min-w-44 border-b border-[#d7e4ef] px-3 py-3 text-left">Service</th>
+                      <th scope="col" className="min-w-36 border-b border-[#d7e4ef] px-3 py-3 text-left">Vessel</th>
+                      <th scope="col" className="min-w-28 border-b border-[#d7e4ef] px-3 py-3 text-left">Unit / Calc</th>
+                      <th scope="col" className="min-w-28 border-b border-[#d7e4ef] px-3 py-3 text-right">Current rate</th>
+                      <th scope="col" className="min-w-28 border-b border-[#d7e4ef] px-3 py-3 text-right">Pilot rate</th>
+                      <th scope="col" className="min-w-28 border-b border-[#d7e4ef] px-3 py-3 text-right">Direct cost</th>
+                      <th scope="col" className="min-w-28 border-b border-[#d7e4ef] px-3 py-3 text-left">Status</th>
+                      <th scope="col" className="min-w-28 border-b border-[#d7e4ef] px-3 py-3 text-left">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {group.rows.map((row, index) => <React.Fragment key={row.id}>
+                      {(index === 0 || group.rows[index - 1].displayVesselGroup !== row.displayVesselGroup) && <tr className="bg-[#f3f7fa]"><th colSpan={9} scope="rowgroup" className="border-b border-[#d7e4ef] px-3 py-2 text-left font-semibold text-[#0B2F5B]">{row.displayVesselGroup}</th></tr>}
+                      <tr className="border-b border-[#d7e4ef] align-top last:border-b-0">
+                        <th scope="row" className="sticky left-0 z-10 border-r border-[#d7e4ef] bg-white px-3 py-3 text-left font-mono font-semibold text-[#0B2F5B]">{row.code}</th>
+                        <td className="px-3 py-3 font-medium text-[#0B2F5B]">{row.serviceNameEn}{row.serviceNameTh && <span className="mt-1 block font-normal text-[#647076]">{row.serviceNameTh}</span>}</td>
+                        <td className="px-3 py-3 text-[#46596c]">{row.displayVesselGroup}{row.displayVesselSubtype && <span className="mt-1 block">{row.displayVesselSubtype}</span>}</td>
+                        <td className="px-3 py-3 text-[#46596c]">{row.unit}<span className="mt-1 block font-mono text-[11px]">{row.calcType}</span></td>
+                        <td className="px-3 py-3 text-right font-semibold text-[#0B2F5B]">฿{row.rateThb.toLocaleString()}</td>
+                        <td className="px-3 py-3 text-right text-[#0B2F5B]">{row.pilotRateThb == null ? "—" : `฿${row.pilotRateThb.toLocaleString()}`}</td>
+                        <td className="px-3 py-3 text-right text-[#46596c]">{row.directCostThb == null ? "—" : `฿${row.directCostThb.toLocaleString()}`}</td>
+                        <td className="px-3 py-3"><span className={`inline-block rounded-full px-2 py-1 font-medium ${row.isActive ? "bg-green-100 text-green-800" : "bg-slate-100 text-slate-700"}`}>{row.priceStatus}</span></td>
+                        <td className="px-3 py-2"><div className="flex flex-col gap-1"><Link href={`/pricing-master/${row.id}#displayCategory`} className="inline-flex min-h-9 items-center rounded-md border border-[#d7e4ef] px-2 font-semibold text-[#0B2F5B]">{canWrite ? "Edit / move" : "View"}</Link>{canWrite && row.isActive && <button type="button" onClick={() => retireRow(row)} disabled={saving === row.id} className="min-h-9 rounded-md border border-red-200 px-2 text-left font-medium text-red-700 disabled:opacity-50">Retire</button>}</div></td>
+                      </tr>
+                    </React.Fragment>)}
+                  </tbody>
+                </table>
               </div>
-              <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${row.isActive ? "bg-green-100 text-green-800" : "bg-slate-100 text-slate-700"}`}>{row.isActive ? "Active" : "Inactive"}</span>
-            </div>
-            <p className="mt-2 text-xs text-[#647076]">{row.displayCategory} › {row.displayVesselGroup}{row.displayVesselSubtype ? ` › ${row.displayVesselSubtype}` : ""}</p>
-            <p className="text-xs text-[#647076]">{row.unit} · {row.calcType}</p>
-            <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
-              <div><dt className="text-xs text-[#647076]">Current rate</dt><dd className="font-semibold">฿{row.rateThb.toLocaleString()} <span className="font-normal text-[#647076]">{row.unit}</span></dd></div>
-              <div><dt className="text-xs text-[#647076]">Full rate</dt><dd className="font-semibold">฿{row.fullRateThb.toLocaleString()}</dd></div>
-              <div><dt className="text-xs text-[#647076]">Pilot rate</dt><dd>{row.pilotRateThb == null ? "Not set" : `฿${row.pilotRateThb.toLocaleString()}`}</dd></div>
-              <div><dt className="text-xs text-[#647076]">Effective ({rateMode})</dt><dd className="font-semibold">฿{row.effectiveRate.toLocaleString()}</dd></div>
-              <div><dt className="text-xs text-[#647076]">Direct cost</dt><dd>{row.directCostThb == null ? "Unknown" : `฿${row.directCostThb.toLocaleString()}`}</dd></div>
-            </dl>
-            <p className="mt-2 text-xs text-[#647076]">Quote: {row.quoteAllowed} · Status: {row.priceStatus}</p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Link href={`/pricing-master/${row.id}#displayCategory`} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[#d7e4ef] px-4 text-sm font-medium text-[#0B2F5B]">{canWrite ? "Edit / move rate" : "View rate"}</Link>
-              {canWrite && row.isActive && <button type="button" onClick={() => retireRow(row)} disabled={saving === row.id} className="min-h-11 rounded-md border border-red-200 px-4 text-sm font-medium text-red-700 disabled:opacity-50">Retire rate</button>}
-            </div>
-          </article>
-          </React.Fragment>
+            </>}
+          </section>
         ))}
       </div>
 

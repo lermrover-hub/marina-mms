@@ -1,38 +1,35 @@
 import { NextResponse } from "next/server"
-import { apiErrorMessage, buildUpdate, dbQuery } from "@/lib/postgres"
+import { PROCUREMENT_WRITE_ROLES, STAFF_ROLES, requireApiActor } from "@/lib/api-auth"
+import { apiServerError, pickFields } from "@/lib/api-route-utils"
+import { createServerClient } from "@/lib/supabase-server"
 
 export const dynamic = "force-dynamic"
+const fields = ["po_number","supplier_id","supplier_name","status","order_date","expected_date","notes"] as const
 
-export async function GET(
-  _req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const access = await requireApiActor(STAFF_ROLES)
+  if ("error" in access) return access.error
   try {
     const { id } = await params
-    const [po, items] = await Promise.all([
-      dbQuery("SELECT * FROM mms_purchase_orders WHERE id = $1", [id]),
-      dbQuery("SELECT * FROM mms_purchase_order_items WHERE po_id = $1 ORDER BY created_at", [id]),
+    const client = createServerClient({ requireServiceRole: true })
+    const [{ data: po, error: poError }, { data: items, error: itemError }] = await Promise.all([
+      client.from("mms_purchase_orders").select("*").eq("id", id).maybeSingle(),
+      client.from("mms_purchase_order_items").select("*").eq("po_id", id).order("created_at"),
     ])
-    if (!po.rows[0]) return NextResponse.json({ error: "Not found" }, { status: 404 })
-    return NextResponse.json({ ...po.rows[0], mms_purchase_order_items: items.rows })
-  } catch (e) {
-    return NextResponse.json({ error: apiErrorMessage(e) }, { status: 500 })
-  }
+    if (poError || itemError) throw poError || itemError
+    return po ? NextResponse.json({ ...po, mms_purchase_order_items: items }) : NextResponse.json({ error: "Not found" }, { status: 404 })
+  } catch (error) { return apiServerError("purchase-orders.detail.get", error) }
 }
 
-export async function PATCH(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const access = await requireApiActor(PROCUREMENT_WRITE_ROLES)
+  if ("error" in access) return access.error
   try {
+    const update = pickFields(await req.json(), fields)
+    if (!Object.keys(update).length) return NextResponse.json({ error: "No supported fields" }, { status: 400 })
     const { id } = await params
-    const body = await req.json()
-    const update = buildUpdate(body, ["po_number","supplier_id","supplier_name","status","order_date","expected_date","notes"])
-    if (!update.keys.length) return NextResponse.json({ error: "No supported fields" }, { status: 400 })
-    const result = await dbQuery(`UPDATE mms_purchase_orders SET ${update.clause}, updated_at = now() WHERE id = $${update.values.length + 1} RETURNING *`, [...update.values, id])
-    if (!result.rows[0]) return NextResponse.json({ error: "Not found" }, { status: 404 })
-    return NextResponse.json(result.rows[0])
-  } catch (e) {
-    return NextResponse.json({ error: apiErrorMessage(e) }, { status: 500 })
-  }
+    const { data, error } = await createServerClient({ requireServiceRole: true }).from("mms_purchase_orders").update({ ...update, updated_at: new Date().toISOString() }).eq("id", id).select().maybeSingle()
+    if (error) throw error
+    return data ? NextResponse.json(data) : NextResponse.json({ error: "Not found" }, { status: 404 })
+  } catch (error) { return apiServerError("purchase-orders.detail.patch", error) }
 }

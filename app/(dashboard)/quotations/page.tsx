@@ -12,7 +12,7 @@ import { formatTHB, formatDate } from "@/lib/utils"
 import type { Quotation } from "@/lib/supabase"
 import { exportRowsCsv } from "@/lib/client-export"
 
-const STATUS_FILTERS = ["All", "DRAFT", "PENDING_APPROVAL", "SENT", "ACCEPTED", "REJECTED", "EXPIRED", "CONVERTED", "CANCELLED"]
+const STATUS_FILTERS = ["All", "DRAFT", "PENDING_APPROVAL", "APPROVED", "SENT", "ACCEPTED", "REJECTED", "EXPIRED", "CONVERTED", "CANCELLED"]
 
 export default function QuotationsPage() {
   const [quotations, setQuotations] = useState<Quotation[]>([])

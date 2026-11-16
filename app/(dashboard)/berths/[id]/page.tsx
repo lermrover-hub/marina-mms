@@ -21,7 +21,7 @@ type Assignment = {
   boat_name: string | null
   customer_name: string | null
   start_date: string
-  end_date: string
+  end_date: string | null
   status: string
   notes: string | null
 }
@@ -110,7 +110,7 @@ function AssignModal({
         boat_name:     selectedBoat.name,
         customer_name: customerName,
         start_date:    startDate,
-        end_date:      endDate || startDate,
+        end_date:      endDate || null,
         status:        asgnStatus,
         notes:         notes.trim() || null,
       }
@@ -302,9 +302,9 @@ export default function BerthDetailPage() {
 
   const style = STATUS_STYLE[berth.status] ?? STATUS_STYLE.AVAILABLE
 
-  // Current active assignment: status ACTIVE or RESERVED, end_date >= today
+  // Current active assignment: status ACTIVE or RESERVED, including open-ended stays.
   const current = assignments.find(a =>
-    (a.status === "ACTIVE" || a.status === "RESERVED") && a.end_date >= todayStr
+    (a.status === "ACTIVE" || a.status === "RESERVED") && (!a.end_date || a.end_date >= todayStr)
   )
 
   // History = everything else, sorted newest first
@@ -452,7 +452,7 @@ export default function BerthDetailPage() {
                         </div>
                         <p className="text-xs text-gray-500">{h.customer_name ?? "—"}</p>
                         <p className="text-xs text-gray-400 mt-0.5">
-                          {h.start_date} – {h.end_date}
+                          {h.start_date} – {h.end_date ?? "Open-ended"}
                         </p>
                         {h.notes && (
                           <p className="text-xs text-gray-400 mt-0.5 italic">{h.notes}</p>

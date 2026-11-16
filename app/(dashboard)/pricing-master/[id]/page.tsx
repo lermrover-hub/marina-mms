@@ -4,10 +4,26 @@ import React, { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { ArrowLeft, Save, Loader } from "lucide-react"
 import Link from "next/link"
+import { useSession } from "next-auth/react"
 import { PageHeader } from "@/components/layout/PageHeader"
+import { RATE_CATEGORIES, VESSEL_GROUPS, VESSEL_SUBTYPES } from "@/lib/pricing-display-groups"
+
+type PricingHistoryEntry = {
+  id: string
+  action: string
+  changed_by: string | null
+  approved_by: string | null
+  source_version: string | null
+  created_at: string
+}
+
+const CALC_TYPES = ["FLAT_RATE", "PER_FOOT", "PER_METRE", "PER_TONNE", "PER_SQUARE_METRE", "PER_HOUR", "PER_DAY", "PER_WEEK", "PER_MONTH", "PER_UNIT", "COST_PLUS", "MANUAL_QUOTE", "FLAT_QTY", "FLAT_DAYS", "LOA_RATE_QTY", "LOA_RATE_DAYS", "LOA_MULTIPLIER", "TIER4_LOA_DYNAMIC", "MANUAL"]
+const QUOTE_RULES = ["YES", "NO", "CONTACT", "MANAGER_REVIEW", "MANUAL"]
+const PRICE_STATUSES = ["ACTIVE", "INACTIVE", "CONTACT_ONLY", "PENDING_PAINT_TEAM", "MANUAL_QUOTE"]
 
 export default function PricingMasterEditPage() {
   const router = useRouter()
+  const { data: session } = useSession()
   const params = useParams()
   const id = params.id as string
   const isNew = id === "new"
@@ -15,19 +31,62 @@ export default function PricingMasterEditPage() {
   const [loading, setLoading] = useState(!isNew)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
+  const [savedMessage, setSavedMessage] = useState("")
+  const [history, setHistory] = useState<PricingHistoryEntry[]>([])
+  const [catalogOptions, setCatalogOptions] = useState<{ categories: string[]; units: string[]; serviceGroups: string[] }>({ categories: [], units: [], serviceGroups: [] })
   const [formData, setFormData] = useState({
     code: "",
     serviceNameEn: "",
     serviceNameTh: "",
-    category: "Paint Service",
-    unit: "sqm",
+    category: "",
+    unit: "",
     rateThb: "",
+    fullRateThb: "",
+    discountPct: "0",
+    sourceDiscountPct: "0",
+    directCostThb: "",
+    pilotRateThb: "",
+    pilotNotes: "",
+    revenueGlCode: "",
+    costGlCode: "",
+    pnlCategory: "",
+    costPnlCategory: "",
+    costBasis: "",
+    calcType: "",
+    serviceGroup: "",
+    subgroup: "",
+    displayCategory: "",
+    displayVesselGroup: "",
+    displayVesselSubtype: "",
+    providerType: "",
+    quoteAllowed: "NO",
+    priceStatus: "INACTIVE",
+    sourceVersion: "",
+    effectiveDate: "",
     description: "",
     notes: ""
   })
 
-  const categories = ["Ramp Access", "Haul-out", "Paint Service", "Yard Services", "Storage", "Other"]
-  const units = ["trip", "sqm", "pkg", "hr", "day", "ft", "set", "pc", "unit"]
+  const actorRole = String((session?.user as { role?: string } | undefined)?.role ?? "").toUpperCase()
+  const canWrite = actorRole === "SUPER_ADMIN" || actorRole === "FINANCE"
+
+  useEffect(() => {
+    fetch("/api/pricing-master")
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Failed to load rate options")
+        return response.json()
+      })
+      .then((json: { data?: Array<{ category?: string; unit?: string; serviceGroup?: string }> }) => {
+        const rows = json.data ?? []
+        const unique = (values: Array<string | undefined>) => [...new Set(values.filter((value): value is string => Boolean(value)))].sort()
+        setCatalogOptions({
+          categories: unique(rows.map((row) => row.category)),
+          units: unique(rows.map((row) => row.unit)),
+          serviceGroups: unique(rows.map((row) => row.serviceGroup)),
+        })
+      })
+      .catch(() => { /* Free-text fields remain usable if suggestions are unavailable. */ })
+  }, [])
 
   // Fetch pricing data if editing
   useEffect(() => {
@@ -35,7 +94,10 @@ export default function PricingMasterEditPage() {
 
     const fetchPricing = async () => {
       try {
-        const res = await fetch(`/api/pricing-master/${id}`)
+        const [res, historyRes] = await Promise.all([
+          fetch(`/api/pricing-master/${id}`),
+          fetch(`/api/pricing-master/${id}/history`),
+        ])
         if (!res.ok) throw new Error("Failed to fetch")
         const json = await res.json()
         const pricing = json.data
@@ -47,9 +109,36 @@ export default function PricingMasterEditPage() {
           category: pricing.category,
           unit: pricing.unit,
           rateThb: pricing.rateThb.toString(),
+          fullRateThb: pricing.fullRateThb.toString(),
+          discountPct: String(pricing.discountPct ?? 0),
+          sourceDiscountPct: String(pricing.sourceDiscountPct ?? 0),
+          directCostThb: pricing.directCostThb == null ? "" : String(pricing.directCostThb),
+          pilotRateThb: pricing.pilotRateThb == null ? "" : String(pricing.pilotRateThb),
+          pilotNotes: pricing.pilotNotes || "",
+          revenueGlCode: pricing.revenueGlCode || "",
+          costGlCode: pricing.costGlCode || "",
+          pnlCategory: pricing.pnlCategory || "",
+          costPnlCategory: pricing.costPnlCategory || "",
+          costBasis: pricing.costBasis || "",
+          calcType: pricing.calcType || "FLAT_QTY",
+          serviceGroup: pricing.serviceGroup || "",
+          subgroup: pricing.subgroup || "",
+          displayCategory: pricing.displayCategory || "",
+          displayVesselGroup: pricing.displayVesselGroup || "",
+          displayVesselSubtype: pricing.displayVesselSubtype || "",
+          providerType: pricing.providerType || "",
+          quoteAllowed: pricing.quoteAllowed || "YES",
+          priceStatus: pricing.priceStatus || "ACTIVE",
+          sourceVersion: pricing.sourceVersion || "",
+          effectiveDate: pricing.effectiveDate || "",
           description: pricing.description || "",
           notes: pricing.notes || ""
         })
+
+        if (historyRes.ok) {
+          const historyJson = await historyRes.json()
+          setHistory(historyJson.data ?? [])
+        }
       } catch (err) {
         console.error("Error fetching pricing:", err)
         setError("Failed to load pricing data")
@@ -69,12 +158,27 @@ export default function PricingMasterEditPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
+    setSavedMessage("")
+
+    if (!canWrite) {
+      setError("Only Super Admin or Finance can change rate records.")
+      return
+    }
 
     // Validation
-    if (!formData.code || !formData.serviceNameEn || !formData.category || !formData.unit || !formData.rateThb) {
+    if (!formData.code || !formData.serviceNameEn || !formData.category || !formData.unit || formData.rateThb === "" || !formData.calcType || !formData.serviceGroup) {
       setError("Please fill in all required fields")
       return
     }
+    if (formData.priceStatus === "ACTIVE" && ["YES", "MANAGER_REVIEW"].includes(formData.quoteAllowed) && Number(formData.rateThb) <= 0) {
+      setError("Enter an approved selling price before enabling automatic quotations.")
+      return
+    }
+    if (formData.priceStatus === "ACTIVE" && ["YES", "MANAGER_REVIEW"].includes(formData.quoteAllowed) && formData.pilotRateThb !== "" && Number(formData.pilotRateThb) <= 0) {
+      setError("An active quotable pilot rate must be greater than zero.")
+      return
+    }
+    if (!window.confirm(`${isNew ? "Create" : "Update"} ${formData.code} as ${formData.priceStatus} / ${formData.quoteAllowed}?\n\nRate Management category: ${formData.displayCategory || "Auto"}\nVessel group: ${formData.displayVesselGroup || "Auto"}${formData.displayVesselSubtype ? ` / ${formData.displayVesselSubtype}` : ""}\nCurrent rate: THB ${Number(formData.rateThb).toLocaleString()}\nFull rate: THB ${Number(formData.fullRateThb || formData.rateThb).toLocaleString()}\nPilot rate: ${formData.pilotRateThb ? `THB ${Number(formData.pilotRateThb).toLocaleString()}` : "not set"}\nDirect cost: ${formData.directCostThb ? `THB ${Number(formData.directCostThb).toLocaleString()}` : "not set"}`)) return
 
     setSubmitting(true)
 
@@ -87,19 +191,31 @@ export default function PricingMasterEditPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
-          rateThb: parseFloat(formData.rateThb)
+          rateThb: parseFloat(formData.rateThb),
+          fullRateThb: formData.fullRateThb ? parseFloat(formData.fullRateThb) : parseFloat(formData.rateThb),
+          discountPct: formData.discountPct ? parseFloat(formData.discountPct) : 0,
+          sourceDiscountPct: formData.sourceDiscountPct ? parseFloat(formData.sourceDiscountPct) : 0,
+          directCostThb: formData.directCostThb ? parseFloat(formData.directCostThb) : null,
+          pilotRateThb: formData.pilotRateThb ? parseFloat(formData.pilotRateThb) : null,
+          pilotNotes: formData.pilotNotes || null,
+          effectiveDate: formData.effectiveDate || null,
         })
       })
 
+      const result = await res.json()
       if (!res.ok) {
-        const error = await res.json()
-        throw new Error(error.error || "Failed to save pricing")
+        throw new Error(result.error || "Failed to save pricing")
       }
-
-      router.push("/pricing-master")
-    } catch (err: any) {
+      if (isNew) {
+        router.push(`/pricing-master/${result.data.id}`)
+      } else {
+        setSavedMessage(`Saved ${formData.code}. The rate record and history remain available here.`)
+        const historyResponse = await fetch(`/api/pricing-master/${id}/history`)
+        if (historyResponse.ok) setHistory((await historyResponse.json()).data ?? [])
+      }
+    } catch (err: unknown) {
       console.error("Error saving pricing:", err)
-      setError(err.message || "Failed to save pricing")
+      setError(err instanceof Error ? err.message : "Failed to save pricing")
     } finally {
       setSubmitting(false)
     }
@@ -120,8 +236,8 @@ export default function PricingMasterEditPage() {
           <ArrowLeft className="h-5 w-5 text-[#1f2933]" />
         </Link>
         <PageHeader
-          title={isNew ? "New Pricing" : `Edit Pricing: ${formData.code}`}
-          description={isNew ? "Create a new service pricing record" : "Update service pricing details"}
+          title={isNew ? "Add rate" : `Edit rate: ${formData.code}`}
+          description={isNew ? "Create an inactive draft rate, then review it before making it available to quotations." : "Update service, rate, cost and accounting details."}
         />
       </div>
 
@@ -130,10 +246,31 @@ export default function PricingMasterEditPage() {
           <p className="text-sm text-red-700">{error}</p>
         </div>
       )}
+      {savedMessage && <div role="status" className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800">{savedMessage}</div>}
+      {session && !canWrite && <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Only Super Admin or Finance can add or edit rates.</div>}
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-6 rounded-lg border border-[#e5dfd2] bg-white p-6 shadow-sm">
         <div className="grid gap-6 sm:grid-cols-2">
+          <div className="sm:col-span-2 rounded-lg border border-[#d7e4ef] bg-[#edf3f8] p-4">
+            <h2 className="font-semibold text-[#0B2F5B]">Rate Management placement</h2>
+            <p className="mt-1 text-sm text-[#46596c]">Move a rate to another service category here. This changes where it appears in Rate Management; the operational category and quotation calculation stay as recorded below.</p>
+          </div>
+          <div>
+            <label htmlFor="displayCategory" className="mb-2 block text-sm font-medium text-[#1f2933]">Service category</label>
+            <input id="displayCategory" name="displayCategory" list="display-category-options" value={formData.displayCategory} onChange={handleChange} placeholder="Select or enter a service category" className="w-full rounded-md border border-[#d7e4ef] bg-white px-3 py-2 text-sm" />
+            <datalist id="display-category-options">{RATE_CATEGORIES.map(value => <option key={value} value={value} />)}</datalist>
+          </div>
+          <div>
+            <label htmlFor="displayVesselGroup" className="mb-2 block text-sm font-medium text-[#1f2933]">Vessel group</label>
+            <input id="displayVesselGroup" name="displayVesselGroup" list="display-vessel-group-options" value={formData.displayVesselGroup} onChange={event => setFormData(prev => ({ ...prev, displayVesselGroup: event.target.value, displayVesselSubtype: "" }))} placeholder="Select or enter a vessel group" className="w-full rounded-md border border-[#d7e4ef] bg-white px-3 py-2 text-sm" />
+            <datalist id="display-vessel-group-options">{VESSEL_GROUPS.map(value => <option key={value} value={value} />)}</datalist>
+          </div>
+          {VESSEL_SUBTYPES[formData.displayVesselGroup] && <div>
+            <label htmlFor="displayVesselSubtype" className="mb-2 block text-sm font-medium text-[#1f2933]">Vessel subtype</label>
+            <input id="displayVesselSubtype" name="displayVesselSubtype" list="display-subtype-options" value={formData.displayVesselSubtype} onChange={handleChange} placeholder="General / not specified" className="w-full rounded-md border border-[#d7e4ef] bg-white px-3 py-2 text-sm" />
+            <datalist id="display-subtype-options">{VESSEL_SUBTYPES[formData.displayVesselGroup].map(value => <option key={value} value={value} />)}</datalist>
+          </div>}
           {/* Code */}
           <div>
             <label className="block text-sm font-medium text-[#1f2933] mb-2">Code *</label>
@@ -150,19 +287,17 @@ export default function PricingMasterEditPage() {
 
           {/* Category */}
           <div>
-            <label className="block text-sm font-medium text-[#1f2933] mb-2">Category *</label>
-            <select
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Operational category *</label>
+            <input
+              type="text"
               name="category"
               value={formData.category}
               onChange={handleChange}
+              list="pricing-category-options"
+              placeholder="Select or type a category"
               className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm text-[#1f2933] focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20"
-            >
-              {categories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
+            />
+            <datalist id="pricing-category-options">{catalogOptions.categories.map((value) => <option key={value} value={value} />)}</datalist>
           </div>
 
           {/* Service Name EN */}
@@ -194,18 +329,16 @@ export default function PricingMasterEditPage() {
           {/* Unit */}
           <div>
             <label className="block text-sm font-medium text-[#1f2933] mb-2">Unit *</label>
-            <select
+            <input
+              type="text"
               name="unit"
               value={formData.unit}
               onChange={handleChange}
+              list="pricing-unit-options"
+              placeholder="Select or type a billing unit"
               className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm text-[#1f2933] focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20"
-            >
-              {units.map((u) => (
-                <option key={u} value={u}>
-                  {u}
-                </option>
-              ))}
-            </select>
+            />
+            <datalist id="pricing-unit-options">{catalogOptions.units.map((value) => <option key={value} value={value} />)}</datalist>
           </div>
 
           {/* Rate THB */}
@@ -220,6 +353,144 @@ export default function PricingMasterEditPage() {
               step="0.01"
               className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm text-[#1f2933] placeholder:text-[#8b969a] focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20"
             />
+          </div>
+
+          <div className="sm:col-span-2 rounded-lg border border-[#d7efed] bg-[#f3fbfa] p-4">
+            <h2 className="font-semibold text-[#126c66]">Accounting-ready pricing</h2>
+            <p className="mt-1 text-xs text-[#647076]">
+              Current rate remains the approved selling price. Default customer discount starts at 0%.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Full / Normal Rate (THB)</label>
+            <input type="number" min="0" step="0.01" name="fullRateThb" value={formData.fullRateThb} onChange={handleChange}
+              placeholder="Defaults to current rate"
+              className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20" />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Default Discount (%)</label>
+            <input type="number" min="0" max="100" step="0.01" name="discountPct" value={formData.discountPct} onChange={handleChange}
+              className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20" />
+            <p className="mt-1 text-xs text-[#8b969a]">Default is 0%. Quotation approval rules still apply.</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Source Discount Reference (%)</label>
+            <input type="number" min="0" max="100" step="0.01" name="sourceDiscountPct" value={formData.sourceDiscountPct} onChange={handleChange}
+              className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20" />
+            <p className="mt-1 text-xs text-[#8b969a]">Informational only; it is not applied automatically.</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Direct Cost (THB)</label>
+            <input type="number" min="0" step="0.01" name="directCostThb" value={formData.directCostThb} onChange={handleChange}
+              placeholder="Unknown"
+              className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20" />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Pilot / Soft Opening Rate (THB)</label>
+            <input type="number" min="0" step="0.01" name="pilotRateThb" value={formData.pilotRateThb} onChange={handleChange}
+              placeholder="Optional approved override"
+              className="w-full rounded-md border border-amber-200 bg-amber-50/30 px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-300/20" />
+            <p className="mt-1 text-xs text-[#8b969a]">Leave blank to use the current rate. This is not an extra discount.</p>
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Pilot Rate Notes</label>
+            <textarea name="pilotNotes" value={formData.pilotNotes} onChange={handleChange} rows={2}
+              placeholder="Approval reason, period or scope for the pilot rate"
+              className="w-full rounded-md border border-amber-200 bg-amber-50/30 px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-300/20" />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Revenue GL Code</label>
+            <input type="text" name="revenueGlCode" value={formData.revenueGlCode} onChange={handleChange} placeholder="e.g. 4100"
+              className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20" />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Cost GL Code</label>
+            <input type="text" name="costGlCode" value={formData.costGlCode} onChange={handleChange} placeholder="e.g. 5100"
+              className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20" />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Revenue P&amp;L Category</label>
+            <input type="text" name="pnlCategory" value={formData.pnlCategory} onChange={handleChange} placeholder="e.g. A.Access & Ramp"
+              className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20" />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Cost P&amp;L Category</label>
+            <input type="text" name="costPnlCategory" value={formData.costPnlCategory} onChange={handleChange} placeholder="e.g. Direct Service Cost (COGS)"
+              className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20" />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Calculation Type</label>
+            <select name="calcType" value={formData.calcType} onChange={handleChange}
+              className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20">
+              <option value="">Select calculation method</option>
+              {formData.calcType && !CALC_TYPES.includes(formData.calcType) && <option value={formData.calcType}>{formData.calcType} (existing)</option>}
+              {CALC_TYPES.map(value => <option key={value} value={value}>{value}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Quote Rule</label>
+            <select name="quoteAllowed" value={formData.quoteAllowed} onChange={handleChange}
+              className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20">
+              {QUOTE_RULES.map(value => <option key={value} value={value}>{value}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Price Status</label>
+            <select name="priceStatus" value={formData.priceStatus} onChange={handleChange}
+              className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20">
+              {formData.priceStatus && !PRICE_STATUSES.includes(formData.priceStatus) && <option value={formData.priceStatus}>{formData.priceStatus} (existing)</option>}
+              {PRICE_STATUSES.map(value => <option key={value} value={value}>{value}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Effective Date</label>
+            <input type="date" name="effectiveDate" value={formData.effectiveDate} onChange={handleChange}
+              className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20" />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Source Version</label>
+            <input type="text" name="sourceVersion" value={formData.sourceVersion} onChange={handleChange} placeholder="e.g. ORM-PRICE-2026-v3.5"
+              className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20" />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Operational service group *</label>
+            <input type="text" name="serviceGroup" value={formData.serviceGroup} onChange={handleChange} list="pricing-group-options"
+              className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20" />
+            <datalist id="pricing-group-options">{catalogOptions.serviceGroups.map((value) => <option key={value} value={value} />)}</datalist>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Subgroup</label>
+            <input type="text" name="subgroup" value={formData.subgroup} onChange={handleChange}
+              className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20" />
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Provider Type</label>
+            <input type="text" name="providerType" value={formData.providerType} onChange={handleChange}
+              className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20" />
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-medium text-[#1f2933] mb-2">Cost Basis</label>
+            <textarea name="costBasis" value={formData.costBasis} onChange={handleChange} rows={2}
+              className="w-full rounded-md border border-[#e5dfd2] bg-white px-3 py-2 text-sm focus:border-ocean-turquoise focus:outline-none focus:ring-2 focus:ring-ocean-turquoise/20" />
           </div>
 
           {/* Description */}
@@ -253,7 +524,7 @@ export default function PricingMasterEditPage() {
         <div className="flex gap-3">
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || !canWrite}
             className="flex items-center justify-center gap-2 rounded-md bg-ocean-turquoise px-4 py-2 text-sm font-medium text-white hover:bg-[#0d8b81] disabled:opacity-50 transition-colors"
           >
             {submitting ? (
@@ -276,6 +547,31 @@ export default function PricingMasterEditPage() {
           </Link>
         </div>
       </form>
+
+      {!isNew && history.length > 0 ? (
+        <section className="rounded-lg border border-[#e5dfd2] bg-white p-6 shadow-sm">
+          <h2 className="font-semibold text-[#1f2933]">Price change history</h2>
+          <p className="mt-1 text-xs text-[#8b969a]">Visible to Admin and Finance roles.</p>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b border-[#e5dfd2] text-left text-xs text-[#647076]">
+                <tr><th className="py-2">Date</th><th>Action</th><th>Changed by</th><th>Approved by</th><th>Source</th></tr>
+              </thead>
+              <tbody className="divide-y divide-[#e5dfd2]">
+                {history.map(entry => (
+                  <tr key={entry.id}>
+                    <td className="py-2 pr-4 whitespace-nowrap">{new Date(entry.created_at).toLocaleString()}</td>
+                    <td className="pr-4">{entry.action}</td>
+                    <td className="pr-4">{entry.changed_by ?? "—"}</td>
+                    <td className="pr-4">{entry.approved_by ?? "—"}</td>
+                    <td>{entry.source_version ?? "Manual update"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ) : null}
     </div>
   )
 }

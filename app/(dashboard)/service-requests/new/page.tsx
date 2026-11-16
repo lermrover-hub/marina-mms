@@ -1,492 +1,435 @@
 "use client"
-import React, { useState, useEffect, useMemo } from "react"
+
+import React, { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Save, AlertTriangle } from "lucide-react"
+import { useSession } from "next-auth/react"
+import { ArrowLeft, Plus, Save, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { PageHeader } from "@/components/shared/PageHeader"
+import { HelpHint } from "@/components/shared/HelpHint"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import type { Customer, Boat } from "@/lib/supabase"
+import type { Boat, Customer, CustomerContact } from "@/lib/supabase"
+import { formatTHB } from "@/lib/utils"
+import { maxOperationalDiscountForRole, QUOTATION_PRICE_EDIT_ROLES, roleAllowed } from "@/lib/workflow-access"
+import { rateCardItemsForSection, serviceCategories, serviceCategoryForRate, storagePeriodMatches, type ServiceWorkflowSection } from "@/lib/service-rate-card"
+import { deriveRampMovementPlan } from "@/lib/service-workflow"
+import { classifySpeedboat, isSpeedboatType } from "@/lib/speedboat-classification"
+import { lowestStoragePackage, speedboatStorageClass, storageRateCodes, validateSb4Storage, type StorageMethod, type StorageSlot } from "@/lib/storage-pricing"
+import { evaluateStandardRampHaulOut, isPerFootRate, storageDurationMultiplier, tier4StorageRate } from "@/lib/pricing-engine"
 
-// ── constants ────────────────────────────────────────────────────────────────
-const JOB_CATEGORIES = [
-  "Engine", "Electrical", "Fiberglass", "Painting", "Antifouling",
-  "Interior", "Canvas", "Stainless / Metal Work", "Cleaning / Detailing",
-  "Plumbing", "Generator", "Air Conditioning", "Other",
-]
+type Price = { id: string; code: string; serviceNameEn: string; catalogCategory?: string; catalogServiceName?: string; category: string; unit: string; rateThb: number; directCostThb: number | null; calcType?: string | null; quoteAllowed?: string | null; priceStatus?: string | null; serviceGroup?: string | null; subgroup?: string | null; revenueGlCode?: string | null; costGlCode?: string | null; pnlCategory?: string | null }
+type ServiceLine = { pricing_code?: string; description: string; service_group: ServiceWorkflowSection | "OPEN_RATE"; operator_type: string; qty: number; unit: string; unit_price: number; direct_cost: number; discount_pct: number; is_open_rate?: boolean; revenue_gl_code?: string | null; cost_gl_code?: string | null; pnl_category?: string | null }
 
-const PRIORITY_OPTIONS = [
-  { value: "LOW",    label: "Low",    color: "bg-gray-100 text-gray-600 border-gray-300" },
-  { value: "MEDIUM", label: "Medium", color: "bg-blue-100 text-blue-700 border-blue-300" },
-  { value: "HIGH",   label: "High",   color: "bg-orange-100 text-orange-700 border-orange-300" },
-  { value: "URGENT", label: "Urgent", color: "bg-red-100 text-red-700 border-red-300" },
-]
-
-const LOCATION_OPTIONS = [
-  "In Water — Wet Berth",
-  "On Hard — Dry Storage",
-  "On Hard — Repair Yard",
-  "Customer Brings In",
-  "Other",
-]
-
-// ── component ────────────────────────────────────────────────────────────────
 export default function NewServiceRequestPage() {
   const router = useRouter()
-  const [saving,         setSaving]         = useState(false)
-  const [saveError,      setSaveError]      = useState<string | null>(null)
-  const [customers,      setCustomers]      = useState<Customer[]>([])
-  const [customersError, setCustomersError] = useState<string | null>(null)
-  const [boats,          setBoats]          = useState<Boat[]>([])
+  const [followUpTo, setFollowUpTo] = useState("")
+  const { data: session } = useSession()
+  const actorRole = (session?.user as { role?: string } | undefined)?.role ?? ""
+  const maximumDiscount = maxOperationalDiscountForRole(actorRole)
+  const canEditCost = roleAllowed(actorRole, QUOTATION_PRICE_EDIT_ROLES)
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [boats, setBoats] = useState<Boat[]>([])
+  const [prices, setPrices] = useState<Price[]>([])
+  const [customerId, setCustomerId] = useState("")
+  const [boatId, setBoatId] = useState("")
+  const [contacts, setContacts] = useState<CustomerContact[]>([])
+  const [operationalContactId, setOperationalContactId] = useState("")
+  const requestType = "RAMP_SERVICE"
+  const [haulOut, setHaulOut] = useState(false)
+  const [haulOutDate, setHaulOutDate] = useState("")
+  const [towIn, setTowIn] = useState(false)
+  const [towInDate, setTowInDate] = useState("")
+  const [launch, setLaunch] = useState(false)
+  const [launchDate, setLaunchDate] = useState("")
+  const [towOut, setTowOut] = useState(false)
+  const [towOutDate, setTowOutDate] = useState("")
+  const [primaryService, setPrimaryService] = useState<"STORAGE" | "YARD">("STORAGE")
+  const [addYardToStorage, setAddYardToStorage] = useState(false)
+  const [storagePeriod, setStoragePeriod] = useState("DAILY")
+  const [storageDays, setStorageDays] = useState(1)
+  const [storageSlotCode, setStorageSlotCode] = useState<StorageSlot | "">("")
+  const [storageMethod, setStorageMethod] = useState<StorageMethod | "">("")
+  const [operatorType, setOperatorType] = useState("OCEAN_ROVER")
+  const [trade, setTrade] = useState("Paint")
+  const [markupPct, setMarkupPct] = useState(10)
+  const [paymentMode, setPaymentMode] = useState("FULL_PREPAYMENT")
+  const [billingScenario, setBillingScenario] = useState<"REPAIR_HOLD_30D" | "SPACE_LEASE">("SPACE_LEASE")
+  const [goodCredit, setGoodCredit] = useState(false)
+  const [title, setTitle] = useState("")
+  const [notes, setNotes] = useState("")
+  const [activeSection, setActiveSection] = useState<ServiceWorkflowSection>("RAMP")
+  const [selectedCategory, setSelectedCategory] = useState("")
+  const [selectedPrice, setSelectedPrice] = useState("")
+  const [openRateDescription, setOpenRateDescription] = useState("")
+  const [openRatePrice, setOpenRatePrice] = useState("")
+  const [openRateCost, setOpenRateCost] = useState("")
+  const [items, setItems] = useState<ServiceLine[]>([])
+  const [currentStep, setCurrentStep] = useState(1)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const includeStorage = primaryService === "STORAGE"
+  const includeYardService = primaryService === "YARD" || addYardToStorage
+
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search)
+    const parentId = query.get("follow_up_to") ?? ""
+    setFollowUpTo(parentId)
+    setCustomerId(query.get("customer_id") ?? "")
+    setBoatId(query.get("boat_id") ?? "")
+    if (parentId) setPrimaryService("YARD")
+  }, [])
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/db/customers").then(r => r.json()),
-      fetch("/api/db/boats").then(r => r.json()),
-    ]).then(([c, b]) => {
-      if (Array.isArray(c)) {
-        setCustomers(c)
-      } else if (c?.error) {
-        setCustomersError(c.error)
-        console.error("Customers load error:", c.error)
-      }
-      if (Array.isArray(b)) setBoats(b)
-    }).catch((e) => {
-      setCustomersError(String(e))
-      console.error("Customers/boats fetch failed:", e)
-    })
+      fetch("/api/db/customers").then((r) => r.json()),
+      fetch("/api/db/boats").then((r) => r.json()),
+      fetch("/api/pricing-master?isActive=true&catalog=true").then(async (r) => { if (!r.ok) throw new Error('Rate Card unavailable. Please reload.'); return r.json() }),
+    ]).then(([customerRows, boatRows, priceRows]) => {
+      setCustomers(Array.isArray(customerRows) ? customerRows : [])
+      setBoats(Array.isArray(boatRows) ? boatRows : [])
+      setPrices(Array.isArray(priceRows?.data) ? priceRows.data : [])
+    }).catch((e) => setError(String(e)))
   }, [])
 
-  // ── form state ──────────────────────────────────────────────────────────
-  const [customerId, setCustomerId]     = useState("")
-  const [boatId, setBoatId]             = useState("")
-  const [category, setCategory]         = useState("")
-  const [priority, setPriority]         = useState("MEDIUM")
-  const [location, setLocation]         = useState("")
-  const [description, setDescription]   = useState("")
-  const [symptomDetail, setSymptom]     = useState("")
-  const [requestedDate, setReqDate]     = useState("")
-  const [requiresInspection, setInsp]   = useState(true)
-  const [estimatedBudget, setBudget]    = useState("")
-  const [depositPct, setDepositPct]     = useState("50")
-  const [laborRate, setLaborRate]       = useState("450")
-  const [contractorMarkup, setMarkup]   = useState("15")
-  const [attachNote, setAttachNote]     = useState("")
-  const [internalNote, setInternalNote] = useState("")
+  useEffect(() => {
+    setPaymentMode(includeYardService && operatorType === "OCEAN_ROVER" ? "DEPOSIT" : "FULL_PREPAYMENT")
+  }, [includeYardService, operatorType])
 
-  // ── derived ──────────────────────────────────────────────────────────────
-  const boatsForCustomer = useMemo(() =>
-    customerId ? boats.filter((b) => b.owner_id === customerId) : [],
-  [boats, customerId])
+  const boatsForCustomer = useMemo(() => boats.filter((boat) => boat.owner_id === customerId), [boats, customerId])
+  const selectedCustomer = customers.find((customer) => customer.id === customerId)
+  const selectedBoat = boats.find((boat) => boat.id === boatId)
+  const selectedStorageClass = useMemo(() => {
+    if (!selectedBoat || !isSpeedboatType(selectedBoat.boat_type)) return null
+    try { return speedboatStorageClass(Number(selectedBoat.loa_ft)) } catch { return null }
+  }, [selectedBoat])
+  const speedboatReviewWarning = useMemo(() => {
+    if (!selectedBoat || !isSpeedboatType(selectedBoat.boat_type) || !selectedBoat.loa_ft) return null
+    return classifySpeedboat({ loaFt: selectedBoat.loa_ft, engines: selectedBoat.num_engines, beamFt: selectedBoat.beam_ft, draftFt: selectedBoat.draft_ft, weightKg: selectedBoat.weight_t == null ? null : selectedBoat.weight_t * 1000 }).mismatchWarning
+  }, [selectedBoat])
+  const storageClassificationError = selectedBoat && isSpeedboatType(selectedBoat.boat_type) && !selectedStorageClass
+    ? "A valid speedboat LOA from 1 to 60 ft is required. Vessels over 60 ft need manager review and an approved rate."
+    : null
+  const selectedOperationalContact = contacts.find((contact) => contact.id === operationalContactId)
+  const total = items.reduce((sum, item) => sum + item.qty * item.unit_price * (1 - item.discount_pct / 100), 0)
+  const sectionPrices = useMemo(() => rateCardItemsForSection(prices, activeSection).filter((price) => activeSection !== "STORAGE" || storagePeriodMatches(price, storagePeriod)), [prices, activeSection, storagePeriod])
+  const categories = useMemo(() => serviceCategories(sectionPrices), [sectionPrices])
+  const filteredPrices = useMemo(() => sectionPrices.filter((price) => serviceCategoryForRate(price) === selectedCategory), [sectionPrices, selectedCategory])
+  const movement = deriveRampMovementPlan({ haulOut, haulOutDate, towIn, towInDate, launch, launchDate, towOut, towOutDate })
+  const movementRateRequired = haulOut || launch
+  const rampAssessment = useMemo(() => selectedBoat ? evaluateStandardRampHaulOut({
+    loaFt: selectedBoat.loa_ft == null ? null : Number(selectedBoat.loa_ft),
+    weightT: selectedBoat.weight_t == null ? null : Number(selectedBoat.weight_t),
+    beamFt: selectedBoat.beam_ft == null ? null : Number(selectedBoat.beam_ft),
+    draftFt: selectedBoat.draft_ft == null ? null : Number(selectedBoat.draft_ft),
+    hullConfiguration: selectedBoat.boat_type,
+  }) : null, [selectedBoat])
+  const selectedSections = useMemo<ServiceWorkflowSection[]>(() => [
+    "RAMP",
+    ...(includeStorage ? ["STORAGE" as const] : []),
+    ...(includeYardService ? ["YARD" as const] : []),
+  ], [includeStorage, includeYardService])
 
-  const selectedCustomer = customers.find((c) => c.id === customerId)
-  const selectedBoat     = boats.find((b) => b.id === boatId)
+  useEffect(() => {
+    setSelectedCategory("")
+    setSelectedPrice("")
+  }, [activeSection, storagePeriod])
 
-  function handleCustomerChange(id: string) {
-    setCustomerId(id)
-    setBoatId("")
+  useEffect(() => {
+    if (!customerId) {
+      setContacts([])
+      setOperationalContactId("")
+      return
+    }
+    fetch(`/api/db/customer-contacts?customer_id=${encodeURIComponent(customerId)}`)
+      .then((response) => response.json())
+      .then((rows) => setContacts(Array.isArray(rows) ? rows : []))
+      .catch(() => setContacts([]))
+  }, [customerId])
+
+  useEffect(() => {
+    setOperationalContactId(selectedBoat?.captain_contact_id ?? "")
+  }, [selectedBoat?.captain_contact_id, boatId])
+
+  function addRate() {
+    const price = prices.find((row) => row.code === selectedPrice)
+    if (!price) return
+    const lineOperator = activeSection === "YARD" ? operatorType : "OCEAN_ROVER"
+    const directCost = price.directCostThb ?? 0
+    const method = String(price.calcType ?? "FLAT_QTY").toUpperCase()
+    const unitPrice = lineOperator === "OCEAN_ROVER_SUBCONTRACTOR"
+      ? directCost * (1 + markupPct / 100)
+      : method === "TIER4_LOA_DYNAMIC"
+        ? tier4StorageRate(price.unit, Number(selectedBoat?.loa_ft ?? 0))
+        : price.rateThb
+    if (rowsContainCode(items, price.code)) {
+      // Keep one canonical charge line while allowing a repeatable unit such
+      // as stand/wk to represent multiple weeks. This avoids duplicate lines
+      // and lets an officer click Add item again for week 2, week 3, etc.
+      if (/\/(?:day|week|wk|month|mo)\b/i.test(price.unit)) {
+        setItems((rows) => rows.map((row) => row.pricing_code === price.code ? { ...row, qty: row.qty + 1 } : row))
+        setError(null)
+        setSelectedPrice("")
+        return
+      }
+      setError(`${price.code} is already selected. The same service cannot be billed twice.`)
+      return
+    }
+    // Method and unit both identify a per-LOA rate. This catches imported
+    // v3.7 rows whose calc_type was stale but unit was ft/week or ft/month.
+    let automaticQty = method === "TIER4_LOA_DYNAMIC" ? 1 : isPerFootRate(method, price.unit) ? Number(selectedBoat?.loa_ft ?? 0)
+      : method === "PER_METRE" ? Number(selectedBoat?.loa_ft ?? 0) * 0.3048
+        : method === "PER_TONNE" ? Number(selectedBoat?.weight_t ?? 0)
+          : method === "FLAT_RATE" ? 1 : 1
+    if ((isPerFootRate(method, price.unit) || ["PER_METRE", "PER_TONNE"].includes(method)) && automaticQty <= 0) { setError(`Complete the vessel dimensions required by ${price.code} before adding it.`); return }
+    if (activeSection === "STORAGE" && (isPerFootRate(method, price.unit) || method === "PER_METRE")) {
+      try { automaticQty *= storageDurationMultiplier(price.unit, Number(storageDays)) }
+      catch (error) { setError(error instanceof Error ? error.message : String(error)); return }
+    }
+    setError(null)
+    setItems((rows) => [...rows, { pricing_code: price.code, description: price.serviceNameEn, service_group: activeSection, operator_type: lineOperator, qty: automaticQty, unit: price.unit, unit_price: unitPrice, direct_cost: directCost, discount_pct: 0, revenue_gl_code: price.revenueGlCode, cost_gl_code: price.costGlCode, pnl_category: price.pnlCategory }])
+    setSelectedPrice("")
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setSaveError(null)
+  function addOpenRate() {
+    if (!canEditCost || !openRateDescription.trim() || openRatePrice === "") return
+    setItems((rows) => [...rows, { description: openRateDescription.trim(), service_group: activeSection, operator_type: activeSection === "YARD" ? operatorType : "OCEAN_ROVER", qty: 1, unit: "item", unit_price: Number(openRatePrice), direct_cost: Number(openRateCost || 0), discount_pct: 0, is_open_rate: true }])
+    setOpenRateDescription("")
+    setOpenRatePrice("")
+    setOpenRateCost("")
+  }
+
+  function updateLine(index: number, patch: Partial<ServiceLine>) {
+    setItems((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, ...patch } : row))
+  }
+
+  function changeYardOperator(nextOperator: string) {
+    setOperatorType(nextOperator)
+    setItems((rows) => rows.map((row) => {
+      if (row.service_group !== "YARD") return row
+      const rateCardPrice = prices.find((price) => price.code === row.pricing_code)?.rateThb
+      return {
+        ...row,
+        operator_type: nextOperator,
+        discount_pct: nextOperator === "OCEAN_ROVER" ? row.discount_pct : 0,
+        unit_price: row.is_open_rate
+          ? row.unit_price
+          : nextOperator === "OCEAN_ROVER_SUBCONTRACTOR"
+            ? row.direct_cost * (1 + markupPct / 100)
+            : rateCardPrice ?? row.unit_price,
+      }
+    }))
+  }
+
+  function changePrimaryService(next: "STORAGE" | "YARD") {
+    setPrimaryService(next)
+    setBillingScenario(next === "STORAGE" ? "SPACE_LEASE" : "REPAIR_HOLD_30D")
+    setAddYardToStorage(false)
+    setItems((rows) => rows.filter((row) => row.service_group !== (next === "STORAGE" ? "YARD" : "STORAGE")))
+  }
+
+  function toggleAdditionalYardService(checked: boolean) {
+    setAddYardToStorage(checked)
+    if (!checked) setItems((rows) => rows.filter((row) => row.service_group !== "YARD"))
+  }
+
+  function changeStoragePeriod(nextPeriod: string) {
+    setStoragePeriod(nextPeriod)
+    setItems((rows) => rows.filter((row) => row.service_group !== "STORAGE"))
+  }
+
+  function changeStorageDays(nextDays: number) {
+    const days = Math.max(1, Math.min(3650, Math.floor(nextDays || 1)))
+    setStorageDays(days)
+    changeStoragePeriod(days >= 30 ? "MONTHLY" : days >= 7 ? "WEEKLY" : "DAILY")
+  }
+
+  function addOptimizedStorage() {
+    setError(null)
+    try {
+      if (!selectedStorageClass) throw new Error(storageClassificationError ?? "Automatic v3.7 storage pricing requires a classified speedboat.")
+      const slot = selectedStorageClass === "SB4" ? (storageSlotCode || null) : "ANY_APPROVED"
+      if (selectedStorageClass === "SB4") validateSb4Storage(slot, storageMethod || null)
+      const codes = storageRateCodes(selectedStorageClass, slot)
+      const rates = codes.map((code) => {
+        const price = prices.find((row) => row.code === code)
+        if (!price) throw new Error(`Approved v3.7 rate ${code} is not loaded. Ask Finance/Admin to reconcile the staging Rate Card.`)
+        const method = String(price.calcType ?? "FLAT_QTY").toUpperCase()
+        const rateThb = method === "TIER4_LOA_DYNAMIC"
+          ? tier4StorageRate(price.unit, Number(selectedBoat?.loa_ft ?? 0))
+          : price.rateThb
+        return { code, rateThb, fullRateThb: null, unit: price.unit }
+      })
+      const packages = lowestStoragePackage(storageDays, rates)
+      const storageLines = packages.map((pack) => {
+        const price = prices.find((row) => row.code === pack.code)!
+        return { pricing_code: price.code, description: price.serviceNameEn, service_group: "STORAGE" as const, operator_type: "OCEAN_ROVER", qty: pack.qty, unit: price.unit, unit_price: price.rateThb, direct_cost: price.directCostThb ?? 0, discount_pct: 0, revenue_gl_code: price.revenueGlCode, cost_gl_code: price.costGlCode, pnl_category: price.pnlCategory }
+      })
+      setItems((rows) => [...rows.filter((row) => row.service_group !== "STORAGE"), ...storageLines])
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause))
+    }
+  }
+
+  function changeMarkup(nextMarkup: number) {
+    setMarkupPct(nextMarkup)
+    setItems((rows) => rows.map((row) => row.service_group === "YARD" && row.operator_type === "OCEAN_ROVER_SUBCONTRACTOR" && !row.is_open_rate
+      ? { ...row, unit_price: row.direct_cost * (1 + nextMarkup / 100) }
+      : row))
+  }
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault()
+    setError(null)
+    if (movement.error) {
+      setError(movement.error)
+      return
+    }
+    if ((haulOut || launch) && !items.some((item) => item.service_group === "RAMP")) {
+      setError("Add at least one Ramp / Haul-out / Launch rate-card item.")
+      return
+    }
+    if (includeStorage && !items.some((item) => item.service_group === "STORAGE")) {
+      setError("Add at least one Storage rate-card item.")
+      return
+    }
+    if (includeYardService && !items.some((item) => item.service_group === "YARD")) {
+      setError("Add at least one Yard Service rate-card item.")
+      return
+    }
     setSaving(true)
     try {
-      const selectedC = customers.find(c => c.id === customerId)
-      const selectedB = boats.find(b => b.id === boatId)
-      const body = {
-        customer_id:         customerId || null,
-        customer_name:       selectedC ? (selectedC.company_name ?? [selectedC.first_name, selectedC.last_name].filter(Boolean).join(" ")) : null,
-        boat_id:             boatId || null,
-        boat_name:           selectedB?.name ?? null,
-        category,
-        priority,
-        title:               description.trim().split("\n")[0]?.slice(0, 80) || "Service Request",
-        description:         description || null,
-        location:            location || null,
-        requested_date:      requestedDate || null,
-        requires_inspection: requiresInspection,
-        estimated_budget:    estimatedBudget ? parseFloat(estimatedBudget) : null,
-        deposit_pct:         depositPct ? parseFloat(depositPct) : null,
-        labor_rate:          laborRate ? parseFloat(laborRate) : null,
-        contractor_markup:   contractorMarkup ? parseFloat(contractorMarkup) : null,
-        notes:               [attachNote, internalNote].filter(Boolean).join("\n") || null,
-        status:              "NEW_REQUEST",
-        reference:           `SR-${Date.now().toString().slice(-6)}`,
-      }
-      const res = await fetch("/api/db/service-requests", {
+      const response = await fetch("/api/db/service-requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          reference: `SR-${Date.now().toString().slice(-6)}`,
+          customer_id: customerId,
+          customer_name: selectedCustomer?.company_name ?? [selectedCustomer?.first_name, selectedCustomer?.last_name].filter(Boolean).join(" "),
+          boat_id: boatId,
+          boat_name: selectedBoat?.name,
+          operational_contact_id: operationalContactId || null,
+          title: title || `Ramp service — ${selectedBoat?.name ?? "boat"}`,
+          description: notes,
+          request_type: requestType,
+          ramp_operation_plan: movement.error ? null : movement.rampOperationPlan,
+          haul_out: haulOut,
+          confirmed_haul_out_date: haulOut ? haulOutDate || null : null,
+          tow_in: towIn,
+          tow_in_date: towIn ? towInDate || null : null,
+          launch,
+          confirmed_launch_date: launch ? launchDate || null : null,
+          tow_out: towOut,
+          tow_out_date: towOut ? towOutDate || null : null,
+          service_type: includeYardService ? "YARD_SERVICE" : "STORAGE",
+          service_types: [includeStorage ? "STORAGE" : null, includeYardService ? "YARD_SERVICE" : null].filter(Boolean),
+          storage_period: includeStorage ? storagePeriod : null,
+          storage_days: includeStorage ? storageDays : null,
+          storage_slot_code: includeStorage ? storageSlotCode || null : null,
+          storage_method: includeStorage ? storageMethod || null : null,
+          operator_type: operatorType,
+          subcontractor_trade: operatorType === "OCEAN_ROVER_SUBCONTRACTOR" ? trade : null,
+          markup_pct: operatorType === "OCEAN_ROVER_SUBCONTRACTOR" ? markupPct : 0,
+          payment_mode: paymentMode,
+          billing_scenario: billingScenario,
+          good_credit_customer: paymentMode === "CREDIT" && goodCredit,
+          notes: [followUpTo ? `Additional service request for stored vessel. Parent service request: ${followUpTo}` : null, notes].filter(Boolean).join("\n"),
+          items: items.map((item) => ({ ...item, markup_pct: item.operator_type === "OCEAN_ROVER_SUBCONTRACTOR" ? markupPct : 0 })),
+        }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data?.error ?? "Save failed")
-      router.push(data?.id ? `/service-requests/${data.id}` : "/service-requests")
-    } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Save failed")
+      const data = await response.json()
+      if (!response.ok) throw new Error(data?.error ?? "Unable to create workflow")
+      router.push(`/service-requests/${data.id}`)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
       setSaving(false)
     }
   }
 
-  const isFormValid = customerId && boatId && category && description.trim().length > 10
-
-  // ── render ───────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      <PageHeader
-        title="New Service Request"
-        description="Submit a new boat service or repair request"
-        actions={
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/service-requests">
-              <ArrowLeft className="h-4 w-4 mr-2" /> Back
-            </Link>
-          </Button>
-        }
-      />
+    <div className="mx-auto max-w-5xl space-y-6">
+      <PageHeader title="New Service Request" description="Operational request, rate-card quotation and payment gate in one workflow" actions={<Button variant="outline" size="sm" asChild><Link href="/service-requests"><ArrowLeft className="mr-2 h-4 w-4" />Back</Link></Button>} />
+      <form onSubmit={submit} className="space-y-6">
+        {error && <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+        <div className="grid grid-cols-3 gap-2 rounded-xl border bg-white p-3">{["Customer & Movement", "Service & Rate Card", "Review Draft"].map((label, index) => { const step = index + 1; return <div key={label} className={`flex items-center gap-2 rounded-lg p-2 text-xs font-medium ${currentStep === step ? "bg-teal-50 text-teal-800" : currentStep > step ? "text-teal-700" : "text-gray-400"}`}><span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border font-bold ${currentStep >= step ? "border-teal-600 bg-teal-600 text-white" : "border-gray-300"}`}>{currentStep > step ? "✓" : step}</span><span className="hidden sm:inline">{label}</span></div> })}</div>
+        {currentStep === 1 && <>
+        <Card><CardHeader><CardTitle>1. Customer & Boat</CardTitle></CardHeader><CardContent className="grid gap-4 md:grid-cols-2">
+          <div><Label>Customer *</Label><select required className="mt-1 w-full rounded-md border p-2" value={customerId} onChange={(e) => { setCustomerId(e.target.value); setBoatId(""); setOperationalContactId("") }}><option value="">Select customer</option>{customers.map((c) => <option key={c.id} value={c.id}>{c.company_name ?? [c.first_name, c.last_name].filter(Boolean).join(" ")}</option>)}</select></div>
+          <div><Label>Boat / Vessel *</Label><select required className="mt-1 w-full rounded-md border p-2" value={boatId} onChange={(e) => setBoatId(e.target.value)}><option value="">Select boat</option>{boatsForCustomer.map((boat) => <option key={boat.id} value={boat.id}>{boat.name} — {boat.boat_type ?? "type not set"}</option>)}</select>{selectedBoat && <p className="mt-1 text-xs text-gray-500">Boat type: {selectedBoat.boat_type ?? "Not set"} · LOA {selectedBoat.loa_ft ?? "?"} ft</p>}</div>
+          <div className="md:col-span-2"><Label>Operational Contact / Captain</Label><select className="mt-1 w-full rounded-md border p-2" value={operationalContactId} onChange={(event) => setOperationalContactId(event.target.value)}><option value="">— Use customer main contact —</option>{contacts.map((contact) => <option key={contact.id} value={contact.id}>{contact.full_name}{contact.phone ? ` · ${contact.phone}` : ""}</option>)}</select><p className="mt-1 text-xs text-gray-500">Defaults from the selected boat. You may override it for this request only. This does not change the billing contact.{selectedOperationalContact ? ` Preferred channel: ${selectedOperationalContact.preferred_channel}.` : ""}</p></div>
+        </CardContent></Card>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-
-        {/* ── Customer & Boat ─────────────────────────────────────────────── */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Customer & Boat</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-5">
-
-            {/* Customer */}
-            <div className="space-y-1.5">
-              <Label htmlFor="customer">Customer <span className="text-red-500">*</span></Label>
-              <select
-                id="customer"
-                value={customerId}
-                onChange={(e) => handleCustomerChange(e.target.value)}
-                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-                required
-              >
-                <option value="">— Select customer —</option>
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.company_name ?? ([c.first_name, c.last_name].filter(Boolean).join(" ") || c.id)}
-                  </option>
-                ))}
-              </select>
-              {customersError && (
-                <p className="text-xs text-red-500 mt-1">Failed to load customers: {customersError}</p>
-              )}
-              {selectedCustomer && (
-                <p className="text-xs text-gray-500">
-                  {selectedCustomer.phone} · {selectedCustomer.email}
-                </p>
-              )}
+        <Card><CardHeader><CardTitle>2. Vessel Movement &amp; Service <HelpHint title="Arrival and departure workflow">Choose how the vessel enters the yard: marina Haul-out or road Tow in. Departure may remain open, or be confirmed as Launch or Tow out. Tow movements may be free or charged separately by Rate Card / Open Rate.</HelpHint></CardTitle></CardHeader><CardContent className="space-y-4">
+          <div className="space-y-4 rounded-lg border border-sky-200 bg-sky-50 p-4">
+            <div><Label className="text-base font-semibold">Arrival method *</Label><p className="mt-1 text-xs text-gray-600">Choose one. A vessel arriving on a road trailer does not require Haul-out.</p></div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <MovementOption checked={haulOut} title="Haul-out" description="Marina hauls vessel out of the water" onChange={(checked) => { setHaulOut(checked); if (checked) { setTowIn(false); setTowInDate(""); setActiveSection("RAMP") } }}>
+                {haulOut && <DateField label="Confirmed haul-out date *" value={haulOutDate} onChange={setHaulOutDate} />}
+              </MovementOption>
+              <MovementOption checked={towIn} title="Tow in" description="Vessel arrives by road on a trailer" onChange={(checked) => { setTowIn(checked); if (checked) { setHaulOut(false); setHaulOutDate(""); setActiveSection("RAMP") } }}>
+                {towIn && <><DateField label="Confirmed tow-in date *" value={towInDate} onChange={setTowInDate} /><p className="mt-2 text-xs text-amber-700">Tow charge is optional. Add a Tow Truck Rate Card/Open Rate item only when charging the customer.</p></>}
+              </MovementOption>
             </div>
-
-            {/* Boat */}
-            <div className="space-y-1.5">
-              <Label htmlFor="boat">Boat <span className="text-red-500">*</span></Label>
-              <select
-                id="boat"
-                value={boatId}
-                onChange={(e) => setBoatId(e.target.value)}
-                disabled={!customerId}
-                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:bg-gray-100 disabled:text-gray-400"
-                required
-              >
-                <option value="">— Select boat —</option>
-                {boatsForCustomer.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name} ({b.boat_type ?? ""})
-                  </option>
-                ))}
-              </select>
-              {selectedBoat && (
-                <p className="text-xs text-gray-500">
-                  LOA {selectedBoat.loa_ft ?? "?"}ft · {selectedBoat.engine_brand ?? ""} · {selectedBoat.current_location_code ?? ""}
-                </p>
-              )}
-              {customerId && boatsForCustomer.length === 0 && (
-                <p className="text-xs text-amber-600">No boats linked to this customer.</p>
-              )}
+            {movementRateRequired && rampAssessment && !rampAssessment.automaticStandardQuoteAllowed && <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800"><b>Manual handling assessment required.</b> {rampAssessment.blockers.join(" ")} Automatic haul-out quotations are blocked; ask the manager to assess a separate special operation. Selecting a rate does not override equipment limits.</div>}
+            <div className="border-t border-sky-200 pt-4"><Label className="text-base font-semibold">Departure method</Label><p className="mt-1 text-xs text-gray-600">Optional. Leave both unchecked while the departure date or method is still open.</p></div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <MovementOption checked={launch} title="Launch" description="Marina launches vessel into the water" onChange={(checked) => { setLaunch(checked); if (checked) { setTowOut(false); setTowOutDate(""); setActiveSection("RAMP") } }}>
+                {launch && <DateField label="Confirmed launch date *" value={launchDate} onChange={setLaunchDate} />}
+              </MovementOption>
+              <MovementOption checked={towOut} title="Tow out" description="Vessel leaves by road on a trailer" onChange={(checked) => { setTowOut(checked); if (checked) { setLaunch(false); setLaunchDate(""); setActiveSection("RAMP") } }}>
+                {towOut && <><DateField label="Confirmed tow-out date *" value={towOutDate} onChange={setTowOutDate} /><p className="mt-2 text-xs text-amber-700">Tow charge is optional. Add a Tow Truck Rate Card/Open Rate item only when charging the customer.</p></>}
+              </MovementOption>
             </div>
-
-          </CardContent>
-        </Card>
-
-        {/* ── Service Details ─────────────────────────────────────────────── */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Service Details</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-5">
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-
-              {/* Category */}
-              <div className="space-y-1.5">
-                <Label htmlFor="category">Job Category <span className="text-red-500">*</span></Label>
-                <select
-                  id="category"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  required
-                >
-                  <option value="">— Select category —</option>
-                  {JOB_CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Current Location */}
-              <div className="space-y-1.5">
-                <Label htmlFor="location">Current Boat Location</Label>
-                <select
-                  id="location"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-                >
-                  <option value="">— Select location —</option>
-                  {LOCATION_OPTIONS.map((l) => (
-                    <option key={l} value={l}>{l}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Priority */}
-            <div className="space-y-1.5">
-              <Label>Priority <span className="text-red-500">*</span></Label>
-              <div className="flex flex-wrap gap-2">
-                {PRIORITY_OPTIONS.map((p) => (
-                  <button
-                    key={p.value}
-                    type="button"
-                    onClick={() => setPriority(p.value)}
-                    className={`rounded-full px-4 py-1.5 text-sm font-medium border transition-all ${
-                      priority === p.value
-                        ? p.color + " ring-2 ring-offset-1 ring-current"
-                        : "bg-white text-gray-500 border-gray-200 hover:border-gray-400"
-                    }`}
-                  >
-                    {p.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Description */}
-            <div className="space-y-1.5">
-              <Label htmlFor="description">
-                Problem Description <span className="text-red-500">*</span>
-              </Label>
-              <textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={3}
-                placeholder="Describe the problem clearly (minimum 10 characters)…"
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
-                required
-              />
-              <p className="text-xs text-gray-400">{description.length} chars</p>
-            </div>
-
-            {/* Symptom Detail */}
-            <div className="space-y-1.5">
-              <Label htmlFor="symptom">Symptom Detail / When does it occur?</Label>
-              <textarea
-                id="symptom"
-                value={symptomDetail}
-                onChange={(e) => setSymptom(e.target.value)}
-                rows={2}
-                placeholder="e.g. Occurs at high RPM above 3,000, only on port engine…"
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
-              />
-            </div>
-
-            {/* Requested Date */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="space-y-1.5">
-                <Label htmlFor="reqDate">Requested Service Date</Label>
-                <Input
-                  id="reqDate"
-                  type="date"
-                  value={requestedDate}
-                  onChange={(e) => setReqDate(e.target.value)}
-                />
-              </div>
-
-              {/* Inspection toggle */}
-              <div className="flex items-end pb-1">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <div
-                    onClick={() => setInsp((v) => !v)}
-                    className={`relative w-10 h-5 rounded-full transition-colors ${requiresInspection ? "bg-teal-500" : "bg-gray-300"}`}
-                  >
-                    <span
-                      className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${requiresInspection ? "translate-x-5" : ""}`}
-                    />
-                  </div>
-                  <span className="text-sm text-gray-700">Inspection required before quote</span>
-                </label>
-              </div>
-            </div>
-
-          </CardContent>
-        </Card>
-
-        {/* ── Costing Parameters ─────────────────────────────────────────── */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Costing Parameters</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-
-            <div className="space-y-1.5">
-              <Label htmlFor="budget">Estimated Budget (THB)</Label>
-              <Input
-                id="budget"
-                type="number"
-                min="0"
-                value={estimatedBudget}
-                onChange={(e) => setBudget(e.target.value)}
-                placeholder="0"
-              />
-              <p className="text-xs text-gray-400">Customer&apos;s budget expectation</p>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="deposit">Deposit % Required</Label>
-              <div className="relative">
-                <Input
-                  id="deposit"
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={depositPct}
-                  onChange={(e) => setDepositPct(e.target.value)}
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
-              </div>
-              <p className="text-xs text-gray-400">Default 50% before work starts</p>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="laborRate">Labor Rate (THB/hr)</Label>
-              <select
-                id="laborRate"
-                value={laborRate}
-                onChange={(e) => setLaborRate(e.target.value)}
-                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-              >
-                <option value="350">350 THB/hr — Standard</option>
-                <option value="450">450 THB/hr — Skilled</option>
-                <option value="600">600 THB/hr — Specialist</option>
-              </select>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="markup">Contractor Markup %</Label>
-              <div className="relative">
-                <Input
-                  id="markup"
-                  type="number"
-                  min="0"
-                  value={contractorMarkup}
-                  onChange={(e) => setMarkup(e.target.value)}
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
-              </div>
-              <p className="text-xs text-gray-400">Default 15% markup on contractors</p>
-            </div>
-
-          </CardContent>
-        </Card>
-
-        {/* ── Notes ──────────────────────────────────────────────────────── */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Notes & Attachments</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-
-            <div className="space-y-1.5">
-              <Label htmlFor="attachNote">Customer Notes / Attachment Instructions</Label>
-              <textarea
-                id="attachNote"
-                value={attachNote}
-                onChange={(e) => setAttachNote(e.target.value)}
-                rows={2}
-                placeholder="Any special instructions from the customer, photos already received, etc."
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="internalNote">Internal Note (staff only)</Label>
-              <textarea
-                id="internalNote"
-                value={internalNote}
-                onChange={(e) => setInternalNote(e.target.value)}
-                rows={2}
-                placeholder="Internal notes not visible to customer…"
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
-              />
-            </div>
-
-            {/* Photo upload placeholder */}
-            <div className="rounded-lg border-2 border-dashed border-gray-300 p-6 text-center">
-              <p className="text-sm text-gray-500">
-                📎 Photo / document upload — drag &amp; drop or click to browse
-              </p>
-              <p className="text-xs text-gray-400 mt-1">
-                JPEG, PNG, PDF — max 10 MB each
-              </p>
-            </div>
-
-          </CardContent>
-        </Card>
-
-        {/* ── Validation alert ──────────────────────────────────────────── */}
-        {!isFormValid && (customerId || category || description) && (
-          <div className="flex items-center gap-2 rounded-md bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-700">
-            <AlertTriangle className="h-4 w-4 shrink-0" />
-            Please select a customer, a boat, a category, and provide a description (min 10 chars).
           </div>
-        )}
+          <div><Label>Primary service path *</Label><p className="mt-1 text-xs text-gray-600">Choose the normal route. Storage goes from its billing period and Rate Card directly to Draft Quotation. Yard Service continues through operator, category and service item.</p><div className="mt-2 grid gap-3 md:grid-cols-2"><button type="button" aria-pressed={primaryService === "STORAGE"} onClick={() => changePrimaryService("STORAGE")} className={`rounded-lg border p-4 text-left ${primaryService === "STORAGE" ? "border-teal-500 bg-teal-50" : "border-gray-200"}`}><b>{primaryService === "STORAGE" ? "✓ " : ""}A. Storage</b><p className="text-sm text-gray-500">Daily, weekly or monthly → Draft Quotation</p></button><button type="button" aria-pressed={primaryService === "YARD"} onClick={() => changePrimaryService("YARD")} className={`rounded-lg border p-4 text-left ${primaryService === "YARD" ? "border-teal-500 bg-teal-50" : "border-gray-200"}`}><b>{primaryService === "YARD" ? "✓ " : ""}B. Yard Service</b><p className="text-sm text-gray-500">Operator → Category → Service Item → Draft Quotation</p></button></div></div>
+          <div className="rounded-lg border border-sky-200 bg-sky-50 p-4"><Label>Billing scenario *</Label><p className="mt-1 text-xs text-sky-900">This controls recurring billing without changing the quotation → payment → work-order workflow.</p><div className="mt-2 grid gap-2 md:grid-cols-2"><button type="button" onClick={() => setBillingScenario("REPAIR_HOLD_30D")} className={`rounded-md border p-3 text-left ${billingScenario === "REPAIR_HOLD_30D" ? "border-sky-600 bg-white" : "border-gray-200 bg-white/70"}`}><b>Repair hold / parts delay</b><span className="mt-1 block text-xs text-gray-600">Recurring cycle starts 30 days after the first haul-out/tow-in/yard start. Use when launch date is unknown.</span></button><button type="button" onClick={() => setBillingScenario("SPACE_LEASE")} className={`rounded-md border p-3 text-left ${billingScenario === "SPACE_LEASE" ? "border-sky-600 bg-white" : "border-gray-200 bg-white/70"}`}><b>Space lease / owner away</b><span className="mt-1 block text-xs text-gray-600">Use a clear storage contract for a 3–6 month stay or infrequent use; recurring invoices come from the contract.</span></button></div>{billingScenario === "SPACE_LEASE" && <p className="mt-2 text-xs font-medium text-amber-800">A Dry Storage contract must be created after the quotation is approved. Wet Berth is unavailable.</p>}</div>
+          {includeStorage && <div className="space-y-4 rounded-lg border bg-gray-50 p-4"><div><Label>Storage duration (days)</Label><Input className="mt-1" type="number" min="1" max="3650" step="1" value={storageDays} onChange={(event) => changeStorageDays(Number(event.target.value))} /><p className="mt-1 text-xs text-gray-600">The system selects the lowest exact combination of approved 1-day, 7-day and 30-day packages. Monthly storage creates an officer billing reminder.</p></div>{selectedStorageClass === "SB4" && <><div><Label>Physical storage slot *</Label><select className="mt-1 w-full rounded-md border p-2" value={storageSlotCode} onChange={(event) => { setStorageSlotCode(event.target.value as StorageSlot); setStorageMethod(event.target.value === "W4" ? "TRAILER" : event.target.value === "B1" ? "BOAT_STANDS" : ""); setItems((rows) => rows.filter((row) => row.service_group !== "STORAGE")) }}><option value="">Select W4 or B1</option><option value="W4">W4 — trailer storage only</option><option value="B1">B1 — boat stands only</option></select></div><div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">SB4 is a pricing class only. W4/B1 availability and technical checks are mandatory. Storage approval does not approve haul-out or launch.</div></>}{speedboatReviewWarning && !storageClassificationError && <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-800">Manager review: {speedboatReviewWarning}</p>}{storageClassificationError && <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{storageClassificationError}</p>}</div>}
+          {primaryService === "STORAGE" && <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4"><input type="checkbox" className="mt-1 h-4 w-4 accent-amber-600" checked={addYardToStorage} onChange={(event) => toggleAdditionalYardService(event.target.checked)} /><span><b className="text-amber-900">Optional: add Yard / Other Services</b><span className="block text-xs text-amber-800">Use when the stored vessel also needs service now. If service is requested later, start a new linked Service Request from the stored vessel record.</span></span></label>}
+          {includeYardService && <div className="space-y-4 rounded-lg border bg-gray-50 p-4"><div><Label>Who performs the Yard Service? <HelpHint title="Operator affects price and approval">Ocean Rover work may receive an authorised discount. Boat-owner contractor work requires verified insurance. Ocean Rover subcontractor work uses direct cost plus markup and cannot receive a Marina discount.</HelpHint></Label><div className="mt-2 grid gap-2 md:grid-cols-3">{[{ value: "OCEAN_ROVER", label: "Ocean Rover" }, { value: "BOAT_OWNER_CONTRACTOR", label: "Boat owner / contractor" }, { value: "OCEAN_ROVER_SUBCONTRACTOR", label: "Ocean Rover subcontractor" }].map((operator) => <button type="button" key={operator.value} onClick={() => changeYardOperator(operator.value)} className={`rounded-md border p-3 text-sm font-semibold ${operatorType === operator.value ? "border-teal-500 bg-white text-teal-700" : "border-gray-200 bg-white"}`}>{operator.label}</button>)}</div></div>
+          {operatorType === "BOAT_OWNER_CONTRACTOR" && <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-800">Enter the contractor scope in Internal Notes. Insurance starts as Requested and must be verified before confirming the Service Order.</p>}
+          {operatorType === "OCEAN_ROVER_SUBCONTRACTOR" && <div className="grid gap-4 md:grid-cols-2"><div><Label>Trade</Label><select className="mt-1 w-full rounded-md border p-2" value={trade} onChange={(e) => setTrade(e.target.value)}><option>Paint</option><option>Mechanic</option><option>Electrical</option><option>Other</option></select></div><div><Label>Markup %</Label><Input type="number" min="0" max="100" value={markupPct} onChange={(e) => changeMarkup(Number(e.target.value))} /><p className="mt-1 text-xs text-gray-500">Selling price = direct cost + markup. Existing Yard items are recalculated automatically.</p></div></div>}</div>}
+        </CardContent></Card>
+        <div className="flex justify-end"><Button type="button" variant="teal" onClick={() => { setError(null); if (!customerId || !boatId) { setError("Select the customer and vessel before continuing."); return } if (movement.error) { setError(movement.error); return } if (includeStorage && storageClassificationError) { setError(storageClassificationError); return } if (includeStorage && selectedStorageClass === "SB4" && (!storageSlotCode || !storageMethod)) { setError("Select W4 trailer storage or B1 boat-stand storage before continuing."); return } setActiveSection(movementRateRequired ? "RAMP" : includeStorage ? "STORAGE" : "YARD"); setCurrentStep(2) }}>Continue to Service Items →</Button></div>
+        </>}
 
-        {saveError && (
-          <div className="flex items-center gap-2 rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-            <AlertTriangle className="h-4 w-4 shrink-0" />
-            {saveError}
-          </div>
-        )}
+        {currentStep === 2 && <>
+        <Card><CardHeader><CardTitle>3. Service Items & Rate Card <HelpHint title="Cascading service menu">Choose the workflow section, then a service category, then the exact Rate Card item. Price, unit, direct cost and accounting codes are filled automatically. Only quantity or duration is entered by the officer.</HelpHint></CardTitle></CardHeader><CardContent className="space-y-4">
+          <div className="rounded-md border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900"><b>Movement:</b> {haulOut ? `Haul-out on ${haulOutDate}` : `Tow in on ${towInDate}`} · {launch ? `Launch on ${launchDate}` : towOut ? `Tow out on ${towOutDate}` : "Departure open"}<br /><span className="text-xs">{movementRateRequired ? "Add the required Ramp operation item, then add the main service." : "Tow charge is optional. Add a Tow item only when the customer is charged; otherwise continue with the main service."}</span></div>
+          <div className={`grid gap-2 ${selectedSections.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>{selectedSections.map((section) => <button type="button" key={section} onClick={() => setActiveSection(section)} className={`rounded-lg border px-3 py-3 text-sm font-semibold ${activeSection === section ? "border-teal-500 bg-teal-50 text-teal-800" : "border-gray-200 bg-white text-gray-600"}`}>{section === "RAMP" ? (movementRateRequired ? "Ramp Operation (required)" : "Tow Charge (optional)") : section === "STORAGE" ? "Storage (required)" : "Yard / Other Services (required)"}</button>)}</div>
+          {activeSection === "STORAGE" && selectedStorageClass ? <div className="rounded-lg border border-teal-200 bg-teal-50 p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="font-semibold text-teal-900">{selectedStorageClass} automatic storage package</p><p className="text-xs text-teal-800">{storageDays} days{selectedStorageClass === "SB4" ? ` · ${storageSlotCode || "slot required"} · ${storageMethod || "method required"}` : " · any approved storage slot"}</p></div><Button type="button" variant="outline" onClick={addOptimizedStorage}>Calculate &amp; add lowest package</Button></div></div> : <div className="grid gap-3 md:grid-cols-[1fr_1.5fr_auto]">
+            <div><Label>Service category</Label><select className="mt-1 w-full rounded-md border p-2" value={selectedCategory} onChange={(e) => { setSelectedCategory(e.target.value); setSelectedPrice("") }}><option value="">Select category</option>{categories.map((category) => <option key={category} value={category}>{category}</option>)}</select></div>
+            <div><Label>Service item</Label><select disabled={!selectedCategory} className="mt-1 w-full rounded-md border p-2 disabled:bg-gray-100" value={selectedPrice} onChange={(e) => setSelectedPrice(e.target.value)}><option value="">Select rate-card item</option>{filteredPrices.map((price) => <option key={price.id} value={price.code}>{price.catalogServiceName || price.serviceNameEn} — {formatTHB(price.rateThb)}/{price.unit}{price.quoteAllowed && price.quoteAllowed !== "YES" ? " · approval required" : ""}</option>)}</select></div>
+            <Button type="button" className="self-end" variant="outline" disabled={!selectedPrice} onClick={addRate}><Plus className="mr-1 h-4 w-4" />Add item</Button>
+          </div>}
+          {canEditCost ? <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50 p-3"><div className="mb-2 flex items-center gap-2 font-medium text-amber-900">Others / Open Rate <HelpHint title="Restricted manual price">Use only when no suitable Rate Card item exists. Admin, Managing Director or Finance must enter the negotiated price and the Draft still requires approval.</HelpHint></div><div className="grid gap-2 md:grid-cols-[1.5fr_100px_100px_auto]"><Input value={openRateDescription} onChange={(e) => setOpenRateDescription(e.target.value)} placeholder="Reason / negotiated service" /><Input type="number" min="0" step="0.01" value={openRatePrice} onChange={(e) => setOpenRatePrice(e.target.value)} placeholder="Price" /><Input type="number" min="0" step="0.01" value={openRateCost} onChange={(e) => setOpenRateCost(e.target.value)} placeholder="Cost" /><Button type="button" variant="outline" disabled={!openRateDescription.trim() || openRatePrice === ""} onClick={addOpenRate}>Add open rate</Button></div></div> : <p className="rounded-md bg-gray-50 p-3 text-xs text-gray-600">Others / Open Rate is restricted to Admin, Managing Director and Finance. Select an approved Rate Card item or request authorised price entry.</p>}
+          {items.map((item, index) => <div key={`${item.pricing_code ?? "OPEN"}-${index}`} className="grid items-end gap-2 rounded-lg border p-3 md:grid-cols-[1fr_90px_90px_40px]"><div><div className="flex flex-wrap gap-2 text-xs"><span className="rounded bg-teal-50 px-2 py-0.5 text-teal-700">{item.service_group}</span><span className="text-gray-500">{item.pricing_code ?? "OPEN RATE"}</span><span className="text-gray-500">{item.operator_type.replaceAll("_", " ")}</span></div><p className="mt-1 font-medium">{item.description}</p><p className="text-xs text-gray-500">Rate {formatTHB(item.unit_price)} / {item.unit} · Cost {formatTHB(item.direct_cost)} · Discount {item.discount_pct}%</p>{item.unit.toLowerCase().includes("stand/wk") && <p className="text-xs font-medium text-amber-700">Qty is stand-weeks: 7 stands × 3 weeks = 21</p>}{item.pricing_code && <p className="text-xs text-gray-400">Revenue {item.revenue_gl_code ?? "—"} · Cost {item.cost_gl_code ?? "—"} · {item.pnl_category ?? "P&L not set"}</p>}</div><div><Label>{item.unit.toLowerCase().includes("stand/wk") ? "Stand-weeks" : "Qty / duration"}</Label><Input type="number" min="0.001" step="0.001" value={item.qty} onChange={(e) => updateLine(index, { qty: Number(e.target.value) })} /></div><div><Label>Discount %</Label><Input type="number" min="0" max={maximumDiscount} step="0.01" disabled={item.operator_type !== "OCEAN_ROVER" || maximumDiscount === 0} title={`Maximum ${maximumDiscount}% for your role`} value={item.discount_pct} onChange={(e) => updateLine(index, { discount_pct: Math.min(maximumDiscount, Number(e.target.value)) })} /></div><Button type="button" variant="ghost" onClick={() => setItems((rows) => rows.filter((_, i) => i !== index))}><Trash2 className="h-4 w-4 text-red-500" /></Button></div>)}
+          {!items.length && <p className="py-6 text-center text-sm text-gray-400">Add services in the order they should appear on the quotation.</p>}
+          <p className="text-right font-semibold">Preview subtotal: {formatTHB(total)}</p>
+        </CardContent></Card>
+        <div className="flex justify-between"><Button type="button" variant="outline" onClick={() => setCurrentStep(1)}>← Back</Button><Button type="button" variant="teal" onClick={() => { if ((haulOut || launch) && !items.some((item) => item.service_group === "RAMP")) { setError("Add at least one Ramp / Haul-out / Launch rate-card item."); return } if (includeStorage && !items.some((item) => item.service_group === "STORAGE")) { setError("Add at least one Storage rate-card item."); return } if (includeYardService && !items.some((item) => item.service_group === "YARD")) { setError("Add at least one Yard / Other Service rate-card item."); return } setError(null); setCurrentStep(3) }}>Review Draft Quote →</Button></div>
+        </>}
 
-        {/* ── Actions ──────────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between pb-8">
-          <Link href="/service-requests">
-            <Button variant="outline" type="button">Cancel</Button>
-          </Link>
-          <div className="flex gap-3">
-            <Button variant="outline" type="button" disabled={saving}>
-              Save as Draft
-            </Button>
-            <Button
-              type="submit"
-              disabled={!isFormValid || saving}
-              className="bg-teal-600 hover:bg-teal-700 text-white"
-            >
-              <Save className="h-4 w-4 mr-2" />
-              {saving ? "Submitting…" : "Submit Service Request"}
-            </Button>
-          </div>
-        </div>
-
+        {currentStep === 3 && <>
+        <Card><CardHeader><CardTitle>4. Payment Rule <HelpHint title="Service Request vs Work Order">You can save the Service Request before payment. A Work Order is created only after Finance clears full payment, the required deposit, or approved credit, and an officer confirms the Service Order.</HelpHint></CardTitle></CardHeader><CardContent className="space-y-4"><div><Label>Payment mode <HelpHint title="Payment options">Full pre-payment is standard for ramp/storage. Deposit defaults to 50/40/10 for Ocean Rover yard work, with the first payment never below committed material/subcontractor cost. Credit needs Finance/GM approval and uses a maximum 30-day first cycle.</HelpHint></Label><select className="mt-1 w-full rounded-md border p-2" value={paymentMode} onChange={(e) => setPaymentMode(e.target.value)}><option value="FULL_PREPAYMENT">Full pre-payment — must be Paid before service</option><option value="DEPOSIT">Deposit — 50/40/10 (initial amount covers committed cost)</option><option value="CREDIT">Credit — maximum first 30-day cycle</option></select></div>{paymentMode === "CREDIT" && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={goodCredit} onChange={(e) => setGoodCredit(e.target.checked)} />Existing good-credit customer (Finance/GM approval still required; max 7 days after launch)</label>}<div><Label>Title</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Optional; generated automatically if blank" /></div><div><Label>Internal notes</Label><textarea className="mt-1 min-h-24 w-full rounded-md border p-2 text-sm" value={notes} onChange={(e) => setNotes(e.target.value)} /></div></CardContent></Card>
+        <Card><CardHeader><CardTitle>Draft quotation summary</CardTitle></CardHeader><CardContent className="space-y-3"><div className="rounded-md bg-gray-50 p-3 text-sm"><p><b>Customer:</b> {selectedCustomer?.company_name ?? [selectedCustomer?.first_name, selectedCustomer?.last_name].filter(Boolean).join(" ")} · <b>Vessel:</b> {selectedBoat?.name}</p><p><b>Arrival:</b> {haulOut ? `Haul-out ${haulOutDate}` : `Tow in ${towInDate}`} · <b>Departure:</b> {launch ? `Launch ${launchDate}` : towOut ? `Tow out ${towOutDate}` : "Open"}</p><p><b>Selected services:</b> {[includeStorage ? `Storage — ${storagePeriod.toLowerCase()}` : null, includeYardService ? `Yard / Other Services — ${operatorType.replaceAll("_", " ")}` : null].filter(Boolean).join(" + ")}</p></div>{items.map((item, index) => <div key={`${item.pricing_code ?? "OPEN"}-review-${index}`} className="flex justify-between gap-4 border-b py-2 text-sm"><span><span className="mr-2 rounded bg-teal-50 px-1.5 py-0.5 text-xs text-teal-700">{item.service_group}</span>{item.description} × {item.qty}</span><span className="font-medium">{formatTHB(item.qty * item.unit_price * (1 - item.discount_pct / 100))}</span></div>)}<div className="flex justify-between pt-2 font-semibold"><span>Subtotal before VAT</span><span>{formatTHB(total)}</span></div><p className="text-xs text-gray-500">Discount starts at 0%. VAT and deposit are calculated and snapshotted by the server when the Draft is created.</p></CardContent></Card>
+        <div className="rounded-lg border border-teal-200 bg-teal-50 p-3 text-sm text-teal-900">Saving creates the Service Request, an ordered Draft quotation, and its payment plan. It does not send anything to the customer. Review the Draft, then use Submit for Approval.</div>
+        <div className="flex justify-between"><Button type="button" variant="outline" onClick={() => setCurrentStep(2)}>← Back</Button><Button type="submit" variant="teal" disabled={saving || !customerId || !boatId || !items.length}><Save className="mr-2 h-4 w-4" />{saving ? "Creating workflow…" : "Save & Generate Draft Quotation"}</Button></div>
+        </>}
       </form>
     </div>
   )
+}
+
+function rowsContainCode(rows: ServiceLine[], code: string) {
+  return rows.some((row) => row.pricing_code === code)
+}
+
+function MovementOption({ checked, title, description, onChange, children }: { checked: boolean; title: string; description: string; onChange: (checked: boolean) => void; children?: React.ReactNode }) {
+  return <div className={`rounded-lg border p-3 ${checked ? "border-teal-500 bg-white shadow-sm" : "border-sky-200 bg-white/70"}`}><label className="flex cursor-pointer items-start gap-3"><input type="checkbox" className="mt-1 h-4 w-4 accent-teal-600" checked={checked} onChange={(event) => onChange(event.target.checked)} /><span><b>{title}</b><span className="block text-xs text-gray-500">{description}</span></span></label>{children && <div className="mt-3 border-t pt-3">{children}</div>}</div>
+}
+
+function DateField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return <div><Label>{label}</Label><Input className="mt-1" required type="date" value={value} onChange={(event) => onChange(event.target.value)} /></div>
 }

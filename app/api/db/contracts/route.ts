@@ -50,6 +50,11 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json()
+    if (String(body.contract_type ?? "") === "WET_BERTH") {
+      return NextResponse.json({ error: "Wet Berth is unavailable until construction is complete." }, { status: 409 })
+    }
+    if (body.billing_scenario == null && body.contract_type === "DRY_STORAGE") body.billing_scenario = "SPACE_LEASE"
+    if (body.reminder_lead_days == null) body.reminder_lead_days = 7
     if (!body.contract_number) {
       body.contract_number = await nextContractNumber()
     }

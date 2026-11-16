@@ -41,6 +41,10 @@ export async function pushMessage(lineUserId: string, messages: unknown[]) {
   return linePost("/message/push", { to: lineUserId, messages })
 }
 
+export function isLineConfigured(): boolean {
+  return Boolean(ACCESS_TOKEN)
+}
+
 /** Reply using a reply token (from webhook event) */
 export async function replyMessage(replyToken: string, messages: unknown[]) {
   return linePost("/message/reply", { replyToken, messages })

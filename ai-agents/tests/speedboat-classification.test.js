@@ -44,11 +44,34 @@ test("LOA 47ft (boundary) → group 3", () => {
   assert.equal(r.engineGroup, 3)
 })
 
-test("LOA 48ft → group 4, High, RAMP_3OB", () => {
+test("LOA 48ft → Tier 3 pricing group with special ramp review", () => {
   const r = classifySpeedboat({ loaFt: 48 })
-  assert.equal(r.engineGroup, 4)
-  assert.equal(r.effectiveRiskFlag, "High")
-  assert.equal(r.rampCode, "RAMP_3OB")
+  assert.equal(r.engineGroup, 3)
+  assert.equal(r.effectiveRiskFlag, "Medium")
+  assert.equal(r.rampCode, "RAMP_SB_SPECIAL")
+})
+
+test("LOA 50ft remains Tier 3 and 51/60ft are Tier 4 while 61ft is outside configured range", () => {
+  const fifty = classifySpeedboat({ loaFt: 50, engines: 3 })
+  assert.equal(fifty.engineGroup, 3)
+  assert.equal(fifty.rampCode, "RAMP_SB_SPECIAL")
+  const fiftyOne = classifySpeedboat({ loaFt: 51, engines: 4 })
+  assert.equal(fiftyOne.engineGroup, 4)
+  assert.equal(fiftyOne.rampCode, "RAMP_SB_SPECIAL")
+  const sixty = classifySpeedboat({ loaFt: 60, engines: 4 })
+  assert.equal(sixty.engineGroup, 4)
+  assert.equal(sixty.outsideConfiguredRange, false)
+  const sixtyOne = classifySpeedboat({ loaFt: 61, engines: 4 })
+  assert.equal(sixtyOne.outsideConfiguredRange, true)
+  assert.match(sixtyOne.mismatchWarning, /maximum 60 ft/i)
+})
+
+test("55ft and 56ft remain inside the SB4 pricing class", () => {
+  for (const loaFt of [55, 56]) {
+    const result = classifySpeedboat({ loaFt, engines: 4 })
+    assert.equal(result.engineGroup, 4)
+    assert.equal(result.outsideConfiguredRange, false)
+  }
 })
 
 // ── Engine count mismatch warning ─────────────────────────────────────────────
@@ -118,8 +141,10 @@ test("isSpeedboatType normalizes common boat type values", () => {
   assert.equal(isSpeedboatType("MOTOR_YACHT"), false)
 })
 
-test("no input → defaults to group 1 (LOA 0)", () => {
+test("no input is flagged because LOA is required", () => {
   const r = classifySpeedboat({})
   assert.equal(r.engineGroup, 1)
   assert.equal(r.rampCode, "RAMP_1OB")
+  assert.equal(r.outsideConfiguredRange, true)
+  assert.match(r.mismatchWarning, /valid LOA/i)
 })

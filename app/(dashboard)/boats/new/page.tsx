@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { CaptainContactFields } from "@/components/shared/CaptainContactFields"
+import { toErrorMessage } from "@/lib/error-message"
 import type { Customer } from "@/lib/supabase"
 import { ftToM, mToFt } from "@/lib/utils"
 
@@ -79,6 +81,7 @@ export default function NewBoatPage() {
   const [customers,       setCustomers]       = useState<Customer[]>([])
   const [customersLoading,setCustomersLoading]= useState(true)
   const [customersError,  setCustomersError]  = useState<string | null>(null)
+  const [saveError,       setSaveError]       = useState<string | null>(null)
   const [boatSpecs,       setBoatSpecs]       = useState<BoatSpec[]>([])
   const [selectedSpecId,  setSelectedSpecId]  = useState("")
 
@@ -88,6 +91,10 @@ export default function NewBoatPage() {
       .then(d => {
         if (Array.isArray(d)) {
           setCustomers(d)
+          const requestedOwnerId = new URLSearchParams(window.location.search).get("owner_id")
+          if (requestedOwnerId && d.some((customer) => customer.id === requestedOwnerId)) {
+            setOwnerId(requestedOwnerId)
+          }
         } else if (d?.error) {
           setCustomersError(d.error)
           console.error("Customers load error:", d.error)
@@ -134,6 +141,10 @@ export default function NewBoatPage() {
   const [insuranceExpiry, setInsurance]   = useState("")
   const [specialHandling, setSpecial]     = useState("")
   const [notes, setNotes]                 = useState("")
+  const [captainContactId, setCaptainContactId] = useState("")
+  const [ownerIsCaptain, setOwnerIsCaptain] = useState(false)
+  const [captainEffectiveFrom, setCaptainEffectiveFrom] = useState("")
+  const [captainEffectiveTo, setCaptainEffectiveTo] = useState("")
 
   function applyBoatSpec(specId: string) {
     setSelectedSpecId(specId)
@@ -167,10 +178,13 @@ export default function NewBoatPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
+    setSaveError(null)
     try {
+      const normalizedName = name.trim()
+      if (!normalizedName) throw new Error("Boat name is required")
       const body = {
         owner_id: ownerId || null,
-        name: name || null,
+        name: normalizedName,
         boat_type: boatType || null,
         usage_type: usageType || null,
         registration_number: registrationNumber || null,
@@ -192,6 +206,10 @@ export default function NewBoatPage() {
         insurance_expiry: insuranceExpiry || null,
         special_handling: specialHandling || null,
         notes: notes || null,
+        owner_is_captain: ownerIsCaptain,
+        captain_contact_id: captainContactId || null,
+        captain_effective_from: captainContactId || ownerIsCaptain ? captainEffectiveFrom || null : null,
+        captain_effective_to: captainContactId || ownerIsCaptain ? captainEffectiveTo || null : null,
         status: "ACTIVE",
       }
       const res = await fetch("/api/db/boats", {
@@ -200,9 +218,10 @@ export default function NewBoatPage() {
         body: JSON.stringify(body),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data?.error ?? "Save failed")
-      router.push(data?.id ? `/boats/${data.id}` : "/boats")
-    } catch {
+      if (!res.ok) throw new Error(toErrorMessage(data, "Save failed"))
+      router.push(ownerId ? `/customers/${ownerId}?boat_created=${data.id}` : data?.id ? `/boats/${data.id}` : "/boats")
+    } catch (error) {
+      setSaveError(toErrorMessage(error, "Save failed"))
       setSaving(false)
     }
   }
@@ -223,6 +242,11 @@ export default function NewBoatPage() {
       />
 
       <form id="boat-form" onSubmit={handleSubmit}>
+        {saveError && (
+          <div role="alert" className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            Boat was not saved: {saveError}
+          </div>
+        )}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Main: identity + dimensions */}
           <div className="lg:col-span-2 space-y-5">
@@ -241,7 +265,7 @@ export default function NewBoatPage() {
                         <option>Loading customers…</option>
                       </select>
                     ) : (
-                      <SelectField value={ownerId} onChange={setOwnerId} placeholder="— Select owner —"
+                      <SelectField value={ownerId} onChange={(value) => { setOwnerId(value); setCaptainContactId(""); setOwnerIsCaptain(false) }} placeholder="— Select owner —"
                         options={customers.map((c) => ({
                           value: c.id,
                           label: c.company_name ?? ([c.first_name, c.last_name].filter(Boolean).join(" ") || c.id),
@@ -290,6 +314,24 @@ export default function NewBoatPage() {
                     <Input value={flag} onChange={(e) => setFlag(e.target.value)} placeholder="Thailand" />
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader><CardTitle>Captain &amp; Operational Contact</CardTitle></CardHeader>
+              <CardContent>
+                <CaptainContactFields
+                  customerId={ownerId}
+                  contactId={captainContactId}
+                  onContactIdChange={setCaptainContactId}
+                  effectiveFrom={captainEffectiveFrom}
+                  onEffectiveFromChange={setCaptainEffectiveFrom}
+                  effectiveTo={captainEffectiveTo}
+                  onEffectiveToChange={setCaptainEffectiveTo}
+                  ownerIsCaptain={ownerIsCaptain}
+                  onOwnerIsCaptainChange={setOwnerIsCaptain}
+                  owner={customers.find((customer) => customer.id === ownerId) ?? null}
+                />
               </CardContent>
             </Card>
 

@@ -131,6 +131,7 @@ export const BOAT_STATUS_LABELS: Record<string, string> = {
 export const QUOTATION_STATUS_LABELS: Record<string, string> = {
   DRAFT: "Draft",
   PENDING_APPROVAL: "Pending Approval",
+  APPROVED: "Approved",
   SENT: "Sent",
   ACCEPTED: "Accepted",
   REJECTED: "Rejected",

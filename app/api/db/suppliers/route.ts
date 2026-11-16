@@ -1,27 +1,36 @@
 import { NextResponse } from "next/server"
-import { apiErrorMessage, dbQuery } from "@/lib/postgres"
+import { PROCUREMENT_WRITE_ROLES, STAFF_ROLES, requireApiActor } from "@/lib/api-auth"
+import { apiServerError } from "@/lib/api-route-utils"
+import { createServerClient } from "@/lib/supabase-server"
 
 export const dynamic = "force-dynamic"
 
 export async function GET(req: Request) {
+  const access = await requireApiActor(STAFF_ROLES)
+  if ("error" in access) return access.error
   try {
-    const { searchParams } = new URL(req.url)
-    const status   = searchParams.get("status")
-    const result = await dbQuery(`SELECT * FROM mms_suppliers${status ? " WHERE status = $1" : ""} ORDER BY name`, status ? [status] : [])
-    return NextResponse.json(result.rows)
-  } catch (e) {
-    return NextResponse.json({ error: apiErrorMessage(e) }, { status: 500 })
-  }
+    const status = new URL(req.url).searchParams.get("status")
+    let query = createServerClient({ requireServiceRole: true }).from("mms_suppliers").select("*").order("name")
+    if (status) query = query.eq("status", status)
+    const { data, error } = await query
+    if (error) throw error
+    return NextResponse.json(data)
+  } catch (error) { return apiServerError("suppliers.get", error) }
 }
 
 export async function POST(req: Request) {
+  const access = await requireApiActor(PROCUREMENT_WRITE_ROLES)
+  if ("error" in access) return access.error
   try {
     const body = await req.json()
-    if (!String(body.name ?? "").trim()) return NextResponse.json({ error: "Supplier name is required" }, { status: 400 })
-    const values = [body.code || null, body.name, body.contact_name || null, body.phone || null, body.email || null, body.address || null, body.tax_id || null, body.payment_terms || null, body.status || "active", body.notes || null]
-    const result = await dbQuery(`INSERT INTO mms_suppliers (code, name, contact_name, phone, email, address, tax_id, payment_terms, status, notes) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`, values)
-    return NextResponse.json(result.rows[0], { status: 201 })
-  } catch (e) {
-    return NextResponse.json({ error: apiErrorMessage(e) }, { status: 500 })
-  }
+    const name = String(body.name ?? "").trim()
+    if (!name) return NextResponse.json({ error: "Supplier name is required" }, { status: 400 })
+    const { data, error } = await createServerClient({ requireServiceRole: true }).from("mms_suppliers").insert({
+      code: body.code || null, name, contact_name: body.contact_name || null, phone: body.phone || null,
+      email: body.email || null, address: body.address || null, tax_id: body.tax_id || null,
+      payment_terms: body.payment_terms || "Net 30", status: body.status || "active", notes: body.notes || null,
+    }).select().single()
+    if (error) throw error
+    return NextResponse.json(data, { status: 201 })
+  } catch (error) { return apiServerError("suppliers.post", error) }
 }

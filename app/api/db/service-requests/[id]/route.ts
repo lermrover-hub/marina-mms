@@ -1,20 +1,50 @@
 import { NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase-server"
-
-const supabase = createServerClient()
+import { concealOtherCustomer, FINANCE_WRITE_ROLES, PORTAL_READ_ROLES, requireApiActor, SERVICE_REQUEST_WRITE_ROLES } from "@/lib/api-auth"
+import { canConfirmServiceOrder } from "@/lib/service-workflow"
+import { isMissingWorkflowSchema, mergeWorkflowMetadata, readLegacyWorkflowMetadata, writeLegacyWorkflowMetadata } from "@/lib/service-workflow-compat"
+import { INSURANCE_VERIFY_ROLES, SERVICE_ORDER_CONFIRM_ROLES, roleAllowed } from "@/lib/workflow-access"
 
 export const dynamic = "force-dynamic"
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const access = await requireApiActor(PORTAL_READ_ROLES)
+    if ("error" in access) return access.error
     const { id } = await params
-    const { data, error } = await supabase
-      .from("mms_service_requests")
-      .select("*")
-      .eq("id", id)
-      .single()
+    const supabase = createServerClient()
+    const { data, error } = await supabase.from("mms_service_requests").select("*").eq("id", id).single()
     if (error) throw error
-    return NextResponse.json(data)
+    const concealed = concealOtherCustomer(access.actor, data.customer_id)
+    if (concealed) return concealed
+    const legacy = readLegacyWorkflowMetadata(data.notes)
+
+    let items: Record<string, unknown>[] = []
+    const itemResult = await supabase.from("mms_service_request_items").select("*").eq("service_request_id", id).order("sort_order")
+    if (itemResult.error && !isMissingWorkflowSchema(itemResult.error)) throw itemResult.error
+    if (!itemResult.error) items = itemResult.data ?? []
+    const effective = mergeWorkflowMetadata(data, legacy)
+    const quotationId = effective.quotation_id ?? null
+    let quotation: Record<string, unknown> | null = null
+    if (!items.length && quotationId) {
+      const quoteItems = await supabase.from("mms_quotation_items").select("*").eq("quotation_id", quotationId).order("sort_order")
+      if (quoteItems.error) throw quoteItems.error
+      items = (quoteItems.data ?? []).map((item) => ({ ...item, operator_type: effective.operator_type ?? data.execution_type, direct_cost: item.direct_cost_snapshot_thb ?? 0 }))
+    }
+    if (quotationId) {
+      const quotationResult = await supabase.from("mms_quotations").select("id,status,internal_approval_status,quote_number").eq("id", quotationId).single()
+      if (quotationResult.error) throw quotationResult.error
+      quotation = quotationResult.data
+    }
+
+    let paymentPlan: Record<string, unknown> | null = null
+    const planResult = await supabase.from("mms_service_payment_plans").select("*").eq("service_request_id", id).maybeSingle()
+    if (planResult.error && !isMissingWorkflowSchema(planResult.error)) throw planResult.error
+    if (!planResult.error) paymentPlan = planResult.data
+    if (!paymentPlan && effective.payment_plan) paymentPlan = effective.payment_plan
+    const serviceGroups = [...new Set(items.map((item) => String(item.service_group ?? "")).filter(Boolean))]
+    const serviceTypes = [serviceGroups.includes("STORAGE") ? "STORAGE" : null, serviceGroups.includes("YARD") ? "YARD_SERVICE" : null].filter(Boolean)
+    return NextResponse.json({ ...effective, service_types: serviceTypes, quotation_id: quotationId, quotation, items, payment_plan: paymentPlan })
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 })
   }
@@ -22,16 +52,81 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const access = await requireApiActor([...SERVICE_REQUEST_WRITE_ROLES, ...FINANCE_WRITE_ROLES])
+    if ("error" in access) return access.error
     const { id } = await params
     const body = await req.json()
-    const { data, error } = await supabase
-      .from("mms_service_requests")
-      .update({ ...body, updated_at: new Date().toISOString() })
-      .eq("id", id)
-      .select()
-      .single()
-    if (error) throw error
-    return NextResponse.json(data)
+    const supabase = createServerClient({ requireServiceRole: true })
+    const { data: current, error: currentError } = await supabase.from("mms_service_requests").select("*").eq("id", id).single()
+    if (currentError) throw currentError
+    const legacy = readLegacyWorkflowMetadata(current.notes)
+    const effective = mergeWorkflowMetadata(current, legacy)
+    const now = new Date().toISOString()
+
+    async function updateWorkflow(columns: Record<string, unknown>, metadata: Record<string, unknown>) {
+      const nextMetadata = { ...legacy, ...metadata }
+      const result = await supabase.from("mms_service_requests").update({
+        ...columns,
+        notes: writeLegacyWorkflowMetadata(current.notes, nextMetadata),
+        updated_at: now,
+      }).eq("id", id).select().single()
+      if (!result.error) return { ...result.data, ...nextMetadata }
+      if (!isMissingWorkflowSchema(result.error)) throw result.error
+      const fallback = await supabase.from("mms_service_requests").update({ notes: writeLegacyWorkflowMetadata(current.notes, nextMetadata), ...(columns.status ? { status: columns.status } : {}), updated_at: now }).eq("id", id).select().single()
+      if (fallback.error) throw fallback.error
+      return { ...fallback.data, ...nextMetadata }
+    }
+
+    if (body.action === "set_payment_gate") {
+      if (!FINANCE_WRITE_ROLES.includes(access.actor.role as (typeof FINANCE_WRITE_ROLES)[number])) return NextResponse.json({ error: "Only Finance, Managing Director, or Super Admin may update payment clearance." }, { status: 403 })
+      const next = String(body.status ?? "")
+      if (!["AWAITING_PAYMENT", "DEPOSIT_PAID", "PAID", "CREDIT_APPROVED", "OVERDUE", "CREDIT_HOLD", "CANCELLED"].includes(next)) return NextResponse.json({ error: "Invalid payment gate status." }, { status: 400 })
+      const quotationId = effective.quotation_id
+      if (!quotationId) return NextResponse.json({ error: "Generate and approve the quotation before updating payment clearance." }, { status: 409 })
+      const quotationResult = await supabase.from("mms_quotations").select("status,internal_approval_status").eq("id", quotationId).single()
+      if (quotationResult.error) throw quotationResult.error
+      const quotation = quotationResult.data
+      if (quotation.internal_approval_status !== "APPROVED" || !["SENT", "ACCEPTED", "CONVERTED"].includes(quotation.status)) {
+        return NextResponse.json({ error: "Manager approval and customer delivery are required before Finance may clear payment or credit." }, { status: 409 })
+      }
+      if (next === "CREDIT_APPROVED" && effective.payment_mode !== "CREDIT") return NextResponse.json({ error: "Credit approval applies only to a CREDIT payment plan." }, { status: 409 })
+      const planUpdate: Record<string, unknown> = { status: next, updated_at: now }
+      if (next === "CREDIT_APPROVED") {
+        planUpdate.credit_approved_by = access.actor.userId
+        planUpdate.credit_approved_at = now
+        planUpdate.credit_limit_snapshot = Number(body.credit_limit ?? 0)
+        planUpdate.credit_expires_at = body.credit_expires_at ?? null
+      }
+      const planResult = await supabase.from("mms_service_payment_plans").update(planUpdate).eq("service_request_id", id)
+      if (planResult.error && !isMissingWorkflowSchema(planResult.error)) throw planResult.error
+      const legacyPlan = effective.payment_plan ? { ...effective.payment_plan, ...planUpdate } : null
+      const data = await updateWorkflow({ payment_gate_status: next }, { payment_gate_status: next, payment_plan: legacyPlan })
+      return NextResponse.json(data)
+    }
+
+    if (body.action === "verify_insurance") {
+      if (!roleAllowed(access.actor.role, INSURANCE_VERIFY_ROLES)) return NextResponse.json({ error: "Manager or Chief Engineer must verify contractor insurance." }, { status: 403 })
+      if (effective.operator_type !== "BOAT_OWNER_CONTRACTOR") return NextResponse.json({ error: "Insurance verification is required only for a boat-owner contractor." }, { status: 409 })
+      return NextResponse.json(await updateWorkflow({ insurance_status: "VERIFIED" }, { insurance_status: "VERIFIED" }))
+    }
+
+    if (body.action === "confirm_service_order") {
+      if (!roleAllowed(access.actor.role, SERVICE_ORDER_CONFIRM_ROLES)) return NextResponse.json({ error: "Operations staff must confirm the Service Order." }, { status: 403 })
+      if (!canConfirmServiceOrder(effective.payment_mode, effective.payment_gate_status)) return NextResponse.json({ error: `Payment gate is not cleared (${effective.payment_mode}: ${effective.payment_gate_status}).` }, { status: 409 })
+      const quotationId = effective.quotation_id
+      if (!quotationId) return NextResponse.json({ error: "The Service Request has no linked quotation." }, { status: 409 })
+      const quotationResult = await supabase.from("mms_quotations").select("status,internal_approval_status").eq("id", quotationId).single()
+      if (quotationResult.error) throw quotationResult.error
+      if (quotationResult.data.internal_approval_status !== "APPROVED" || !["SENT", "ACCEPTED", "CONVERTED"].includes(quotationResult.data.status)) return NextResponse.json({ error: "The approved quotation must be sent to the customer before confirming the Service Order." }, { status: 409 })
+      if (effective.operator_type === "BOAT_OWNER_CONTRACTOR" && effective.insurance_status !== "VERIFIED") return NextResponse.json({ error: "Verify the boat-owner contractor insurance before confirming service." }, { status: 409 })
+      return NextResponse.json(await updateWorkflow({ status: "SERVICE_ORDER_CONFIRMED", service_order_confirmed_at: now }, { service_order_confirmed_at: now }))
+    }
+
+    const allowedStatuses = ["NEW_REQUEST", "INSPECTION_REQUIRED", "QUOTATION_DRAFT", "CANCELLED", "COMPLETED"]
+    if (body.action === "set_status" && allowedStatuses.includes(String(body.status))) {
+      return NextResponse.json(await updateWorkflow({ status: body.status }, {}))
+    }
+    return NextResponse.json({ error: "Unsupported service-request action." }, { status: 400 })
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 })
   }

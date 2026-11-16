@@ -56,6 +56,26 @@ export type Boat = {
   current_location_code: string | null
   special_handling: string | null
   notes: string | null
+  captain_contact_id?: string | null
+  captain_effective_from?: string | null
+  captain_effective_to?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type CustomerContact = {
+  id: string
+  customer_id: string
+  full_name: string
+  role_title: string
+  phone: string | null
+  email: string | null
+  line_id: string | null
+  whatsapp_number: string | null
+  preferred_channel: "PHONE" | "LINE" | "WHATSAPP" | "EMAIL"
+  operational_notifications: boolean
+  notes: string | null
+  is_active: boolean
   created_at: string
   updated_at: string
 }
@@ -95,6 +115,33 @@ export type ServiceRequest = {
   scheduled_date: string | null
   completed_date: string | null
   notes: string | null
+  execution_type: "INTERNAL" | "SUBCONTRACTOR" | "MIXED" | string
+  subcontractor_required: boolean
+  budget_min: number | null
+  budget_max: number | null
+  procurement_status: string
+  request_type?: string | null
+  ramp_operation_plan?: string | null
+  confirmed_haul_out_date?: string | null
+  confirmed_launch_date?: string | null
+  tow_in_date?: string | null
+  tow_out_date?: string | null
+  service_type?: string | null
+  storage_period?: string | null
+  operator_type?: string | null
+  insurance_status?: string | null
+  subcontractor_trade?: string | null
+  contractor_cost?: number | null
+  markup_pct?: number | null
+  payment_mode?: string | null
+  payment_gate_status?: string | null
+  service_order_confirmed_at?: string | null
+  quotation_id?: string | null
+  operational_contact_id?: string | null
+  operational_contact_name?: string | null
+  operational_contact_phone?: string | null
+  operational_contact_email?: string | null
+  operational_contact_preferred_channel?: string | null
   created_at: string
   updated_at: string
 }
@@ -106,8 +153,22 @@ export type Quotation = {
   customer_name: string | null
   boat_id: string | null
   boat_name: string | null
+  sr_id: string | null
+  work_order_id: string | null
+  execution_type: string
+  contractor_cost_estimate: number
+  contractor_markup_pct: number
   title: string | null
   status: string
+  internal_approval_status?: string | null
+  internal_approved_by?: string | null
+  internal_approval_role?: string | null
+  internal_approved_at?: string | null
+  customer_sent_at?: string | null
+  required_approver_role?: "MANAGER" | "GENERAL_MANAGER" | string
+  max_discount_pct?: number
+  has_no_charge_line?: boolean
+  payment_mode?: string
   subtotal: number
   discount: number
   vat_amount: number
@@ -126,6 +187,9 @@ export type Quotation = {
 export type WorkOrder = {
   id: string
   reference: string
+  sr_id?: string | null
+  service_request_id: string | null
+  quotation_id?: string | null
   customer_id: string | null
   customer_name: string | null
   boat_id: string | null
@@ -139,12 +203,58 @@ export type WorkOrder = {
   actual_end_date: string | null
   assigned_to: string | null
   contractor_name: string | null
+  execution_type: "INTERNAL" | "SUBCONTRACTOR" | "MIXED" | string
+  subcontractor_id: string | null
+  subcontractor_quote_id: string | null
   total_revenue: number
   total_labor_cost: number
   total_material_cost: number
   total_contractor_cost: number
   progress_percent: number
   notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type Subcontractor = {
+  id: string
+  name: string
+  tax_id: string | null
+  specialties: string | null
+  contact_name: string | null
+  phone: string | null
+  email: string | null
+  payment_terms: string | null
+  rating: number | null
+  status: string
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type SubcontractorQuote = {
+  id: string
+  quote_reference: string
+  service_request_id: string
+  work_order_id: string | null
+  subcontractor_id: string | null
+  subcontractor_name: string
+  scope: string
+  quoted_amount: number
+  vat_amount: number
+  total_amount: number
+  lead_time_days: number | null
+  warranty_months: number | null
+  payment_terms: string | null
+  valid_until: string | null
+  status: string
+  cost_approved_by: string | null
+  cost_approved_at: string | null
+  contractor_po_number: string | null
+  contractor_po_issued_at: string | null
+  notes: string | null
+  received_at: string
+  selected_at: string | null
   created_at: string
   updated_at: string
 }
@@ -161,6 +271,7 @@ export type Invoice = {
   boat_name: string | null
   quotation_id: string | null
   work_order_id: string | null
+  ramp_booking_id: string | null
   invoice_date: string
   due_date: string | null
   status: string
@@ -228,7 +339,7 @@ export type BerthAssignment = {
   boat_name: string | null
   customer_name: string | null
   start_date: string
-  end_date: string
+  end_date: string | null
   status: string
   notes: string | null
   created_at: string
@@ -303,7 +414,17 @@ export type RampBooking = {
   customer_name: string | null
   boat_id: string | null
   boat_name: string | null
+  service_request_id: string | null
+  work_order_id: string | null
+  quotation_id: string | null
   operation_type: string
+  service_category: string | null
+  service_option: string | null
+  billing_cycle: string | null
+  recurring_billing: boolean
+  next_billing_date: string | null
+  pricing_adjustment_type: string | null
+  pricing_adjustment_pct: number
   requested_date: string
   requested_time: string | null
   confirmed_time: string | null
@@ -313,6 +434,12 @@ export type RampBooking = {
   required_tide_m: number | null
   assigned_staff: string | null
   status: string
+  revenue_amount: number
+  estimated_cost_amount: number
+  revenue_account_code: string | null
+  cost_account_code: string | null
+  financial_status: string
+  invoice_id: string | null
   notes: string | null
   created_at: string
   updated_at: string

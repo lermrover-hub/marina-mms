@@ -15,7 +15,6 @@ import type { Boat, Customer } from "@/lib/supabase"
 // ─── constants ───────────────────────────────────────────────────────────────
 
 const CONTRACT_TYPES = [
-  { value: "WET_BERTH",         label: "Wet Berth",        icon: "⚓", desc: "Marina berth rental" },
   { value: "DRY_STORAGE",       label: "Dry Storage",      icon: "🏗️", desc: "Dry storage yard slot" },
   { value: "RAMP_SERVICE",      label: "Ramp Service",     icon: "🚢", desc: "Ongoing ramp agreement" },
   { value: "SERVICE_AGREEMENT", label: "Service Agreement",icon: "🔧", desc: "Maintenance / service contract" },
@@ -40,7 +39,7 @@ export default function NewContractPage() {
   const router = useRouter()
 
   // contract type & billing
-  const [contractType,  setContractType]  = useState("WET_BERTH")
+  const [contractType,  setContractType]  = useState("DRY_STORAGE")
   const [billingCycle,  setBillingCycle]  = useState("MONTHLY")
   const [rateAmount,    setRateAmount]    = useState("")
   const [depositAmount, setDepositAmount] = useState("")
@@ -138,6 +137,8 @@ export default function NewContractPage() {
         end_date:       endDate       || null,
         auto_renew:     autoRenew,
         renewal_notice_days: parseInt(renewalDays) || 30,
+        billing_scenario: contractType === "DRY_STORAGE" ? "SPACE_LEASE" : "REPAIR_HOLD_30D",
+        reminder_lead_days: 7,
         berth_code:     berthCode || null,
         customer_id:    selectedCustomer?.id   ?? null,
         customer_name:  selectedCustomer ? customerDisplayName(selectedCustomer) : (customerQuery || null),

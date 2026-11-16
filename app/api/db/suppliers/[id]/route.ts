@@ -1,35 +1,31 @@
 import { NextResponse } from "next/server"
-import { apiErrorMessage, buildUpdate, dbQuery } from "@/lib/postgres"
+import { PROCUREMENT_WRITE_ROLES, STAFF_ROLES, requireApiActor } from "@/lib/api-auth"
+import { apiServerError, pickFields } from "@/lib/api-route-utils"
+import { createServerClient } from "@/lib/supabase-server"
 
 export const dynamic = "force-dynamic"
+const fields = ["code","name","contact_name","phone","email","address","tax_id","payment_terms","status","notes"] as const
 
-export async function GET(
-  _req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const access = await requireApiActor(STAFF_ROLES)
+  if ("error" in access) return access.error
   try {
     const { id } = await params
-    const result = await dbQuery("SELECT * FROM mms_suppliers WHERE id = $1", [id])
-    if (!result.rows[0]) return NextResponse.json({ error: "Not found" }, { status: 404 })
-    return NextResponse.json(result.rows[0])
-  } catch (e) {
-    return NextResponse.json({ error: apiErrorMessage(e) }, { status: 500 })
-  }
+    const { data, error } = await createServerClient({ requireServiceRole: true }).from("mms_suppliers").select("*").eq("id", id).maybeSingle()
+    if (error) throw error
+    return data ? NextResponse.json(data) : NextResponse.json({ error: "Not found" }, { status: 404 })
+  } catch (error) { return apiServerError("suppliers.detail.get", error) }
 }
 
-export async function PATCH(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const access = await requireApiActor(PROCUREMENT_WRITE_ROLES)
+  if ("error" in access) return access.error
   try {
+    const update = pickFields(await req.json(), fields)
+    if (!Object.keys(update).length) return NextResponse.json({ error: "No supported fields" }, { status: 400 })
     const { id } = await params
-    const body = await req.json()
-    const update = buildUpdate(body, ["code","name","contact_name","phone","email","address","tax_id","payment_terms","status","notes"])
-    if (!update.keys.length) return NextResponse.json({ error: "No supported fields" }, { status: 400 })
-    const result = await dbQuery(`UPDATE mms_suppliers SET ${update.clause}, updated_at = now() WHERE id = $${update.values.length + 1} RETURNING *`, [...update.values, id])
-    if (!result.rows[0]) return NextResponse.json({ error: "Not found" }, { status: 404 })
-    return NextResponse.json(result.rows[0])
-  } catch (e) {
-    return NextResponse.json({ error: apiErrorMessage(e) }, { status: 500 })
-  }
+    const { data, error } = await createServerClient({ requireServiceRole: true }).from("mms_suppliers").update({ ...update, updated_at: new Date().toISOString() }).eq("id", id).select().maybeSingle()
+    if (error) throw error
+    return data ? NextResponse.json(data) : NextResponse.json({ error: "Not found" }, { status: 404 })
+  } catch (error) { return apiServerError("suppliers.detail.patch", error) }
 }

@@ -1,24 +1,25 @@
 import { NextResponse } from "next/server"
-import { apiErrorMessage, dbTransaction } from "@/lib/postgres"
+import { PROCUREMENT_WRITE_ROLES, requireApiActor } from "@/lib/api-auth"
+import { apiServerError, finiteNonNegative } from "@/lib/api-route-utils"
+import { createServerClient } from "@/lib/supabase-server"
 
 export const dynamic = "force-dynamic"
 
 export async function POST(req: Request) {
+  const access = await requireApiActor(PROCUREMENT_WRITE_ROLES)
+  if ("error" in access) return access.error
   try {
     const body = await req.json()
-
-    const qty        = Number(body.qty)        || 0
-    const unit_price = Number(body.unit_price) || 0
-    const line_total = parseFloat((qty * unit_price).toFixed(2))
-
-    if (!body.po_id || !String(body.description ?? "").trim()) return NextResponse.json({ error: "po_id and description are required" }, { status: 400 })
-    const item = await dbTransaction(async (client) => {
-      const inserted = await client.query(`INSERT INTO mms_purchase_order_items (po_id, item_code, description, qty, unit, unit_price, line_total) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`, [body.po_id, body.item_code || null, body.description, qty, body.unit || null, unit_price, line_total])
-      await client.query(`UPDATE mms_purchase_orders SET subtotal = totals.subtotal, vat_amount = round(totals.subtotal * 0.07, 2), total_amount = totals.subtotal + round(totals.subtotal * 0.07, 2), updated_at = now() FROM (SELECT COALESCE(sum(line_total),0) AS subtotal FROM mms_purchase_order_items WHERE po_id = $1) totals WHERE id = $1`, [body.po_id])
-      return inserted.rows[0]
-    })
-    return NextResponse.json(item, { status: 201 })
-  } catch (e) {
-    return NextResponse.json({ error: apiErrorMessage(e) }, { status: 500 })
-  }
+    const description = String(body.description ?? "").trim()
+    const qty = finiteNonNegative(body.qty ?? 0)
+    const unitPrice = finiteNonNegative(body.unit_price ?? 0)
+    if (!body.po_id || !description) return NextResponse.json({ error: "po_id and description are required" }, { status: 400 })
+    if (qty == null || unitPrice == null) return NextResponse.json({ error: "qty and unit_price must be non-negative" }, { status: 400 })
+    const { data, error } = await createServerClient({ requireServiceRole: true }).from("mms_purchase_order_items").insert({
+      po_id: body.po_id, item_code: body.item_code || null, description, qty, unit: body.unit || null,
+      unit_price: unitPrice, line_total: Number((qty * unitPrice).toFixed(2)),
+    }).select().single()
+    if (error) throw error
+    return NextResponse.json(data, { status: 201 })
+  } catch (error) { return apiServerError("purchase-order-items.post", error) }
 }

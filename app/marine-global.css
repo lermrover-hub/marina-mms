@@ -1,0 +1,83 @@
+/* Approved Ocean Rover palette. Status colors remain independent. */
+:root {
+  --orm-navy: #0B2F5B;
+  --orm-gold: #B18F2F;
+  --orm-blue: #16517F;
+  --orm-ice: #EDF3F8;
+  --orm-white: #FFFFFF;
+  --orm-muted: #52677d;
+  --marina-gold: var(--orm-navy);
+  --marina-gold-hover: var(--orm-blue);
+  --ocean-turquoise: var(--orm-blue);
+  --ocean-dark-teal: var(--orm-navy);
+  --bg-main: var(--orm-ice);
+  --bg-surface: var(--orm-white);
+  --bg-surface-2: var(--orm-ice);
+  --bg-sidebar: var(--orm-navy);
+  --text-primary: var(--orm-navy);
+  --text-muted: var(--orm-muted);
+  --text-on-gold: var(--orm-white);
+}
+body, .ocean-rover-shell, .ocean-rover-content { background: var(--orm-ice); }
+body::before { display: none; }
+.bg-gray-50, .bg-gray-100, .bg-slate-50, .bg-slate-100 { background-color: var(--orm-ice) !important; }
+input, select, textarea { color: var(--orm-navy); accent-color: var(--orm-navy); }
+label { color: var(--orm-muted); }
+button[class*="bg-ocean-turquoise"], a[class*="bg-ocean-turquoise"] { background: var(--orm-navy); color: white; box-shadow: none; }
+button[class*="bg-ocean-turquoise"]:hover, a[class*="bg-ocean-turquoise"]:hover { background: var(--orm-blue); }
+:focus-visible { outline: 2px solid var(--orm-blue); outline-offset: 3px; }
+.orm-brand-logo { width: 190px !important; height: 96px !important; background: transparent !important; object-fit: contain; }
+.orm-topbar { gap: 8px; position: relative; z-index: 60; }
+.orm-topbar > div { min-width: 0; }
+@media (max-width: 480px) {
+  .orm-topbar > div { gap: 6px; }
+  .orm-topbar button { padding-left: 4px; padding-right: 4px; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0s !important; } }
+
+.orm-dashboard { container-type: inline-size; display: grid; gap: 18px; max-width: 1700px; margin: auto; }
+.orm-dashboard-title h1 { font-size: 28px; font-weight: 750; line-height: 1.2; }
+.orm-dashboard-title p, .orm-caption { color: var(--orm-muted); font-size: 12px; margin-top: 6px; }
+.orm-kpis { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 14px; }
+.orm-kpi, .orm-panel { background: var(--orm-white); border: 1px solid var(--color-border); border-radius: 8px; padding: 18px; min-width: 0; box-shadow: 0 3px 12px rgb(11 47 91 / 4%); }
+.orm-kpi { display: flex; gap: 14px; align-items: flex-start; }
+.orm-kpi > svg { color: var(--orm-gold); flex-shrink: 0; }
+.orm-kpi h2 { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
+.orm-kpi strong { display: block; font-size: clamp(19px,2vw,29px); margin-top: 6px; line-height: 1.2; overflow-wrap: anywhere; }
+.orm-kpi p { color: var(--orm-muted); font-size: 11px; margin-top: 5px; }
+.orm-operations-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0,1fr) minmax(180px,.65fr); gap: 16px; grid-template-areas: "bookings occupancy occupancy" "tide jobs actions"; align-items: start; }
+.orm-bookings { grid-area: bookings; }.orm-occupancy { grid-area: occupancy; }.orm-tide { grid-area: tide; }.orm-jobs { grid-area: jobs; }.orm-actions { grid-area: actions; }
+.orm-panel-heading { display: flex; gap: 12px; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.orm-panel-heading h2 { display: flex; gap: 8px; align-items: center; font-size: 12px; font-weight: 700; text-transform: uppercase; }
+.orm-panel-heading h2 svg { flex-shrink: 0; }
+.orm-panel-heading > a { display: inline-flex; gap: 3px; align-items: center; color: var(--orm-blue); font-size: 11px; white-space: nowrap; }
+.orm-booking-row { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 10px; padding: 16px 5px; border-bottom: 1px solid var(--color-border); font-size: 12px; align-items: center; }
+.orm-booking-row strong, .orm-job-row strong { font-weight: 600; overflow-wrap: anywhere; }
+.orm-booking-row small, .orm-job-row small { display: block; color: var(--orm-muted); font-size: 11px; margin-top: 4px; }
+.orm-job-row { display: flex; gap: 12px; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--color-border); padding: 13px 0; font-size: 12px; }
+.orm-actions > a { display: flex; justify-content: space-between; gap: 8px; align-items: center; background: var(--orm-navy); color: white; border-radius: 5px; padding: 12px; margin-top: 9px; font-size: 12px; min-height: 44px; }
+.orm-actions > a:first-of-type { background: var(--orm-gold); color: #132a41; font-weight: 700; }
+.orm-tide-summary { display: flex; flex-wrap: wrap; gap: 10px; align-items: baseline; }
+.orm-tide-summary strong { font-size: 24px; }.orm-tide-summary span { font-size: 11px; color: var(--orm-muted); }
+.orm-empty { padding: 35px 0; color: var(--orm-muted); }
+.orm-photo-map { position: relative; width: 100%; overflow: hidden; border-radius: 7px; background: var(--orm-ice); }
+.orm-photo-map > img { display: block; width: 100%; height: auto; }
+.orm-photo-slot { position: absolute; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 1px; border: 1px solid transparent; border-radius: 2px; color: var(--orm-navy); }
+.orm-photo-slot > span { background: white; border-radius: 2px; padding: 0 2px; font-size: clamp(7px,1vw,13px); font-weight: 750; }
+.orm-slot-occupied { background: rgb(22 163 74 / 38%); border-color: #15803d; }
+.orm-slot-reserved { background: rgb(37 99 235 / 30%); border-color: #2563eb; }
+.orm-slot-maintenance { background: rgb(217 119 6 / 40%); border-color: #a16207; }
+.orm-slot-blocked { background: rgb(100 116 139 / 50%); border-style: dashed; }
+.orm-slot-unconfigured { border: 1px dotted #64748b; }
+.orm-assigned-boat { width: 90%; height: 90%; object-fit: contain; }
+.orm-photo-compact { max-width: 400px; margin-inline: auto; }
+.orm-photo-slot:hover, .orm-photo-slot:focus-visible { z-index: 2; outline: 2px solid var(--orm-gold); background-color: rgb(177 143 47 / 35%); }
+@container (max-width: 900px) {
+  .orm-kpis { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .orm-operations-grid { grid-template-columns: repeat(2,minmax(0,1fr)); grid-template-areas: "actions tide" "bookings occupancy" "jobs jobs"; }
+}
+@container (max-width: 600px) {
+  .orm-operations-grid { grid-template-columns: minmax(0,1fr); grid-template-areas: "actions" "tide" "bookings" "occupancy" "jobs"; }
+  .orm-kpis { gap: 8px; }.orm-kpi { padding: 12px; gap: 8px; }.orm-kpi > svg { width: 19px; }.orm-kpi strong { font-size: 22px; }
+  .orm-panel { padding: 14px; }.orm-booking-row { grid-template-columns: 1fr 1fr; }.orm-booking-row > span:last-child { grid-column: 1/-1; display: flex; align-items: center; gap: 12px; }
+}

@@ -1,312 +1,143 @@
 "use client"
-import React, { useState, useEffect } from "react"
+
+import React, { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
-import {
-  AlertCircle, ArrowRight, Calendar, CheckCircle2, Clock,
-  ClipboardList, Edit, Ship, User, Wrench, XCircle, Loader2,
-} from "lucide-react"
+import { useSession } from "next-auth/react"
+import { AlertCircle, CheckCircle2, ClipboardList, CreditCard, Loader2, Lock, Ship, ShieldCheck, Wrench } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/shared/PageHeader"
+import { HelpHint } from "@/components/shared/HelpHint"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { ServiceRequest } from "@/lib/supabase"
-import { formatDate } from "@/lib/utils"
+import { formatDate, formatTHB } from "@/lib/utils"
+import { INSURANCE_VERIFY_ROLES, PAYMENT_GATE_ROLES, SERVICE_ORDER_CONFIRM_ROLES, WORK_ORDER_CREATE_ROLES, roleAllowed } from "@/lib/workflow-access"
 
-// ─── Status config ─────────────────────────────────────────────────────────────
-const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  NEW_REQUEST:               { label: "New Request",         color: "bg-blue-100 text-blue-700",    icon: <ClipboardList className="h-3.5 w-3.5" /> },
-  INSPECTION_REQUIRED:       { label: "Inspection Required", color: "bg-amber-100 text-amber-700",  icon: <AlertCircle className="h-3.5 w-3.5" /> },
-  QUOTATION_DRAFT:           { label: "Quotation Draft",     color: "bg-gray-100 text-gray-600",    icon: <Edit className="h-3.5 w-3.5" /> },
-  QUOTATION_SENT:            { label: "Quotation Sent",      color: "bg-purple-100 text-purple-700",icon: <ArrowRight className="h-3.5 w-3.5" /> },
-  WAITING_CUSTOMER_APPROVAL: { label: "Waiting Approval",    color: "bg-yellow-100 text-yellow-700",icon: <Clock className="h-3.5 w-3.5" /> },
-  APPROVED:                  { label: "Approved",            color: "bg-teal-100 text-teal-700",    icon: <CheckCircle2 className="h-3.5 w-3.5" /> },
-  IN_PROGRESS:               { label: "In Progress",         color: "bg-blue-100 text-blue-800",    icon: <Wrench className="h-3.5 w-3.5" /> },
-  COMPLETED:                 { label: "Completed",           color: "bg-green-100 text-green-700",  icon: <CheckCircle2 className="h-3.5 w-3.5" /> },
-  CANCELLED:                 { label: "Cancelled",           color: "bg-red-100 text-red-700",      icon: <XCircle className="h-3.5 w-3.5" /> },
-}
+type RequestItem = { id: string; description: string; pricing_code: string | null; operator_type: string; qty: number; unit: string; unit_price: number; direct_cost: number; discount_pct: number }
+type PaymentPlan = { payment_mode: string; status: string; total_amount: number; deposit_required_amount: number; first_cycle_due_date: string | null; post_launch_due_date: string | null; good_credit_customer: boolean; billing_scenario?: string | null; reminder_lead_days?: number | null }
+type QuotationGate = { id: string; quote_number: string; status: string; internal_approval_status: string }
+type Detail = ServiceRequest & { billing_scenario?: string | null; service_types?: string[]; items: RequestItem[]; payment_plan: PaymentPlan | null; quotation: QuotationGate | null }
 
-const PRIORITY_CONFIG: Record<string, { label: string; color: string }> = {
-  LOW:    { label: "Low",    color: "bg-gray-100 text-gray-600" },
-  MEDIUM: { label: "Medium", color: "bg-amber-100 text-amber-700" },
-  HIGH:   { label: "High",   color: "bg-red-100 text-red-700" },
-  URGENT: { label: "Urgent", color: "bg-red-600 text-white" },
-}
+const stepOrder = ["SERVICE_REQUEST", "DRAFT_QUOTATION", "APPROVAL_PAYMENT", "SERVICE_ORDER", "WORK_ORDER"]
 
-function nextActions(status: string) {
-  switch (status) {
-    case "NEW_REQUEST":
-      return [{ label: "Start Inspection", next: "INSPECTION_REQUIRED", variant: "teal" as const }]
-    case "INSPECTION_REQUIRED":
-      return [{ label: "Draft Quotation", next: "QUOTATION_DRAFT", variant: "teal" as const }]
-    case "QUOTATION_SENT":
-      return [
-        { label: "Mark Approved",  next: "APPROVED",   variant: "teal" as const },
-        { label: "Mark Rejected",  next: "CANCELLED",  variant: "outline" as const },
-      ]
-    case "APPROVED":
-      return [{ label: "Start Work", next: "IN_PROGRESS", variant: "teal" as const }]
-    case "IN_PROGRESS":
-      return [{ label: "Mark Completed", next: "COMPLETED", variant: "teal" as const }]
-    default:
-      return []
-  }
-}
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
 export default function ServiceRequestDetailPage() {
-  const params = useParams<{ id: string }>()
-  const id     = params?.id ?? ""
+  const id = useParams<{ id: string }>()?.id ?? ""
   const router = useRouter()
-
-  const [sr,      setSr]      = useState<ServiceRequest | null>(null)
+  const { data: session } = useSession()
+  const actorRole = (session?.user as { role?: string } | undefined)?.role ?? ""
+  const canVerifyInsurance = roleAllowed(actorRole, INSURANCE_VERIFY_ROLES)
+  const canUpdatePayment = roleAllowed(actorRole, PAYMENT_GATE_ROLES)
+  const canConfirmService = roleAllowed(actorRole, SERVICE_ORDER_CONFIRM_ROLES)
+  const canCreateWorkOrder = roleAllowed(actorRole, WORK_ORDER_CREATE_ROLES)
+  const [request, setRequest] = useState<Detail | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error,   setError]   = useState<string | null>(null)
-  const [saving,  setSaving]  = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [paymentStatus, setPaymentStatus] = useState("PAID")
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     if (!id) return
-    setLoading(true)
-    fetch(`/api/db/service-requests/${id}`)
-      .then(r => r.json())
-      .then(d => {
-        if (d?.error) setError("Service request not found")
-        else setSr(d)
-      })
-      .catch(() => setError("Network error"))
-      .finally(() => setLoading(false))
+    const response = await fetch(`/api/db/service-requests/${id}`)
+    const data = await response.json()
+    if (!response.ok) throw new Error(data?.error ?? "Service request not found")
+    setRequest(data)
+    // Keep the Finance control aligned with the canonical payment mode/status
+    // returned by the API; do not default a credit workflow to "Paid".
+    setPaymentStatus(data?.payment_mode === "CREDIT" ? "CREDIT_APPROVED" : (data?.payment_gate_status ?? "PAID"))
   }, [id])
 
-  async function handleAction(nextStatus: string) {
-    if (!sr) return
-    setSaving(true)
+  useEffect(() => {
+    load().catch((e) => setError(String(e))).finally(() => setLoading(false))
+  }, [load])
+
+  async function action(payload: Record<string, unknown>) {
+    setBusy(true)
+    setError(null)
     try {
-      const res = await fetch(`/api/db/service-requests/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: nextStatus }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data?.error ?? "Update failed")
-      setSr(data)
+      const response = await fetch(`/api/db/service-requests/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data?.error ?? "Update failed")
+      await load()
     } catch (e) {
-      alert("Failed to update: " + String(e))
+      setError(e instanceof Error ? e.message : String(e))
     } finally {
-      setSaving(false)
+      setBusy(false)
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-32 text-gray-400">
-        <Loader2 className="h-6 w-6 animate-spin mr-2" /> Loading…
-      </div>
-    )
+  async function createWorkOrder() {
+    if (!request) return
+    setBusy(true)
+    setError(null)
+    try {
+      const response = await fetch("/api/db/work-orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+        reference: `WO-${Date.now().toString().slice(-6)}`, sr_id: request.id, service_request_id: request.id, quotation_id: request.quotation_id,
+        customer_id: request.customer_id, customer_name: request.customer_name, boat_id: request.boat_id, boat_name: request.boat_name,
+        title: request.title, category: request.category, priority: request.priority, execution_type: request.execution_type, status: "NEW_REQUEST",
+        notes: "Work Order created only after payment clearance and Service Order confirmation.",
+      }) })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data?.error ?? "Work Order creation failed")
+      router.push(`/work-orders/${data.id}`)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+      setBusy(false)
+    }
   }
 
-  if (error || !sr) {
-    return (
-      <div className="flex flex-col items-center justify-center py-32 text-center">
-        <AlertCircle className="h-10 w-10 text-gray-300 mb-3" />
-        <p className="text-gray-500">{error ?? "Service request not found"}</p>
-        <Link href="/service-requests" className="text-sm text-teal-600 hover:underline mt-2">← Back</Link>
-      </div>
-    )
-  }
+  if (loading) return <div className="flex justify-center py-32 text-gray-400"><Loader2 className="mr-2 h-5 w-5 animate-spin" />Loading workflow…</div>
+  if (!request) return <div className="py-24 text-center text-red-600">{error ?? "Service request not found"}</div>
 
-  const statusCfg   = STATUS_CONFIG[sr.status] ?? { label: sr.status, color: "bg-gray-100 text-gray-600", icon: null }
-  const priorityCfg = PRIORITY_CONFIG[sr.priority] ?? { label: sr.priority, color: "bg-gray-100 text-gray-600" }
-  const actions     = nextActions(sr.status)
+  const paymentCleared = ["PAID", "DEPOSIT_PAID", "CREDIT_APPROVED"].includes(request.payment_gate_status ?? "")
+  const quotationDelivered = request.quotation?.internal_approval_status === "APPROVED" && ["SENT", "ACCEPTED", "CONVERTED"].includes(request.quotation.status)
+  const serviceConfirmed = request.status === "SERVICE_ORDER_CONFIRMED"
+  const completedStep = serviceConfirmed ? 3 : paymentCleared ? 2 : request.quotation_id ? 1 : 0
 
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title={sr.reference}
-        description={sr.title}
-        breadcrumb={[
-          { label: "Service Requests", href: "/service-requests" },
-          { label: sr.reference },
-        ]}
-        actions={
-          <div className="flex gap-2 flex-wrap">
-            {actions.map((a) => (
-              <Button
-                key={a.next}
-                size="sm"
-                variant={a.variant}
-                className="gap-2"
-                onClick={() => handleAction(a.next)}
-                disabled={saving}
-              >
-                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                {a.label}
-              </Button>
-            ))}
-            <Button size="sm" variant="outline" asChild>
-              <Link href="/service-requests">Back</Link>
-            </Button>
-          </div>
-        }
-      />
+  return <div className="space-y-6">
+    <PageHeader title={request.reference} description={request.title} breadcrumb={[{ label: "Service Requests", href: "/service-requests" }, { label: request.reference }]} actions={<Button variant="outline" asChild><Link href="/service-requests">Back</Link></Button>} />
+    {error && <div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{error}</div>}
 
-      {/* Status bar */}
-      <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-4">
-        <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold ${statusCfg.color}`}>
-          {statusCfg.icon}{statusCfg.label}
-        </span>
-        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${priorityCfg.color}`}>
-          {priorityCfg.label} Priority
-        </span>
-        <span className="ml-auto text-xs text-gray-400">Created {formatDate(sr.created_at)}</span>
-      </div>
+    <Card><CardHeader><CardTitle>Workflow <HelpHint title="Why is Work Order locked?">A Service Request may exist before payment. The Draft quotation is reviewed and approved first. Finance then clears payment/deposit/credit, an officer confirms the Service Order, and only then can the Work Order be created.</HelpHint></CardTitle></CardHeader><CardContent>
+      <div className="grid gap-2 md:grid-cols-5">{stepOrder.map((step, index) => <div key={step} className={`rounded-lg border p-3 text-center text-xs font-semibold ${index <= completedStep ? "border-teal-400 bg-teal-50 text-teal-800" : "border-gray-200 bg-gray-50 text-gray-400"}`}>{index <= completedStep ? <CheckCircle2 className="mx-auto mb-1 h-4 w-4" /> : <Lock className="mx-auto mb-1 h-4 w-4" />}{index + 1}. {step.replaceAll("_", " ")}</div>)}</div>
+    </CardContent></Card>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* ── Left: main detail ── */}
-        <div className="lg:col-span-2 space-y-5">
-          <Card>
-            <CardHeader><CardTitle>{sr.title}</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              {sr.description && (
-                <div className="rounded-md bg-gray-50 px-4 py-3 text-sm text-gray-700 leading-relaxed">
-                  {sr.description}
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
-                <div>
-                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Category</p>
-                  <p className="font-medium text-gray-800">{sr.category}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Assigned To</p>
-                  <p className="font-medium text-gray-800">{sr.assigned_to ?? "—"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Requested Date</p>
-                  <p className="font-medium text-gray-800">
-                    {sr.requested_date ? formatDate(sr.requested_date) : "—"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Scheduled Date</p>
-                  <p className="font-medium text-gray-800">
-                    {sr.scheduled_date ? formatDate(sr.scheduled_date) : "—"}
-                  </p>
-                </div>
-                {sr.completed_date && (
-                  <div>
-                    <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Completed</p>
-                    <p className="font-medium text-green-700">{formatDate(sr.completed_date)}</p>
-                  </div>
-                )}
-              </div>
-              {sr.notes && (
-                <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
-                  <p className="text-xs font-semibold text-amber-700 mb-1">Internal Notes</p>
-                  <p className="text-sm text-amber-800">{sr.notes}</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+    <div className="grid gap-6 lg:grid-cols-3"><div className="space-y-5 lg:col-span-2">
+      <Card><CardHeader><CardTitle>Request & Operation</CardTitle></CardHeader><CardContent className="grid gap-4 text-sm md:grid-cols-2">
+        <Info label="Customer" value={request.customer_name ?? "—"} /><Info label="Boat" value={request.boat_name ?? "—"} /><Info label="Operational contact" value={request.operational_contact_name ? `${request.operational_contact_name}${request.operational_contact_phone ? ` · ${request.operational_contact_phone}` : ""}` : "Customer main contact"} /><Info label="Preferred channel" value={request.operational_contact_preferred_channel ?? "—"} /><Info label="Request menu" value={request.request_type?.replaceAll("_", " ") ?? request.category} /><Info label="Selected services" value={request.service_types?.map((value) => value.replaceAll("_", " ")).join(" + ") || request.service_type?.replaceAll("_", " ") || "—"} /><Info label="Operator" value={request.operator_type?.replaceAll("_", " ") ?? request.execution_type} /><Info label="Billing scenario" value={request.billing_scenario === "SPACE_LEASE" ? "Space lease / storage contract" : request.billing_scenario === "REPAIR_HOLD_30D" ? "Repair hold / 30-day cycle" : "—"} />
+        <Info label="Haul-out" value={request.confirmed_haul_out_date ? formatDate(request.confirmed_haul_out_date) : "Not selected"} /><Info label="Tow in" value={request.tow_in_date ? formatDate(request.tow_in_date) : "Not selected"} />
+        <Info label="Launch" value={request.confirmed_launch_date ? formatDate(request.confirmed_launch_date) : "Not selected / open"} /><Info label="Tow out" value={request.tow_out_date ? formatDate(request.tow_out_date) : "Not selected / open"} />
+        {request.operator_type === "BOAT_OWNER_CONTRACTOR" && <Info label="Contractor insurance" value={request.insurance_status ?? "REQUESTED"} />}
+      </CardContent></Card>
 
-          {/* Work Order placeholder */}
-          <Card>
-            <CardHeader><CardTitle>Work Order</CardTitle></CardHeader>
-            <CardContent>
-              <div className="text-center py-8 text-gray-400">
-                <Wrench className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                <p className="text-sm">No work order linked to this request.</p>
-                {["APPROVED", "IN_PROGRESS"].includes(sr.status) && (
-                  <Button size="sm" variant="teal" className="mt-3 gap-2" onClick={() => router.push("/work-orders")}>
-                    <Wrench className="h-4 w-4" /> View Work Orders
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+      <Card><CardHeader><CardTitle>Ordered Rate-card Items <HelpHint title="Quotation order">These rows are the source order used to auto-generate the Draft quotation. Rates and direct costs are snapshotted on the quotation.</HelpHint></CardTitle></CardHeader><CardContent className="space-y-2">{request.items?.map((item) => <div key={item.id} className="grid grid-cols-[1fr_auto] gap-3 rounded-md border p-3 text-sm"><div><p className="font-medium">{item.description}</p><p className="text-xs text-gray-500">{item.pricing_code ?? "Custom"} · {item.operator_type.replaceAll("_", " ")} · cost {formatTHB(item.direct_cost)}</p></div><div className="text-right"><p>{item.qty} {item.unit} × {formatTHB(item.unit_price)}</p><p className="text-xs text-gray-500">Discount {item.discount_pct}%</p></div></div>)}</CardContent></Card>
 
-        {/* ── Right sidebar ── */}
-        <div className="space-y-5">
-          {/* Customer */}
-          <Card>
-            <CardHeader><CardTitle className="text-sm">Customer</CardTitle></CardHeader>
-            <CardContent>
-              <div className="flex items-start gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700 text-sm font-bold">
-                  {(sr.customer_name ?? "?").slice(0, 2).toUpperCase()}
-                </div>
-                <div>
-                  {sr.customer_id ? (
-                    <Link
-                      href={`/customers/${sr.customer_id}`}
-                      className="font-semibold text-gray-900 hover:text-teal-700 text-sm"
-                    >
-                      {sr.customer_name ?? "Unknown"}
-                    </Link>
-                  ) : (
-                    <p className="font-semibold text-gray-900 text-sm">{sr.customer_name ?? "Unknown"}</p>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+      {request.service_types?.includes("STORAGE") && <Card className="border-amber-200"><CardHeader><CardTitle>Optional service for stored vessel</CardTitle></CardHeader><CardContent className="space-y-3 text-sm"><p className="text-gray-600">If this stored vessel later needs repair, cleaning, contractor work, or another yard service, create a linked Service Request. Customer and vessel are carried forward automatically.</p><Button variant="outline" asChild><Link href={`/service-requests/new?customer_id=${request.customer_id}&boat_id=${request.boat_id}&follow_up_to=${request.id}`}><Wrench className="mr-2 h-4 w-4" />Add Yard / Other Service</Link></Button></CardContent></Card>}
 
-          {/* Boat */}
-          {(sr.boat_id || sr.boat_name) && (
-            <Card>
-              <CardHeader><CardTitle className="text-sm">Boat</CardTitle></CardHeader>
-              <CardContent>
-                <div className="flex items-start gap-3">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-teal-100 text-teal-700">
-                    <Ship className="h-4 w-4" />
-                  </div>
-                  <div>
-                    {sr.boat_id ? (
-                      <Link
-                        href={`/boats/${sr.boat_id}`}
-                        className="font-semibold text-gray-900 hover:text-teal-600 text-sm"
-                      >
-                        {sr.boat_name ?? "View Boat"}
-                      </Link>
-                    ) : (
-                      <p className="font-semibold text-gray-900 text-sm">{sr.boat_name}</p>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Quick actions */}
-          <Card>
-            <CardHeader><CardTitle className="text-sm">Quick Actions</CardTitle></CardHeader>
-            <CardContent className="space-y-2">
-              <Button variant="outline" className="w-full justify-start gap-2 text-sm" asChild>
-                <Link href="/quotations/new">
-                  <ClipboardList className="h-4 w-4 text-gray-400" /> Create Quotation
-                </Link>
-              </Button>
-              <Button variant="outline" className="w-full justify-start gap-2 text-sm" asChild>
-                <Link href="/invoices">
-                  <Calendar className="h-4 w-4 text-gray-400" /> View Invoices
-                </Link>
-              </Button>
-              {sr.customer_id && (
-                <Button variant="outline" className="w-full justify-start gap-2 text-sm" asChild>
-                  <Link href={`/customers/${sr.customer_id}`}>
-                    <User className="h-4 w-4 text-gray-400" /> Customer Profile
-                  </Link>
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      {/* Live indicator */}
-      <p className="text-xs text-gray-400 text-center pb-2">
-        <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-500 mr-1.5 align-middle" />
-        Live database · {sr.reference}
-      </p>
+      {request.execution_type !== "INTERNAL" && <Card className="border-purple-200"><CardHeader><CardTitle>External Work Controls</CardTitle></CardHeader><CardContent className="space-y-3 text-sm"><p>Procurement: <b>{request.procurement_status}</b></p>{request.operator_type === "BOAT_OWNER_CONTRACTOR" ? <><p>Insurance must be verified before the Service Order can be confirmed.</p>{canVerifyInsurance ? <Button disabled={busy || request.insurance_status === "VERIFIED"} onClick={() => action({ action: "verify_insurance" })}><ShieldCheck className="mr-2 h-4 w-4" />Verify Insurance</Button> : <p className="rounded-md bg-gray-50 p-2 text-xs text-gray-600">Manager or Chief Engineer verifies contractor insurance.</p>}</> : <Button variant="outline" asChild><Link href={`/subcontractor-sourcing/new?service_request_id=${request.id}`}>Open Subcontractor Sourcing</Link></Button>}</CardContent></Card>}
     </div>
-  )
+
+    <div className="space-y-5">
+      <Card><CardHeader><CardTitle className="text-base">Quotation Approval</CardTitle></CardHeader><CardContent className="space-y-3">{request.quotation_id ? <><Info label="Internal approval" value={request.quotation?.internal_approval_status?.replaceAll("_", " ") ?? "NOT SUBMITTED"} /><Info label="Customer delivery" value={request.quotation?.status?.replaceAll("_", " ") ?? "DRAFT"} /><Button className="w-full" variant="outline" asChild><Link href={`/quotations/${request.quotation_id}`}><ClipboardList className="mr-2 h-4 w-4" />Review / Approve Quotation</Link></Button></> : <p className="text-sm text-amber-700">Draft not generated.</p>}</CardContent></Card>
+
+      <Card><CardHeader><CardTitle className="text-base">Payment Gate <HelpHint title="Finance-controlled step">Only Finance, Managing Director, or Super Admin can mark payment/deposit or approve credit. This does not record a bank transfer; use the Invoice/Payment records for the accounting evidence.</HelpHint></CardTitle></CardHeader><CardContent className="space-y-3">
+        <Info label="Mode" value={request.payment_mode?.replaceAll("_", " ") ?? "—"} /><Info label="Status" value={request.payment_gate_status?.replaceAll("_", " ") ?? "AWAITING PAYMENT"} />
+        {request.payment_plan && <><Info label="Total" value={formatTHB(request.payment_plan.total_amount)} /><Info label="Initial required" value={formatTHB(request.payment_plan.deposit_required_amount)} />{request.payment_plan.first_cycle_due_date && <Info label="First credit cycle due" value={formatDate(request.payment_plan.first_cycle_due_date)} />}<Info label="Reminder lead" value={`${request.payment_plan.reminder_lead_days ?? 7} days before due`} /></>}
+        {!quotationDelivered && <p className="rounded-md bg-amber-50 p-3 text-xs text-amber-800"><Lock className="mr-1 inline h-4 w-4" />Manager approval and customer delivery must be completed before Finance updates this gate.</p>}
+        {canUpdatePayment ? <><select disabled={!quotationDelivered} className="w-full rounded-md border p-2 text-sm disabled:bg-gray-100" value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value)}><option value="PAID">Paid in full</option><option value="DEPOSIT_PAID">Required deposit paid</option><option value="CREDIT_APPROVED">Credit approved</option><option value="OVERDUE">Overdue</option><option value="CREDIT_HOLD">Credit hold</option></select>
+        <Button className="w-full" variant="outline" disabled={busy || !quotationDelivered} onClick={() => action({ action: "set_payment_gate", status: paymentStatus })}><CreditCard className="mr-2 h-4 w-4" />Finance: Update Gate</Button></> : <p className="rounded-md bg-gray-50 p-2 text-xs text-gray-600">Finance controls payment, deposit, and credit clearance.</p>}
+      </CardContent></Card>
+
+      <Card><CardHeader><CardTitle className="text-base">Service / Work Order</CardTitle></CardHeader><CardContent className="space-y-3">
+        {!paymentCleared && <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-800"><Lock className="mr-1 inline h-4 w-4" />Work Order is locked until payment clearance.</p>}
+        {canConfirmService && <Button className="w-full" variant="teal" disabled={busy || !paymentCleared || serviceConfirmed} onClick={() => action({ action: "confirm_service_order" })}><CheckCircle2 className="mr-2 h-4 w-4" />Confirm Service Order</Button>}
+        {canCreateWorkOrder ? <Button className="w-full" disabled={busy || !serviceConfirmed} onClick={createWorkOrder}><Wrench className="mr-2 h-4 w-4" />Create Work Order</Button> : <p className="rounded-md bg-gray-50 p-2 text-xs text-gray-600">Chief Engineer or Operations Manager creates the Work Order after Service Order confirmation.</p>}
+      </CardContent></Card>
+      <Card><CardHeader><CardTitle className="text-base">Boat</CardTitle></CardHeader><CardContent><Button variant="outline" className="w-full" asChild><Link href={`/boats/${request.boat_id}`}><Ship className="mr-2 h-4 w-4" />{request.boat_name}</Link></Button></CardContent></Card>
+    </div></div>
+    <p className="pb-2 text-center text-xs text-gray-400">Live database · {request.reference}</p>
+  </div>
+}
+
+function Info({ label, value }: { label: string; value: string }) {
+  return <div><p className="text-xs uppercase tracking-wide text-gray-400">{label}</p><p className="font-medium text-gray-800">{value}</p></div>
 }

@@ -10,7 +10,7 @@
  * 1 Engine      |  ≤ 27 ft        |  Normal
  * 2 Engines     |  > 27 – 40 ft   |  Normal / Medium
  * 3 Engines     |  > 40 – 47 ft   |  Medium / High
- * 4 Engines     |  > 47 – 55 ft   |  High / Special Handling
+ * 4 Engines     |  > 47 – 60 ft   |  High / Special Handling
  *
  * When LOA and engine count disagree, LOA takes priority and a
  * mismatch warning is returned.  Beam, draft, and weight act as
@@ -38,9 +38,10 @@ export interface SpeedboatClassification {
   loaFt: number
   primaryRiskFlag: RiskFlag
   effectiveRiskFlag: RiskFlag    // after beam/draft/weight escalation
-  rampCode: "RAMP_1OB" | "RAMP_2OB" | "RAMP_3OB"
+  rampCode: "RAMP_1OB" | "RAMP_2OB" | "RAMP_3OB" | "RAMP_SB_SPECIAL"
   escalationReasons: string[]
   mismatchWarning: string | null
+  outsideConfiguredRange: boolean
   label: string                  // human-readable summary
 }
 
@@ -53,7 +54,7 @@ export function isSpeedboatType(value: unknown): boolean {
 function loaToEngineGroup(loaFt: number): EngineGroup {
   if (loaFt <= 27) return 1
   if (loaFt <= 40) return 2
-  if (loaFt <= 47) return 3
+  if (loaFt <= 50) return 3
   return 4
 }
 
@@ -70,9 +71,11 @@ function groupToBaseRisk(group: EngineGroup): RiskFlag {
 /** Engine group → ramp code */
 function groupToRampCode(
   group: EngineGroup,
+  loaFt: number,
 ): SpeedboatClassification["rampCode"] {
   if (group === 1) return "RAMP_1OB"
   if (group === 2) return "RAMP_2OB"
+  if (loaFt > 47) return "RAMP_SB_SPECIAL"
   return "RAMP_3OB"
 }
 
@@ -118,6 +121,7 @@ export function classifySpeedboat(
 ): SpeedboatClassification {
   const loaFt = input.loaFt ?? 0
   const engines = input.engines ?? null
+  const outsideConfiguredRange = loaFt <= 0 || loaFt > 60
 
   const loaGroup = loaToEngineGroup(loaFt)
   const baseRisk = groupToBaseRisk(loaGroup)
@@ -126,13 +130,17 @@ export function classifySpeedboat(
 
   // Mismatch: declared engine count disagrees with LOA-derived group
   let mismatchWarning: string | null = null
-  if (engines !== null && engines !== loaGroup) {
+  if (outsideConfiguredRange) {
+    mismatchWarning = loaFt > 60
+      ? `LOA (${loaFt} ft) is outside the configured speedboat pricing range (maximum 60 ft). Manager review required.`
+      : "A valid LOA is required before speedboat pricing can be selected."
+  } else if (engines !== null && engines !== loaGroup) {
     mismatchWarning =
       `Engine count (${engines}) does not match LOA-derived group (${loaGroup}). ` +
       `LOA (${loaFt} ft) takes priority. Verify boat data.`
   }
 
-  const rampCode = groupToRampCode(loaGroup)
+  const rampCode = groupToRampCode(loaGroup, loaFt)
 
   const label =
     `Engine Group ${loaGroup} | LOA ${loaFt} ft | ` +
@@ -147,6 +155,7 @@ export function classifySpeedboat(
     rampCode,
     escalationReasons,
     mismatchWarning,
+    outsideConfiguredRange,
     label,
   }
 }

@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createPricingMaster, getPricingMaster } from "@/lib/pricing-master"
+import { getPricingWriteAccess } from "@/lib/pricing-access"
+import { pricingCreateSchema, pricingValidationMessage, validateDisplayPlacement } from "@/lib/pricing-validation"
+import { withCatalogRates } from "@/lib/catalog-rate-card"
+import { assertWetBerthUnavailable, isWetBerthEnabled, resolveRateMode } from "@/lib/pricing-governance"
 
 export const dynamic = "force-dynamic"
 
@@ -12,7 +16,10 @@ export async function GET(req: NextRequest) {
 
     const pricing = await getPricingMaster(category, isActive)
 
-    return NextResponse.json({ data: pricing })
+    const visiblePricing = isWetBerthEnabled()
+      ? pricing
+      : pricing.filter((item) => !/wet\s*berth/i.test(`${item.code} ${item.category} ${item.serviceNameEn} ${item.displayCategory}`))
+    return NextResponse.json({ data: searchParams.get('catalog') === 'true' ? await withCatalogRates(visiblePricing) : visiblePricing, rateMode: resolveRateMode() }, { headers: { 'Cache-Control': 'no-store' } })
   } catch (error) {
     console.error("Error fetching pricing:", error)
     return NextResponse.json({ error: "Failed to fetch pricing" }, { status: 500 })
@@ -22,25 +29,33 @@ export async function GET(req: NextRequest) {
 // POST /api/pricing-master - Create new pricing
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json()
-    const { code, serviceNameEn, serviceNameTh, category, unit, rateThb, description, notes } = body
-
-    if (!code || !serviceNameEn || !category || !unit || rateThb === undefined) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      )
+    const access = await getPricingWriteAccess()
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.error }, { status: access.status })
     }
 
+    const parsed = pricingCreateSchema.safeParse(await req.json())
+    if (!parsed.success) {
+      return NextResponse.json({ error: pricingValidationMessage(parsed.error) }, { status: 400 })
+    }
+
+    const input = parsed.data
+    const displayError = validateDisplayPlacement(input)
+    if (displayError) return NextResponse.json({ error: displayError }, { status: 400 })
+    for (const value of [input.code, input.category, input.serviceNameEn, input.displayCategory]) {
+      try {
+        assertWetBerthUnavailable(value)
+      } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Wet berth is unavailable" }, { status: 400 })
+      }
+    }
     const pricing = await createPricingMaster({
-      code,
-      serviceNameEn,
-      serviceNameTh,
-      category,
-      unit,
-      rateThb,
-      description,
-      notes,
+      ...input,
+      discountPct: input.discountPct ?? 0,
+      quoteAllowed: input.quoteAllowed ?? "NO",
+      priceStatus: input.priceStatus ?? "INACTIVE",
+      updatedBy: access.actorId,
+      approvedBy: input.priceStatus === "ACTIVE" ? access.actorId : null,
     })
 
     return NextResponse.json({ data: pricing }, { status: 201 })

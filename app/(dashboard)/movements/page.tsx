@@ -11,7 +11,7 @@ import type { BoatMovement } from "@/lib/supabase"
 
 const TYPE_LABELS: Record<string, { label: string; color: string }> = {
   LAUNCH:     { label: "Launch",      color: "bg-teal-100 text-teal-700" },
-  RETRIEVAL:  { label: "Retrieval",   color: "bg-blue-100 text-blue-700" },
+  HAUL_OUT:   { label: "Haul-out",    color: "bg-blue-100 text-blue-700" },
   TO_STORAGE: { label: "To Storage",  color: "bg-orange-100 text-orange-700" },
   TO_REPAIR:  { label: "To Repair",   color: "bg-red-100 text-red-600" },
   ARRIVAL:    { label: "Arrival",     color: "bg-purple-100 text-purple-700" },

@@ -1,7 +1,6 @@
 "use client"
 import React, { useState, useRef } from "react"
 import { Upload, X, File, Loader2, CheckCircle2 } from "lucide-react"
-import { supabase } from "@/lib/supabase"
 
 export type UploadedFile = {
   name: string
@@ -41,29 +40,19 @@ export function PhotoUpload({
     const uploaded: UploadedFile[] = []
 
     for (const file of Array.from(fileList)) {
-      const ext = file.name.split(".").pop()
-      const path = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+      const form = new FormData()
+      form.set("bucket", bucket)
+      form.set("folder", folder)
+      form.set("file", file)
+      const response = await fetch("/api/storage", { method: "POST", body: form })
+      const result = await response.json()
 
-      const { error: uploadError } = await supabase.storage
-        .from(bucket)
-        .upload(path, file, { contentType: file.type, upsert: false })
-
-      if (uploadError) {
-        setError(`Failed to upload ${file.name}: ${uploadError.message}`)
+      if (!response.ok) {
+        setError(`Failed to upload ${file.name}: ${result?.error ?? "Upload failed"}`)
         continue
       }
 
-      const { data: signedData } = await supabase.storage
-        .from(bucket)
-        .createSignedUrl(path, 60 * 60) // 1 hour
-
-      uploaded.push({
-        name: file.name,
-        path,
-        url: signedData?.signedUrl ?? "",
-        type: file.type,
-        size: file.size,
-      })
+      uploaded.push(result as UploadedFile)
     }
 
     const newFiles = [...files, ...uploaded]
@@ -78,7 +67,16 @@ export function PhotoUpload({
   }
 
   async function removeFile(path: string) {
-    await supabase.storage.from(bucket).remove([path])
+    const response = await fetch("/api/storage", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ bucket, path }),
+    })
+    if (!response.ok) {
+      const result = await response.json()
+      setError(result?.error ?? "Delete failed")
+      return
+    }
     const updated = files.filter(f => f.path !== path)
     setFiles(updated)
     onUploaded?.(updated)

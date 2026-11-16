@@ -19,7 +19,7 @@ type RampBooking = {
 }
 
 const OP_LABELS: Record<string, string> = {
-  LAUNCH:"Launch", RETRIEVAL:"Retrieval", MOVE_BOAT:"Move Boat",
+  LAUNCH:"Launch", HAUL_OUT:"Haul-out", MOVE_BOAT:"Move Boat",
   WASH:"Wash", FUEL:"Fuel", INSPECTION:"Inspection",
 }
 const STATUS_COLORS: Record<string, string> = {
@@ -115,7 +115,7 @@ export default function PortalRampBookingPage() {
   const draft   = parseFloat(draftM)   || 0
   const trailer = parseFloat(trailerM) || 0
   const safety  = parseFloat(safetyM)  || 0.3
-  const showTide = (opType === "LAUNCH" || opType === "RETRIEVAL") && (draft + trailer + safety) > 0
+  const showTide = (opType === "LAUNCH" || opType === "HAUL_OUT") && (draft + trailer + safety) > 0
 
   return (
     <div className="min-h-screen bg-gray-50 pb-10">
@@ -124,7 +124,7 @@ export default function PortalRampBookingPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Ramp Booking</h1>
-            <p className="text-sm text-gray-500">Request launch, retrieval or ramp services</p>
+            <p className="text-sm text-gray-500">Request launch, haul-out or ramp services</p>
           </div>
           <Link href="/portal"><Button variant="outline" size="sm"><ArrowLeft className="h-4 w-4 mr-2" />Back</Button></Link>
         </div>
@@ -190,7 +190,7 @@ export default function PortalRampBookingPage() {
                   </div>
                 </div>
 
-                {(opType === "LAUNCH" || opType === "RETRIEVAL") && (
+                {(opType === "LAUNCH" || opType === "HAUL_OUT") && (
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5"><Waves className="h-3.5 w-3.5 text-blue-500" />Dimensions (for tide check)</label>
                     <div className="grid grid-cols-3 gap-2">

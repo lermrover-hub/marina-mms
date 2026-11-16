@@ -1,49 +1,43 @@
-import { Pool } from "pg"
+import { createServerClient } from "./supabase-server"
+import { mapDatabaseRole } from "./auth-role"
+
+export { mapDatabaseRole } from "./auth-role"
 
 export type AuthUserRecord = {
-  user_id: string
+  userId: string
   name: string
   email: string
-  password_hash: string
+  passwordHash: string
   role: string
-  is_active: boolean
-}
-
-const globalForAuthDb = globalThis as typeof globalThis & { authDbPool?: Pool }
-
-function getPool() {
-  if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not configured")
-
-  globalForAuthDb.authDbPool ??= new Pool({
-    connectionString: process.env.DATABASE_URL,
-    max: 2,
-    idleTimeoutMillis: 10_000,
-  })
-  return globalForAuthDb.authDbPool
-}
-
-export function mapDatabaseRole(role: string): string {
-  const roles: Record<string, string> = {
-    owner: "SUPER_ADMIN",
-    super_admin: "SUPER_ADMIN",
-    managing_director: "MANAGING_DIRECTOR",
-    marina_manager: "MARINA_MANAGER",
-    boat_yard_manager: "BOAT_YARD_MANAGER",
-    finance: "FINANCE",
-    staff: "STAFF",
-    customer: "CUSTOMER",
-  }
-  return roles[role.trim().toLowerCase()] ?? "STAFF"
+  customerId: string | null
 }
 
 export async function findActiveAuthUser(email: string): Promise<AuthUserRecord | null> {
-  const result = await getPool().query<AuthUserRecord>(
-    `select user_id, name, email, password_hash, role, is_active
-       from public.users
-      where lower(email) = lower($1)
-        and is_active = true
-      limit 1`,
-    [email.trim()]
-  )
-  return result.rows[0] ?? null
+  const normalizedEmail = email.trim().toLowerCase()
+  if (!normalizedEmail) return null
+
+  const supabase = createServerClient({ requireServiceRole: true })
+  const { data, error } = await supabase
+    .from("users")
+    .select("*")
+    .ilike("email", normalizedEmail)
+    .eq("is_active", true)
+    .limit(1)
+    .maybeSingle()
+
+  if (error || !data) return null
+
+  const row = data as Record<string, unknown>
+  const userId = String(row.user_id ?? row.id ?? "")
+  const passwordHash = String(row.password_hash ?? "")
+  if (!userId || !passwordHash) return null
+
+  return {
+    userId,
+    name: String(row.name ?? row.email ?? "Marina user"),
+    email: String(row.email ?? normalizedEmail),
+    passwordHash,
+    role: mapDatabaseRole(String(row.role ?? "")),
+    customerId: row.customer_id ? String(row.customer_id) : null,
+  }
 }

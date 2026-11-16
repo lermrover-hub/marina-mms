@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import Anthropic from "@anthropic-ai/sdk"
 import { getPricingMaster } from "@/lib/pricing-master"
+import { isWetBerthEnabled } from "@/lib/pricing-governance"
 
 export const dynamic = "force-dynamic"
 
@@ -26,6 +27,9 @@ export async function POST(req: NextRequest) {
 
     if (!serviceDescription) {
       return NextResponse.json({ error: "serviceDescription is required." }, { status: 400 })
+    }
+    if (!isWetBerthEnabled() && /wet\s*berth/i.test(String(serviceDescription))) {
+      return NextResponse.json({ error: "Wet Berth is unavailable until construction is complete.", code: "WET_BERTH_UNAVAILABLE" }, { status: 409 })
     }
 
     // Load active pricing master items as context for Claude
@@ -80,7 +84,7 @@ Rules:
 - Match items to rate card codes where possible (use the exact price from the rate card)
 - For labour, estimate hours realistically based on the job scope
 - For materials, add as separate line items with estimated cost
-- category must be one of: Engine, Electrical, Fiberglass, Painting, Antifouling, Interior, Canvas, Stainless / Metal, Cleaning, Plumbing, Generator, Air Conditioning, Ramp Access, Haul-out, Yard Services, Wash & Cleaning, Utilities, Wet Berth, Labour, Material, Other
+- category must be one of: Engine, Electrical, Fiberglass, Painting, Antifouling, Interior, Canvas, Stainless / Metal, Cleaning, Plumbing, Generator, Air Conditioning, Ramp Access, Haul-out, Yard Services, Wash & Cleaning, Utilities, Labour, Material, Other
 - Return 3–10 line items maximum
 - All prices in THB, no VAT included`,
         },

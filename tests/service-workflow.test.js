@@ -1,0 +1,280 @@
+import { test } from "node:test"
+import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
+import {
+  calculateDepositRequired,
+  BILLING_SCENARIOS,
+  canConfirmServiceOrder,
+  defaultPaymentMode,
+  deriveCreditSchedule,
+  deriveRampMovementPlan,
+  minimumQuotationApprover,
+  validateDiscount,
+} from "../lib/service-workflow.ts"
+import {
+  INSURANCE_VERIFY_ROLES,
+  PAYMENT_GATE_ROLES,
+  QUOTATION_PRICE_EDIT_ROLES,
+  WORK_ORDER_CREATE_ROLES,
+  maxOperationalDiscountForRole,
+  roleAllowed,
+} from "../lib/workflow-access.ts"
+import { readLegacyWorkflowMetadata, writeLegacyWorkflowMetadata } from "../lib/service-workflow-compat.ts"
+import { rateCardItemsForSection, serviceCategories, storagePeriodMatches, workflowSectionForRate } from "../lib/service-rate-card.ts"
+
+test("payment mode follows the approved service policy", () => {
+  assert.equal(defaultPaymentMode("STORAGE", "OCEAN_ROVER"), "FULL_PREPAYMENT")
+  assert.equal(defaultPaymentMode("YARD_SERVICE", "OCEAN_ROVER"), "DEPOSIT")
+  assert.equal(calculateDepositRequired(100000, 60000, 50), 60000)
+  assert.equal(calculateDepositRequired(100000, 120000, 50), 100000)
+})
+
+test("service and work orders remain blocked until the payment gate passes", () => {
+  assert.equal(canConfirmServiceOrder("FULL_PREPAYMENT", "AWAITING_PAYMENT"), false)
+  assert.equal(canConfirmServiceOrder("FULL_PREPAYMENT", "PAID"), true)
+  assert.equal(canConfirmServiceOrder("DEPOSIT", "DEPOSIT_PAID"), true)
+  assert.equal(canConfirmServiceOrder("CREDIT", "CREDIT_APPROVED"), true)
+  assert.equal(canConfirmServiceOrder("CREDIT", "OVERDUE"), false)
+})
+
+test("credit cycle is 30 days and good customers receive at most 7 post-launch days", () => {
+  assert.deepEqual(deriveCreditSchedule("2026-09-01", null, false), {
+    firstCycleDueDate: "2026-10-01",
+    firstReminderDate: "2026-09-24",
+    launchWithinFirstCycle: false,
+    finalDueDate: "2026-10-01",
+  })
+  assert.equal(deriveCreditSchedule("2026-09-01", "2026-09-20", true)?.finalDueDate, "2026-09-27")
+})
+
+test("recurring billing scenarios are explicit and reminders lead by seven days", () => {
+  assert.deepEqual(BILLING_SCENARIOS, ["REPAIR_HOLD_30D", "SPACE_LEASE"])
+  const requestRoute = readFileSync("app/api/db/service-requests/route.ts", "utf8")
+  const recurringRoute = readFileSync("app/api/billing/recurring/route.ts", "utf8")
+  const notificationsPage = readFileSync("app/(dashboard)/notifications/page.tsx", "utf8")
+  const migration = readFileSync("supabase/migrations/20261030120000_add_billing_scenarios_and_block_wet_berth.sql", "utf8")
+  assert.match(requestRoute, /billing_scenario: billingScenario/)
+  assert.match(requestRoute, /reminder_lead_days: 7/)
+  assert.match(recurringRoute, /Wet Berth is blocked until construction is complete/)
+  assert.match(recurringRoute, /reminderLeadDays = Math\.max\(1, Number\(contract\.reminder_lead_days \?\? 7\)\)/)
+  assert.match(notificationsPage, /daysUntilDue <= 7/)
+  assert.match(migration, /billing_scenario text/)
+  assert.match(migration, /reminder_lead_days integer not null default 7/)
+})
+
+test("vessel movement supports road tow without requiring haul-out or launch", () => {
+  assert.deepEqual(deriveRampMovementPlan({
+    haulOut: false,
+    towIn: true,
+    towInDate: "2026-09-29",
+    launch: false,
+    towOut: false,
+  }), {
+    error: null,
+    rampOperationPlan: "TOW_IN_CONFIRMED_EXIT_OPEN",
+    yardStartDate: "2026-09-29",
+    exitDate: null,
+  })
+  assert.equal(deriveRampMovementPlan({
+    haulOut: false,
+    towIn: true,
+    towInDate: "2026-09-29",
+    launch: false,
+    towOut: true,
+    towOutDate: "2026-10-03",
+  }).rampOperationPlan, "TOW_IN_AND_TOW_OUT_CONFIRMED")
+  assert.match(deriveRampMovementPlan({ haulOut: false, towIn: false, launch: false, towOut: false }).error ?? "", /arrival method/)
+})
+
+test("discount authority and contractor exclusions are deterministic", () => {
+  assert.equal(minimumQuotationApprover(20, false), "MANAGER")
+  assert.equal(minimumQuotationApprover(20.01, false), "GENERAL_MANAGER")
+  assert.equal(minimumQuotationApprover(0, true), "GENERAL_MANAGER")
+  assert.equal(validateDiscount("OCEAN_ROVER", 10, 100), null)
+  assert.match(validateDiscount("OCEAN_ROVER_SUBCONTRACTOR", 1, 100) ?? "", /only/)
+  assert.match(validateDiscount("BOAT_OWNER_CONTRACTOR", 0, 0) ?? "", /no-charge/)
+})
+
+test("pilot roles receive the approved workflow permissions", () => {
+  assert.equal(maxOperationalDiscountForRole("STAFF"), 10)
+  assert.equal(maxOperationalDiscountForRole("MARINA_MANAGER"), 20)
+  assert.equal(maxOperationalDiscountForRole("FINANCE"), 20)
+  assert.equal(maxOperationalDiscountForRole("SUPER_ADMIN"), 100)
+  assert.equal(roleAllowed("FINANCE", QUOTATION_PRICE_EDIT_ROLES), true)
+  assert.equal(roleAllowed("MARINA_MANAGER", QUOTATION_PRICE_EDIT_ROLES), false)
+  assert.equal(roleAllowed("FINANCE", PAYMENT_GATE_ROLES), true)
+  assert.equal(roleAllowed("STAFF", PAYMENT_GATE_ROLES), false)
+  assert.equal(roleAllowed("BOAT_YARD_MANAGER", INSURANCE_VERIFY_ROLES), true)
+  assert.equal(roleAllowed("STAFF", INSURANCE_VERIFY_ROLES), false)
+  assert.equal(roleAllowed("BOAT_YARD_MANAGER", WORK_ORDER_CREATE_ROLES), true)
+  assert.equal(roleAllowed("STAFF", WORK_ORDER_CREATE_ROLES), false)
+})
+
+test("service request is created before payment while work order remains server-gated", () => {
+  const requestRoute = readFileSync("app/api/db/service-requests/route.ts", "utf8")
+  const workOrderRoute = readFileSync("app/api/db/work-orders/route.ts", "utf8")
+  const detailPage = readFileSync("app/(dashboard)/service-requests/[id]/page.tsx", "utf8")
+  assert.match(requestRoute, /payment_gate_status: "AWAITING_PAYMENT"/)
+  assert.match(requestRoute, /status: "QUOTATION_DRAFT"/)
+  assert.match(workOrderRoute, /SERVICE_ORDER_CONFIRMED/)
+  assert.match(workOrderRoute, /requireApiActor\(WORK_ORDER_CREATE_ROLES\)/)
+  assert.match(workOrderRoute, /clear its payment gate before creating a Work Order/)
+  assert.match(detailPage, /Work Order is locked until payment clearance/)
+  assert.match(detailPage, /HelpHint/)
+  const workOrderPage = readFileSync("app/(dashboard)/work-orders/new/page.tsx", "utf8")
+  assert.match(workOrderPage, /Paid &amp; Confirmed Service Order/)
+  assert.match(workOrderPage, /service_request_id: serviceRequestId/)
+  assert.doesNotMatch(workOrderPage, /service_request_id: null/)
+  assert.doesNotMatch(workOrderPage, /Markup % on Contractor|Required Deposit %|Sell Price/)
+  assert.match(workOrderRoute, /body\.total_revenue = Math\.max/)
+})
+
+test("staff ramp schedules are children of the unified service request workflow", () => {
+  const requestRoute = readFileSync("app/api/db/service-requests/route.ts", "utf8")
+  const rampRoute = readFileSync("app/api/db/ramp-bookings/route.ts", "utf8")
+  const rampNewPage = readFileSync("app/(dashboard)/ramp-bookings/new/page.tsx", "utf8")
+  const rampLinkMigration = readFileSync("supabase/migrations/20260926191614_link_ramp_bookings_to_service_workflow.sql", "utf8")
+  assert.match(rampNewPage, /redirect\("\/service-requests\/new\?workflow=ramp"\)/)
+  assert.match(requestRoute, /service_request_id: serviceRequest\.id/)
+  assert.match(requestRoute, /quotation_id: quotation\.id/)
+  assert.match(requestRoute, /operation_type: "HAUL_OUT"/)
+  assert.match(requestRoute, /operation_type: "TOW_IN"/)
+  assert.match(requestRoute, /operation_type: "TOW_OUT"/)
+  assert.match(rampRoute, /Staff ramp schedules must be created from a Service Request/)
+  assert.match(rampRoute, /financial_status: isCustomer \? "UNPRICED_REQUEST" : "QUOTATION_LINKED"/)
+  assert.match(rampLinkMigration, /ADD COLUMN IF NOT EXISTS service_request_id text/)
+  assert.match(rampLinkMigration, /ADD COLUMN IF NOT EXISTS quotation_id text/)
+  assert.match(rampLinkMigration, /FOREIGN KEY \(service_request_id\)/)
+  assert.match(rampLinkMigration, /FOREIGN KEY \(quotation_id\)/)
+})
+
+test("legacy staging can preserve workflow state until the migration is installed", () => {
+  const notes = writeLegacyWorkflowMetadata("Officer note", { payment_mode: "CREDIT", payment_gate_status: "AWAITING_PAYMENT" })
+  assert.match(notes, /Officer note/)
+  assert.equal(readLegacyWorkflowMetadata(notes).payment_mode, "CREDIT")
+  const updated = writeLegacyWorkflowMetadata(notes, { payment_mode: "CREDIT", payment_gate_status: "CREDIT_APPROVED" })
+  assert.equal((updated.match(/__MMS_WORKFLOW__/g) ?? []).length, 1)
+  assert.equal(readLegacyWorkflowMetadata(updated).payment_gate_status, "CREDIT_APPROVED")
+})
+
+test("legacy staging quotation fallback omits approval columns that are not installed yet", () => {
+  const requestRoute = readFileSync("app/api/db/service-requests/route.ts", "utf8")
+  const baseStart = requestRoute.indexOf("const baseQuotation =")
+  const firstInsert = requestRoute.indexOf("const firstQuotation =", baseStart)
+  const baseQuotation = requestRoute.slice(baseStart, firstInsert)
+  assert.ok(baseStart >= 0 && firstInsert > baseStart)
+  assert.doesNotMatch(baseQuotation, /internal_approval_status|required_approver_role|max_discount_pct|has_no_charge_line/)
+  assert.match(requestRoute, /const firstQuotation =[^\n]+internal_approval_status: "NOT_SUBMITTED"/)
+  assert.match(requestRoute, /insert\(baseQuotation\)/)
+})
+
+test("service workflow migration protects integrity and server-only access", () => {
+  const migration = readFileSync("supabase/migrations/20260919153838_add_service_workflow_payment_plans.sql", "utf8")
+  assert.match(migration, /service_request_id text NOT NULL REFERENCES public\.mms_service_requests\(id\) ON DELETE CASCADE/)
+  assert.match(migration, /quotation_id text REFERENCES public\.mms_quotations\(id\) ON DELETE SET NULL/)
+  assert.match(migration, /deposit_required_amount <= total_amount AND paid_amount <= total_amount/)
+  assert.match(migration, /mms_service_request_items FORCE ROW LEVEL SECURITY/)
+  assert.match(migration, /mms_service_payment_plans FORCE ROW LEVEL SECURITY/)
+})
+
+test("service request form uses cascading Rate Card selection and restricts Open Rate", () => {
+  const page = readFileSync("app/(dashboard)/service-requests/new/page.tsx", "utf8")
+  const route = readFileSync("app/api/db/service-requests/route.ts", "utf8")
+  assert.match(page, /Service category/)
+  assert.match(page, /Service item/)
+  assert.match(page, /Others \/ Open Rate/)
+  assert.match(page, /Tow in/i)
+  assert.match(page, /Tow out/i)
+  assert.match(page, /const \[haulOut, setHaulOut\] = useState\(false\)/)
+  assert.match(page, /operator_type: activeSection === "YARD" \? operatorType : "OCEAN_ROVER"/)
+  assert.doesNotMatch(page, /items: items\.map\(\(item\) => \(\{ \.\.\.item, operator_type: operatorType/)
+  assert.match(page, /rows\.filter\(\(row\) => row\.service_group !== "YARD"\)/)
+  assert.match(page, /rows\.filter\(\(row\) => row\.service_group !== "STORAGE"\)/)
+  assert.match(route, /tow_in_date/)
+  assert.match(route, /tow_out_date/)
+  assert.match(route, /Open Rate may be entered only by Admin/)
+  assert.match(route, /price\?\.direct_cost_thb \?\? 0/)
+  assert.match(route, /canonicalGroup === "YARD"[^\n]+: "OCEAN_ROVER"/)
+})
+
+test("speedboat storage quotation uses canonical v3.7 packages and server-side W4/B1 gates", () => {
+  const page = readFileSync("app/(dashboard)/service-requests/new/page.tsx", "utf8")
+  const route = readFileSync("app/api/db/service-requests/route.ts", "utf8")
+  assert.match(page, /storage_days:/)
+  assert.match(page, /storage_slot_code:/)
+  assert.match(page, /Calculate &amp; add lowest package/)
+  assert.match(page, /W4 — trailer storage only/)
+  assert.match(page, /B1 — boat stands only/)
+  assert.match(route, /speedboatStorageClass/)
+  assert.match(route, /validateSb4Storage/)
+  assert.match(route, /lowestStoragePackage/)
+  assert.match(route, /berth\.status !== "AVAILABLE"/)
+  assert.match(route, /normalizedItems\.filter\(\(item\) => item\.service_group !== "STORAGE"\)/)
+  assert.match(route, /unit_price: selectedRateThb\(price, rateMode\)/)
+})
+
+test("service request supports normal storage/yard routes and the optional stored-vessel service route", () => {
+  const page = readFileSync("app/(dashboard)/service-requests/new/page.tsx", "utf8")
+  const detailPage = readFileSync("app/(dashboard)/service-requests/[id]/page.tsx", "utf8")
+  const requestRoute = readFileSync("app/api/db/service-requests/route.ts", "utf8")
+  assert.match(page, /primaryService/)
+  assert.match(page, /addYardToStorage/)
+  assert.match(page, /includeStorage/)
+  assert.match(page, /includeYardService/)
+  assert.match(page, /Storage goes from its billing period and Rate Card directly to Draft Quotation/)
+  assert.match(page, /Optional: add Yard \/ Other Services/)
+  assert.match(page, /service_types:/)
+  assert.match(page, /selectedSections\.map/)
+  assert.match(page, /follow_up_to/)
+  assert.match(detailPage, /Optional service for stored vessel/)
+  assert.match(detailPage, /Add Yard \/ Other Service/)
+  assert.match(requestRoute, /requestedServiceTypes/)
+  assert.match(requestRoute, /includesStorage/)
+  assert.match(requestRoute, /includesYardService/)
+  assert.match(requestRoute, /Add at least one Storage rate-card item/)
+  assert.match(requestRoute, /Add at least one Yard \/ Other Service rate-card item/)
+})
+
+test("approval and customer delivery gate payment and work order creation", () => {
+  const requestDetailRoute = readFileSync("app/api/db/service-requests/[id]/route.ts", "utf8")
+  const workOrderRoute = readFileSync("app/api/db/work-orders/route.ts", "utf8")
+  const detailPage = readFileSync("app/(dashboard)/service-requests/[id]/page.tsx", "utf8")
+  assert.match(requestDetailRoute, /Manager approval and customer delivery are required before Finance/)
+  assert.match(requestDetailRoute, /internal_approval_status !== "APPROVED"/)
+  assert.match(workOrderRoute, /manager-approved quotation that has been sent to the customer/)
+  assert.match(detailPage, /quotationDelivered/)
+  assert.match(detailPage, /Review \/ Approve Quotation/)
+  assert.match(detailPage, /disabled=\{busy \|\| !quotationDelivered\}/)
+})
+
+test("Work Order creation links the quotation and any converted invoice for accounting traceability", () => {
+  const workOrderRoute = readFileSync("app/api/db/work-orders/route.ts", "utf8")
+  assert.match(workOrderRoute, /mms_quotations/)
+  assert.match(workOrderRoute, /update\(\{ work_order_id: data\.id, updated_at: now \}\)/)
+  assert.match(workOrderRoute, /mms_invoices/)
+  assert.match(workOrderRoute, /eq\("quotation_id", body\.quotation_id\)/)
+  assert.match(workOrderRoute, /is\("work_order_id", null\)/)
+})
+
+test("rate card items are routed to the approved workflow sections", () => {
+  const rows = [
+    { code: "HAUL", serviceNameEn: "Haul out", category: "Haul", unit: "trip", rateThb: 1, directCostThb: 0, serviceGroup: "2. Haul-out", subgroup: "Haul" },
+    { code: "TRUCK", serviceNameEn: "Tow truck", category: "Equipment", unit: "trip", rateThb: 1, directCostThb: 0, serviceGroup: "3. Service & Equipment", subgroup: "Tow truck" },
+    { code: "STORE", serviceNameEn: "Storage", category: "Storage", unit: "month", rateThb: 1, directCostThb: 0, serviceGroup: "4. Storage", subgroup: "Storage" },
+    { code: "WASH", serviceNameEn: "Boat wash", category: "Equipment", unit: "ft", rateThb: 1, directCostThb: 0, serviceGroup: "3. Service & Equipment", subgroup: "Wash" },
+  ]
+  assert.equal(workflowSectionForRate(rows[1]), "RAMP")
+  assert.deepEqual(rateCardItemsForSection(rows, "STORAGE").map((row) => row.code), ["STORE"])
+  assert.deepEqual(serviceCategories(rateCardItemsForSection(rows, "YARD")), ["Wash"])
+  assert.equal(storagePeriodMatches(rows[2], "MONTHLY"), true)
+  assert.equal(storagePeriodMatches(rows[2], "DAILY"), false)
+})
+
+test("LOA_RATE_QTY catalog rates use the vessel LOA instead of defaulting to one unit", () => {
+  const page = readFileSync("app/(dashboard)/service-requests/new/page.tsx", "utf8")
+  const route = readFileSync("app/api/db/service-requests/route.ts", "utf8")
+  assert.match(page, /isPerFootRate\(method, price\.unit\)/)
+  assert.match(route, /isPerFootRate\(method, price\?\.unit\)/)
+  assert.match(page, /stand-weeks/)
+  assert.match(page, /row\.qty \+ 1/)
+})

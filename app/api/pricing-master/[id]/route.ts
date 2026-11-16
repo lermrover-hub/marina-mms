@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getPricingMasterById, updatePricingMaster } from "@/lib/pricing-master"
+import { getPricingWriteAccess } from "@/lib/pricing-access"
+import { pricingUpdateSchema, pricingValidationMessage, validatePricingTransition, validateDisplayPlacement } from "@/lib/pricing-validation"
+import { assertWetBerthUnavailable } from "@/lib/pricing-governance"
 
 export const dynamic = "force-dynamic"
 
@@ -30,20 +33,45 @@ export async function PATCH(
 ) {
   const { id } = await params
   try {
-    const body = await req.json()
-    const { serviceNameEn, serviceNameTh, category, unit, rateThb, pilotRateThb, pilotNotes, description, notes, isActive } = body
+    const access = await getPricingWriteAccess()
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.error }, { status: access.status })
+    }
+
+    const parsed = pricingUpdateSchema.safeParse(await req.json())
+    if (!parsed.success) {
+      return NextResponse.json({ error: pricingValidationMessage(parsed.error) }, { status: 400 })
+    }
+
+    const current = await getPricingMasterById(id)
+    if (!current) {
+      return NextResponse.json({ error: "Pricing not found" }, { status: 404 })
+    }
+    const displayError = validateDisplayPlacement(parsed.data, current.displayVesselGroup)
+    if (displayError) return NextResponse.json({ error: displayError }, { status: 400 })
+    for (const value of [parsed.data.category, parsed.data.serviceNameEn, parsed.data.displayCategory]) {
+      try {
+        assertWetBerthUnavailable(value)
+      } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Wet berth is unavailable" }, { status: 400 })
+      }
+    }
+    const transitionError = validatePricingTransition(current, parsed.data)
+    if (transitionError) {
+      return NextResponse.json({ error: transitionError }, { status: 400 })
+    }
+
+    // The edit form sends the current status along with other fields. Do not
+    // recalculate is_active when the workflow status was not changed.
+    const update = { ...parsed.data, priceStatus: parsed.data.priceStatus === current.priceStatus ? undefined : parsed.data.priceStatus }
+    const approvedStatus = update.priceStatus ?? current.priceStatus
+    const approvalRelevantChange = (["priceStatus", "quoteAllowed", "rateThb", "fullRateThb", "pilotRateThb", "calcType"] as const)
+      .some((field) => parsed.data[field] !== undefined && parsed.data[field] !== current[field])
 
     const pricing = await updatePricingMaster(id, {
-      serviceNameEn,
-      serviceNameTh,
-      category,
-      unit,
-      rateThb,
-      pilotRateThb,
-      pilotNotes,
-      description,
-      notes,
-      isActive,
+      ...update,
+      updatedBy: access.actorId,
+      approvedBy: approvalRelevantChange && (approvedStatus === "ACTIVE" || approvedStatus === "APPROVED" || approvedStatus.startsWith("APPROVED_")) ? access.actorId : undefined,
     })
 
     if (!pricing) {
@@ -64,7 +92,17 @@ export async function DELETE(
 ) {
   const { id } = await params
   try {
-    const pricing = await updatePricingMaster(id, { isActive: false })
+    const access = await getPricingWriteAccess()
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.error }, { status: access.status })
+    }
+
+    const pricing = await updatePricingMaster(id, {
+      isActive: false,
+      priceStatus: "INACTIVE",
+      updatedBy: access.actorId,
+      approvedBy: access.actorId,
+    })
 
     if (!pricing) {
       return NextResponse.json({ error: "Pricing not found" }, { status: 404 })

@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server"
 import { getWorkOrders } from "@/lib/db"
 import { createServerClient } from "@/lib/supabase-server"
+import { PORTAL_READ_ROLES, requireApiActor } from "@/lib/api-auth"
+import { mergeWorkflowMetadata, readLegacyWorkflowMetadata } from "@/lib/service-workflow-compat"
+import { WORK_ORDER_CREATE_ROLES } from "@/lib/workflow-access"
 
 export const dynamic = "force-dynamic"
 
 export async function GET() {
   try {
+    const access = await requireApiActor(PORTAL_READ_ROLES)
+    if ("error" in access) return access.error
     const data = await getWorkOrders()
     return NextResponse.json(data)
   } catch (e) {
@@ -15,15 +20,100 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    const access = await requireApiActor(WORK_ORDER_CREATE_ROLES)
+    if ("error" in access) return access.error
     const body = await req.json()
-    const supabase = createServerClient()
+    const supabase = createServerClient({ requireServiceRole: true })
+    const reference = String(body.reference ?? body.wo_number ?? `WO-${Date.now().toString().slice(-6)}`).trim()
+    if (!reference) {
+      return NextResponse.json({ error: "Work order reference is required" }, { status: 400 })
+    }
+    let serviceRequestId = String(body.service_request_id ?? body.sr_id ?? "").trim()
+    if (!serviceRequestId && body.quotation_id) {
+      const { data: linkedQuotation, error: quotationError } = await supabase
+        .from("mms_quotations").select("sr_id").eq("id", body.quotation_id).single()
+      if (quotationError) return NextResponse.json({ error: quotationError.message }, { status: 404 })
+      serviceRequestId = String(linkedQuotation?.sr_id ?? "").trim()
+    }
+    if (!serviceRequestId) {
+      return NextResponse.json({ error: "Create a Service Request and clear its payment gate before creating a Work Order." }, { status: 409 })
+    }
+    if (serviceRequestId) {
+      const { data: serviceRequest, error: requestError } = await supabase
+        .from("mms_service_requests")
+        .select("*")
+        .eq("id", serviceRequestId)
+        .single()
+      if (requestError) return NextResponse.json({ error: requestError.message }, { status: 404 })
+      const legacy = readLegacyWorkflowMetadata(serviceRequest.notes)
+      const effective = mergeWorkflowMetadata(serviceRequest, legacy)
+      const paymentMode = effective.payment_mode
+      const paymentGateStatus = effective.payment_gate_status
+      const serviceOrderConfirmedAt = effective.service_order_confirmed_at
+      if (serviceRequest.status !== "SERVICE_ORDER_CONFIRMED" || !serviceOrderConfirmedAt) {
+        return NextResponse.json({
+          error: `Confirm the Service Order after payment clearance before creating a Work Order (${paymentMode}: ${paymentGateStatus}).`,
+        }, { status: 409 })
+      }
+      body.service_request_id = serviceRequestId
+      body.sr_id = serviceRequestId
+      const quotationId = effective.quotation_id ?? null
+      if (!quotationId) {
+        return NextResponse.json({ error: "The confirmed Service Order has no linked quotation." }, { status: 409 })
+      }
+      const { data: quotation, error: quotationError } = await supabase
+        .from("mms_quotations")
+        .select("id,subtotal,discount,status,internal_approval_status")
+        .eq("id", quotationId)
+        .single()
+      if (quotationError) return NextResponse.json({ error: quotationError.message }, { status: 404 })
+      if (quotation.internal_approval_status !== "APPROVED" || !["SENT", "ACCEPTED", "CONVERTED"].includes(quotation.status)) {
+        return NextResponse.json({ error: "Work Order requires a manager-approved quotation that has been sent to the customer." }, { status: 409 })
+      }
+      body.quotation_id = quotation.id
+      body.total_revenue = Math.max(0, Number(quotation.subtotal ?? 0) - Number(quotation.discount ?? 0))
+    }
+    const now = new Date().toISOString()
     const { data, error } = await supabase
       .from("mms_work_orders")
-      .insert({ ...body, created_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .insert({
+        ...body,
+        reference,
+        // Staging retains the legacy NOT NULL wo_number column; production uses reference.
+        // Persist both to keep one API contract across the two schemas.
+        wo_number: String(body.wo_number ?? reference),
+        created_at: now,
+        updated_at: now,
+      })
       .select()
       .single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json(data, { status: 201 })
+
+    // Keep the accounting chain traversable after a Work Order is created.
+    // The quotation remains the commercial source of truth, while any invoice
+    // already converted from that quotation receives the same WO link. Older
+    // staging schemas may not expose one of these compatibility columns, so a
+    // link failure is returned as a visible warning rather than hiding it.
+    const accountingLinkWarnings: string[] = []
+    if (body.quotation_id) {
+      const quotationLink = await supabase
+        .from("mms_quotations")
+        .update({ work_order_id: data.id, updated_at: now })
+        .eq("id", body.quotation_id)
+      if (quotationLink.error) accountingLinkWarnings.push(`Quotation link: ${quotationLink.error.message}`)
+
+      const invoiceLink = await supabase
+        .from("mms_invoices")
+        .update({ work_order_id: data.id, updated_at: now })
+        .eq("quotation_id", body.quotation_id)
+        .is("work_order_id", null)
+      if (invoiceLink.error) accountingLinkWarnings.push(`Invoice link: ${invoiceLink.error.message}`)
+    }
+
+    return NextResponse.json(
+      accountingLinkWarnings.length ? { ...data, accounting_link_warnings: accountingLinkWarnings } : data,
+      { status: 201 },
+    )
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 })
   }

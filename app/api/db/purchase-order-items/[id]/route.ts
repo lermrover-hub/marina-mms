@@ -1,48 +1,37 @@
 import { NextResponse } from "next/server"
-import { apiErrorMessage, dbTransaction } from "@/lib/postgres"
+import { PROCUREMENT_WRITE_ROLES, requireApiActor } from "@/lib/api-auth"
+import { apiServerError, finiteNonNegative } from "@/lib/api-route-utils"
+import { createServerClient } from "@/lib/supabase-server"
 
 export const dynamic = "force-dynamic"
 
-export async function PATCH(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const access = await requireApiActor(PROCUREMENT_WRITE_ROLES)
+  if ("error" in access) return access.error
   try {
-    const { id } = await params
     const body = await req.json()
-
-    const qty        = Number(body.qty)        || 0
-    const unit_price = Number(body.unit_price) || 0
-    const line_total = parseFloat((qty * unit_price).toFixed(2))
-
-    const item = await dbTransaction(async (client) => {
-      const updated = await client.query(`UPDATE mms_purchase_order_items SET item_code=$1, description=$2, qty=$3, unit=$4, unit_price=$5, line_total=$6, updated_at=now() WHERE id=$7 RETURNING *`, [body.item_code || null, body.description, qty, body.unit || null, unit_price, line_total, id])
-      if (!updated.rows[0]) return null
-      await client.query(`UPDATE mms_purchase_orders SET subtotal = totals.subtotal, vat_amount = round(totals.subtotal * 0.07, 2), total_amount = totals.subtotal + round(totals.subtotal * 0.07, 2), updated_at = now() FROM (SELECT COALESCE(sum(line_total),0) AS subtotal FROM mms_purchase_order_items WHERE po_id = $1) totals WHERE id = $1`, [updated.rows[0].po_id])
-      return updated.rows[0]
-    })
-    if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 })
-    return NextResponse.json(item)
-  } catch (e) {
-    return NextResponse.json({ error: apiErrorMessage(e) }, { status: 500 })
-  }
+    const description = String(body.description ?? "").trim()
+    const qty = finiteNonNegative(body.qty ?? 0)
+    const unitPrice = finiteNonNegative(body.unit_price ?? 0)
+    if (!description) return NextResponse.json({ error: "description is required" }, { status: 400 })
+    if (qty == null || unitPrice == null) return NextResponse.json({ error: "qty and unit_price must be non-negative" }, { status: 400 })
+    const { id } = await params
+    const { data, error } = await createServerClient({ requireServiceRole: true }).from("mms_purchase_order_items").update({
+      item_code: body.item_code || null, description, qty, unit: body.unit || null, unit_price: unitPrice,
+      line_total: Number((qty * unitPrice).toFixed(2)), updated_at: new Date().toISOString(),
+    }).eq("id", id).select().maybeSingle()
+    if (error) throw error
+    return data ? NextResponse.json(data) : NextResponse.json({ error: "Not found" }, { status: 404 })
+  } catch (error) { return apiServerError("purchase-order-items.patch", error) }
 }
 
-export async function DELETE(
-  _req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const access = await requireApiActor(PROCUREMENT_WRITE_ROLES)
+  if ("error" in access) return access.error
   try {
     const { id } = await params
-    const deleted = await dbTransaction(async (client) => {
-      const result = await client.query("DELETE FROM mms_purchase_order_items WHERE id=$1 RETURNING po_id", [id])
-      if (!result.rows[0]) return false
-      await client.query(`UPDATE mms_purchase_orders SET subtotal = totals.subtotal, vat_amount = round(totals.subtotal * 0.07, 2), total_amount = totals.subtotal + round(totals.subtotal * 0.07, 2), updated_at = now() FROM (SELECT COALESCE(sum(line_total),0) AS subtotal FROM mms_purchase_order_items WHERE po_id = $1) totals WHERE id = $1`, [result.rows[0].po_id])
-      return true
-    })
-    if (!deleted) return NextResponse.json({ error: "Not found" }, { status: 404 })
-    return NextResponse.json({ ok: true })
-  } catch (e) {
-    return NextResponse.json({ error: apiErrorMessage(e) }, { status: 500 })
-  }
+    const { data, error } = await createServerClient({ requireServiceRole: true }).from("mms_purchase_order_items").delete().eq("id", id).select("id").maybeSingle()
+    if (error) throw error
+    return data ? NextResponse.json({ ok: true }) : NextResponse.json({ error: "Not found" }, { status: 404 })
+  } catch (error) { return apiServerError("purchase-order-items.delete", error) }
 }

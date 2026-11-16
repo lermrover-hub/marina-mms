@@ -1,40 +1,35 @@
 import { NextResponse } from "next/server"
-import { apiErrorMessage, dbQuery, dbTransaction } from "@/lib/postgres"
+import { PROCUREMENT_WRITE_ROLES, STAFF_ROLES, requireApiActor } from "@/lib/api-auth"
+import { apiServerError } from "@/lib/api-route-utils"
+import { createServerClient } from "@/lib/supabase-server"
 
 export const dynamic = "force-dynamic"
 
 export async function GET(req: Request) {
+  const access = await requireApiActor(STAFF_ROLES)
+  if ("error" in access) return access.error
   try {
-    const { searchParams } = new URL(req.url)
-    const status      = searchParams.get("status")
-    const supplierId  = searchParams.get("supplier_id")
-    const where: string[] = []
-    const values: unknown[] = []
-    if (status) { values.push(status); where.push(`status = $${values.length}`) }
-    if (supplierId) { values.push(supplierId); where.push(`supplier_id = $${values.length}`) }
-    const result = await dbQuery(`SELECT * FROM mms_purchase_orders${where.length ? ` WHERE ${where.join(" AND ")}` : ""} ORDER BY created_at DESC`, values)
-    return NextResponse.json(result.rows)
-  } catch (e) {
-    return NextResponse.json({ error: apiErrorMessage(e) }, { status: 500 })
-  }
+    const params = new URL(req.url).searchParams
+    let query = createServerClient({ requireServiceRole: true }).from("mms_purchase_orders").select("*").order("created_at", { ascending: false })
+    if (params.get("status")) query = query.eq("status", params.get("status")!)
+    if (params.get("supplier_id")) query = query.eq("supplier_id", params.get("supplier_id")!)
+    const { data, error } = await query
+    if (error) throw error
+    return NextResponse.json(data)
+  } catch (error) { return apiServerError("purchase-orders.get", error) }
 }
 
 export async function POST(req: Request) {
+  const access = await requireApiActor(PROCUREMENT_WRITE_ROLES)
+  if ("error" in access) return access.error
   try {
     const body = await req.json()
-    const row = await dbTransaction(async (client) => {
-      await client.query("SELECT pg_advisory_xact_lock(hashtext('mms_purchase_orders_number'))")
-      let poNumber = String(body.po_number ?? "").trim()
-      if (!poNumber) {
-        const year = new Date().getFullYear()
-        const count = await client.query("SELECT count(*)::int AS count FROM mms_purchase_orders WHERE EXTRACT(YEAR FROM created_at) = $1", [year])
-        poNumber = `PO-${year}-${String(Number(count.rows[0].count) + 1).padStart(4, "0")}`
-      }
-      const result = await client.query(`INSERT INTO mms_purchase_orders (po_number, supplier_id, supplier_name, status, order_date, expected_date, notes) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`, [poNumber, body.supplier_id || null, body.supplier_name || null, body.status || "draft", body.order_date || null, body.expected_date || null, body.notes || null])
-      return result.rows[0]
+    const { data, error } = await createServerClient({ requireServiceRole: true }).rpc("mms_create_purchase_order", {
+      p_po_number: String(body.po_number ?? "").trim() || null, p_supplier_id: body.supplier_id || null,
+      p_supplier_name: body.supplier_name || null, p_status: body.status || "draft", p_order_date: body.order_date || null,
+      p_expected_date: body.expected_date || null, p_notes: body.notes || null, p_created_by: access.actor.userId,
     })
-    return NextResponse.json(row, { status: 201 })
-  } catch (e) {
-    return NextResponse.json({ error: apiErrorMessage(e) }, { status: 500 })
-  }
+    if (error) throw error
+    return NextResponse.json(Array.isArray(data) ? data[0] : data, { status: 201 })
+  } catch (error) { return apiServerError("purchase-orders.post", error) }
 }

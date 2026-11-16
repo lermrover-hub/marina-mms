@@ -1,10 +1,10 @@
 @import "tailwindcss";
 
 @theme {
-  --color-marina-gold: #25BDB3;
-  --color-marina-gold-hover: #40E0D0;
-  --color-ocean-turquoise: #40E0D0;
-  --color-ocean-dark-teal: #0A2E36;
+  --color-marina-gold: #B18F2F;
+  --color-marina-gold-hover: #927421;
+  --color-ocean-turquoise: #0B2F5B;
+  --color-ocean-dark-teal: #0B2F5B;
 
   /* ── Marina Brand Colors ─────────────────────────────── */
   --color-navy-50:  #f0f4f8;
@@ -30,16 +30,16 @@
   --color-teal-900: #134e4a;
 
   /* ── Semantic UI tokens ──────────────────────────────── */
-  --color-background:         #f6f4ef;
+  --color-background:         #EDF3F8;
   --color-surface:            #ffffff;
-  --color-border:             #e5dfd2;
+  --color-border:             #dce5ee;
   --color-border-strong:      #cbbf9f;
   --color-text:               #1f2933;
   --color-text-muted:         #647076;
   --color-text-subtle:        #8b969a;
 
   /* ── Sidebar ─────────────────────────────────────────── */
-  --color-sidebar:            #ffffff;
+  --color-sidebar:            #0B2F5B;
   --color-sidebar-hover:      #f2eee4;
   --color-sidebar-active:     #25BDB3;
   --color-sidebar-border:     #e5dfd2;

@@ -39,7 +39,7 @@ try {
   browser = await chromium.launch({ channel: "chrome", headless: true })
   const page = await browser.newPage({ baseURL: origin, viewport: { width: 1440, height: 950 } })
   const errors = []
-  page.on("pageerror", error => errors.push(error.message))
+  page.on("pageerror", error => errors.push({ url: page.url(), message: error.message }))
   await page.route(url => url.origin === origin, route => route.continue({
     headers: { ...route.request().headers(), "x-vercel-trusted-oidc-idp-token": token },
   }))
@@ -52,10 +52,22 @@ try {
   assert.equal(session.user?.role, "FINANCE")
 
   await page.goto("/pricing-master")
-  await page.getByText("80 active v3.8 rates", { exact: true }).waitFor()
+  await page.getByText("76 active v3.8 rates", { exact: true }).waitFor()
+  const rampRates = page.getByRole("region", { name: "Ramp rates" })
+  await rampRates.getByText("RAMP_BIG_TRUCK", { exact: true }).waitFor()
+  await rampRates.getByText("RAMP_SMALL_TRUCK", { exact: true }).waitFor()
+  assert.equal(await rampRates.getByText("RAMP_FISH_LT15_SELF", { exact: true }).count(), 0)
+  assert.equal(await rampRates.getByText("RAMP_JETSKI", { exact: true }).count(), 0)
   await page.getByLabel("Rate card version").selectOption("current")
   await page.getByRole("region", { name: "Dry Storage / Service Yard rates" }).getByText("STG-M3-M", { exact: true }).waitFor()
-  await page.getByRole("region", { name: "Ramp rates" }).getByText("RAMP_SB_3ENG_41_47", { exact: true }).waitFor()
+  await rampRates.getByText("RAMP_SB_3ENG_41_47", { exact: true }).waitFor()
+  await rampRates.getByText("RAMP-V38-SC1", { exact: true }).waitFor()
+  for (const removed of [
+    "RAMP-V38-MONO", "RAMP-V38-POWERCAT", "RAMP-V38-SAILCAT",
+    "RAMP-V38-DINGHY",
+  ]) {
+    assert.equal(await rampRates.getByText(removed, { exact: true }).count(), 0, `${removed} must not appear in active Ramp rates`)
+  }
   const haulRates = page.getByRole("region", { name: "Haul-out / Launch rates" })
   await haulRates.getByText("HAUL_SB_2ENG_28_40", { exact: true }).waitFor()
   assert.equal(await haulRates.getByText("PKG-HL-SB2", { exact: true }).count(), 0)
@@ -106,7 +118,7 @@ try {
     console.log("PASS", code, "1", unit, rate)
   }
   assert.deepEqual(errors, [])
-  console.log("PASS: protected Vercel Preview; 80 rates; fixed-tier drafts saved with original workflow")
+  console.log("PASS: protected Vercel Preview; Ramp scope; fixed-tier drafts saved with original workflow")
 } finally {
   if (browser) await browser.close()
   for (const { id, title } of drafts) {

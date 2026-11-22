@@ -386,6 +386,7 @@ export default function NewQuotationPage() {
   const [boatId,         setBoatId]         = useState("")
   const [title,          setTitle]          = useState("")
   const [validDays,      setValidDays]      = useState(7)
+  const [previewDate,    setPreviewDate]    = useState<Date | null>(null)
   const [discountType,   setDiscountType]   = useState("NONE")
   const [discountValue,  setDiscountValue]  = useState(0)
   const [taxRate,        setTaxRate]        = useState(7)
@@ -396,6 +397,8 @@ export default function NewQuotationPage() {
   const [managerSignature, setManagerSignature] = useState("")
   const [saving,         setSaving]         = useState(false)
   const [saveError,      setSaveError]      = useState<string | null>(null)
+
+  useEffect(() => setPreviewDate(new Date()), [])
 
   const [items, setItems] = useState<LineItem[]>([
     { id: uid(), description: "", category: "Other", unit: "job", qty: 1, unitPrice: 0 },
@@ -554,9 +557,11 @@ export default function NewQuotationPage() {
     }
   }
 
-  const validUntil = new Date()
-  validUntil.setDate(validUntil.getDate() + validDays)
-  const validUntilStr = validUntil.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+  const validUntil = previewDate ? new Date(previewDate) : null
+  validUntil?.setDate(validUntil.getDate() + validDays)
+  const validUntilStr = validUntil
+    ? validUntil.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+    : "—"
 
   return (
     <div className="space-y-6">

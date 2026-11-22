@@ -49,6 +49,27 @@ test("higher-of LOA and engine count selects the more expensive tier", () => {
   const result = calculateV38PricingLine(sb1, { boatType: "Speedboat", loaFt: 25, numEngines: 3 })
   assert.equal(result.eligible, false)
   assert.match(result.reason ?? "", /selects SB3, not SB1/)
+  const promoted = calculateV38PricingLine(option("STG-SB3-D"), { boatType: "Speedboat", loaFt: 25, numEngines: 3, weightT: 5 })
+  assert.equal(promoted.eligible, true)
+  assert.equal(promoted.lineTotal, 900)
+  assert.equal(inferSpeedboatTier({ loaFt: 49, numEngines: 5 }), "OVER_CAPACITY")
+})
+
+test("approved fixed M3 price uses LOA to select a band, not to multiply the rate", () => {
+  const rule = buildV38PricingRuleFromRow({
+    source_version: V38_SOURCE_VERSION, service_group: "STORAGE_YARD",
+    vessel_category: "YACHT_MONOHULL", vessel_tier: "M3", loa_min_ft: 39,
+    loa_max_ft: 42.99, max_weight_t: 14, duration_code: "MONTHLY", rate_basis: "FIXED", quote_allowed: "YES",
+  })
+  const fixed = { ...option("STG-MONO-M"), pricingRule: rule, rateThb: 26000, unit: "month" }
+  for (const loaFt of [39, 40, 42.99]) {
+    const result = calculateV38PricingLine(fixed, { boatType: "SAILING_YACHT", loaFt, weightT: 14 })
+    assert.equal(result.eligible, true)
+    assert.equal(result.quantity, 1)
+    assert.equal(result.lineTotal, 26000)
+  }
+  assert.equal(calculateV38PricingLine(fixed, { boatType: "MOTOR_YACHT", loaFt: 43, weightT: 12 }).eligible, false)
+  assert.equal(calculateV38PricingLine(fixed, { boatType: "MOTOR_YACHT", loaFt: 40, weightT: 14.01 }).eligible, false)
 })
 
 test("approved storage rates and Sport Cruiser multiplier are preserved", () => {

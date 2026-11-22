@@ -14,7 +14,7 @@ export type V38RateBasis = "FIXED" | "PER_FT" | "PACKAGE" | "MANAGER_REVIEW"
 
 export type V38PricingRule = {
   version: "v3.8"
-  serviceType: "DRY_STORAGE_SERVICE_YARD" | "HAUL_LAUNCH_PACKAGE" | "STANDALONE_COMPONENT" | "MANAGER_REVIEW"
+  serviceType: "RAMP" | "DRY_STORAGE_SERVICE_YARD" | "HAUL_LAUNCH_PACKAGE" | "STANDALONE_COMPONENT" | "MANAGER_REVIEW"
   vesselCategory: V38VesselCategory
   tier?: string | null
   minLoaFt?: number | null
@@ -96,6 +96,7 @@ function normalizedText(value: string | null | undefined) {
 export function buildV38PricingRuleFromRow(row: V38PricingRuleColumns): V38PricingRule | null {
   if (row.source_version !== V38_SOURCE_VERSION || !row.vessel_category || !row.duration_code || !row.rate_basis) return null
   const serviceType: V38PricingRule["serviceType"] =
+    row.service_group === "RAMP" ? "RAMP" :
     row.service_group === "STORAGE_YARD" ? "DRY_STORAGE_SERVICE_YARD" :
     row.service_group === "HAUL_LAUNCH_PACKAGE" ? "HAUL_LAUNCH_PACKAGE" :
     row.service_group === "STANDALONE_COMPONENT" ? "STANDALONE_COMPONENT" :
@@ -158,7 +159,7 @@ export function inferSpeedboatTier(vessel: VesselPricingContext): string | null 
   const loa = Number(vessel.loaFt ?? 0)
   const engines = Number(vessel.numEngines ?? 0)
   const loaTier = loa > 60 ? 5 : loa > 50 ? 4 : loa > 40 ? 3 : loa > 27 ? 2 : loa > 0 ? 1 : 0
-  const engineTier = engines >= 4 ? 4 : engines === 3 ? 3 : engines === 2 ? 2 : engines === 1 ? 1 : 0
+  const engineTier = engines > 4 ? 5 : engines === 4 ? 4 : engines === 3 ? 3 : engines === 2 ? 2 : engines === 1 ? 1 : 0
   const tier = Math.max(loaTier, engineTier)
   return tier >= 1 && tier <= 4 ? `SB${tier}` : tier > 4 ? "OVER_CAPACITY" : null
 }
@@ -175,15 +176,20 @@ export function evaluateV38Eligibility(rule: V38PricingRule, vessel: VesselPrici
 
   const loa = vessel.loaFt == null ? null : Number(vessel.loaFt)
   const weight = vessel.weightT == null ? null : Number(vessel.weightT)
+  const tieredSpeedboat = /^SB[1-4]$/.test(rule.tier ?? "")
+  // Engine count may promote storage and haul tiers, but cannot extend a confirmed ramp LOA band.
+  const engineCanPromote = tieredSpeedboat && (
+    rule.serviceType === "DRY_STORAGE_SERVICE_YARD" || rule.serviceType === "HAUL_LAUNCH_PACKAGE"
+  )
 
   if ((rule.minLoaFt != null || rule.maxLoaFt != null) && (!loa || loa <= 0)) {
     return { eligible: false, reason: "Vessel LOA is required for this rate." }
   }
-  if (rule.minLoaFt != null && loa! < rule.minLoaFt) return { eligible: false, reason: `Minimum LOA is ${rule.minLoaFt} ft.` }
+  if (!engineCanPromote && rule.minLoaFt != null && loa! < rule.minLoaFt) return { eligible: false, reason: `Minimum LOA is ${rule.minLoaFt} ft.` }
   if (rule.maxLoaFt != null && loa! > rule.maxLoaFt) return { eligible: false, reason: `Maximum LOA is ${rule.maxLoaFt} ft.` }
   if (rule.maxWeightT != null && weight != null && weight > rule.maxWeightT) return { eligible: false, reason: `Maximum weight is ${rule.maxWeightT} tonnes.` }
 
-  if (rule.tier?.startsWith("SB")) {
+  if (tieredSpeedboat) {
     const inferredTier = inferSpeedboatTier(vessel)
     if (!inferredTier) return { eligible: false, reason: "LOA or engine count is required to determine the speedboat tier." }
     if (inferredTier === "OVER_CAPACITY") return { eligible: false, reason: "Vessel exceeds the automatic speedboat tiers and requires manager review." }

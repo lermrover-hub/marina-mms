@@ -5,6 +5,26 @@ Service Request, Service Order, or Quotation workflow files. The isolated
 review build carries forward the previous session's existing v3.8 Quotation
 integration to test it, not a new workflow change. It is not a production release.
 
+## Preview and verification
+
+- Preview: https://marina-mms-v38-review-ff80y5bsh-lermrover-hubs-projects.vercel.app/pricing-master
+- Vercel deployment: `dpl_CsgrwAL7zdjhvLCqjKMJJpMG7aj8`, application revision
+  `35bdd29`; isolated from the existing production project. Build and type
+  check passed with 76 static pages. Existing lint warnings are unrelated.
+- Without Vercel authorization, the deployment redirects to Vercel sign-in.
+  Team testers also need their own staging MMS account. The preview-only
+  adapter uses the staging `users.id` column and normal password verification;
+  the production lookup remains unchanged.
+- Chrome smoke on the deployed URL used a temporary staging Finance account,
+  rendered 52 rates, and saved a 40 ft Monohull monthly Draft at THB 26,000
+  plus VAT (THB 27,820 total). The account and draft were removed.
+- Local verification: 9/9 pricing tests and 59/59 repository tests passed.
+  Staging readback found zero temporary users, leftover drafts, or active
+  QA rates. No customer message was sent.
+- Reproduce readback and Preview Draft using `tests/pricing-v38-preview-smoke.mjs`
+  with the dedicated Vercel project, its short-lived OIDC token, and the
+  approved staging configuration. Do not copy secrets into this handoff.
+
 ## Source and catalogue
 
 - Owner workbook SHA-256:

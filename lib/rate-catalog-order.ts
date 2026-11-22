@@ -47,6 +47,7 @@ export function getRateServiceGroup(row: RateCatalogRow): ServiceGroup {
   if (group === "manager review" || category === "manager review") return "MANAGER_REVIEW"
   if (group === "storage yard" || group === "storage" || subgroup.includes("hardstand service")) return "STORAGE_YARD"
   if (group.startsWith("haul")) return "HAUL_OUT"
+  if (group.startsWith("tow truck")) return "RAMP"
   if (group.startsWith("ramp")) return "RAMP"
   if (/^(boat yard|boatyard|yard services|standalone component|service & equipment|hardstand & boat stand)/.test(group)) return "BOAT_YARD"
   if (group.includes("paint")) return "PAINT"
@@ -94,6 +95,14 @@ function getYardSubgroup(row: RateCatalogRow) {
   return "Other Yard Services"
 }
 
+function getRampSubgroup(row: RateCatalogRow) {
+  const name = words(row.serviceNameEn)
+  const group = words(row.serviceGroup ?? "")
+  return group.startsWith("tow truck") || /\btruck\b|\bbulldozer\b/.test(name)
+    ? "TOW_TRUCK"
+    : getRateVesselGroup(row)
+}
+
 const YARD_ORDER = ["Tow Truck Hire", "Boat Stand / Cradle", "High-pressure Wash", "Foam Wash", "Other Yard Services"]
 
 export function rateTierLabel(tier?: string | null) {
@@ -139,7 +148,7 @@ export function groupRateCatalog<T extends RateCatalogRow>(rows: readonly T[]) {
   const groups = new Map<ServiceGroup, Map<string, T[]>>()
   for (const row of rows) {
     const group = getRateServiceGroup(row)
-    const subgroup = group === "BOAT_YARD" ? getYardSubgroup(row) : getRateVesselGroup(row)
+    const subgroup = group === "BOAT_YARD" ? getYardSubgroup(row) : group === "RAMP" ? getRampSubgroup(row) : getRateVesselGroup(row)
     const subgroups = groups.get(group) ?? new Map<string, T[]>()
     const rates = subgroups.get(subgroup) ?? []
     rates.push(row)
@@ -150,7 +159,7 @@ export function groupRateCatalog<T extends RateCatalogRow>(rows: readonly T[]) {
   return RATE_SERVICE_GROUPS.flatMap(group => {
     const sections = groups.get(group.key)
     if (!sections) return []
-    const order = group.key === "BOAT_YARD" ? YARD_ORDER : VESSEL_ORDER
+    const order = group.key === "BOAT_YARD" ? YARD_ORDER : group.key === "RAMP" ? [...VESSEL_ORDER.slice(0, 2), "TOW_TRUCK", ...VESSEL_ORDER.slice(2)] : VESSEL_ORDER
     return [{
       ...group,
       sections: order.flatMap(key => {
@@ -158,7 +167,7 @@ export function groupRateCatalog<T extends RateCatalogRow>(rows: readonly T[]) {
         if (!rates) return []
         return [{
           key,
-          label: group.key === "BOAT_YARD" ? key : key === "OTHER" ? "General / Other Vessels" : rateVesselLabel(key),
+          label: group.key === "BOAT_YARD" ? key : key === "TOW_TRUCK" ? "Tow Truck" : key === "OTHER" ? "General / Other Vessels" : rateVesselLabel(key),
           rows: rates.sort(compareRates),
         }]
       }),

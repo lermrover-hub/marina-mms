@@ -56,6 +56,8 @@ try {
   const rampRates = page.getByRole("region", { name: "Ramp rates" })
   await rampRates.getByText("RAMP_BIG_TRUCK", { exact: true }).waitFor()
   await rampRates.getByText("RAMP_SMALL_TRUCK", { exact: true }).waitFor()
+  await rampRates.getByText("TRUCK_ORM_CUSTOMER", { exact: true }).waitFor()
+  await rampRates.getByText("TRUCK_STANDALONE", { exact: true }).waitFor()
   assert.equal(await rampRates.getByText("RAMP_FISH_LT15_SELF", { exact: true }).count(), 0)
   assert.equal(await rampRates.getByText("RAMP_JETSKI", { exact: true }).count(), 0)
   await page.getByLabel("Rate card version").selectOption("current")

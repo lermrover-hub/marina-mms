@@ -29,6 +29,13 @@ test("seed generates the complete approved v3.8 catalog", () => {
   assert.equal(rows.filter((row) => row.service_group === "HAUL_LAUNCH_PACKAGE").length, 15)
   assert.equal(rows.filter((row) => row.service_group === "STANDALONE_COMPONENT").length, 2)
   assert.equal(rows.filter((row) => row.service_group === "MANAGER_REVIEW").length, 5)
+  const haulCodes = rows.filter((row) => row.service_group === "HAUL_LAUNCH_PACKAGE" && row.vessel_category === "COMMERCIAL_SPEEDBOAT")
+  assert.deepEqual(haulCodes.map((row) => row.code), [
+    "HAUL_SB_1ENG_15_27", "HAUL_SB_2ENG_28_40", "HAUL_SB_3ENG_41_50", "HAUL_SB_4ENG_51_60",
+  ])
+  assert.deepEqual(haulCodes.map((row) => row.rate_thb), [7000, 9500, 12500, 16000])
+  assert.ok(haulCodes.every((row) => row.is_package && row.rate_basis === "PACKAGE" && row.package_inclusions.includes("TOW-ROUND-TRIP")))
+  assert.ok(rows.every((row) => !/^PKG-HL-SB[1-4]$/.test(row.code)))
 })
 
 test("speedboat tier boundaries follow the approved LOA ranges", () => {
@@ -108,11 +115,11 @@ test("Sail Catamaran uses 1.5x rates and applies the THB 39,000 monthly cap", ()
 
 test("package conflict rejects separately added included services", () => {
   const conflict = hasV38PackageConflict([
-    option("PKG-HL-SB2"),
+    option("HAUL_SB_2ENG_28_40"),
     option("TOW-ROUND-TRIP"),
   ])
   assert.match(conflict ?? "", /already includes TOW-ROUND-TRIP/)
-  assert.equal(hasV38PackageConflict([option("PKG-HL-SB2")]), null)
+  assert.equal(hasV38PackageConflict([option("HAUL_SB_2ENG_28_40")]), null)
 })
 
 test("manager-review placeholders cannot be auto-quoted", () => {
@@ -130,7 +137,7 @@ test("manager-review placeholders cannot be auto-quoted", () => {
 })
 
 test("capacity metadata uses the approved limits without adding unapproved prices", () => {
-  for (const code of ["STG-SB4-M", "STG-SC-SB4-M", "PKG-HL-SB4", "PKG-HL-SC-SB4", "PKG-HL-MONO-43-45"]) {
+  for (const code of ["STG-SB4-M", "STG-SC-SB4-M", "HAUL_SB_4ENG_51_60", "PKG-HL-SC-SB4", "PKG-HL-MONO-43-45"]) {
     assert.equal(option(code).pricingRule?.maxWeightT, 14)
   }
   for (const code of ["STG-SAILCAT-M", "PKG-HL-SAILCAT-39-41", "MR-POWER-CAT"]) {

@@ -174,7 +174,10 @@ export function generateApprovedV38Rates() {
   })
 
   const packages = [
-    ...[7000, 9500, 12500, 16000].map((rate, index) => ({ code: `PKG-HL-SB${index + 1}`, name: `Haul / Launch Package - Commercial Speedboat SB${index + 1}`, category: "COMMERCIAL_SPEEDBOAT", tier: `SB${index + 1}`, rate })),
+    { code: "HAUL_SB_1ENG_15_27", name: "Speedboat Tier 1 (1 engine, 15-27 ft) haul-out + launch round trip", category: "COMMERCIAL_SPEEDBOAT", tier: "SB1", min: 15, rate: 7000 },
+    { code: "HAUL_SB_2ENG_28_40", name: "Speedboat Tier 2 (2 engines, >27-40 ft) haul-out + launch round trip", category: "COMMERCIAL_SPEEDBOAT", tier: "SB2", min: 27.01, rate: 9500 },
+    { code: "HAUL_SB_3ENG_41_50", name: "Speedboat Tier 3 (3 engines, >40-50 ft) haul-out + launch round trip", category: "COMMERCIAL_SPEEDBOAT", tier: "SB3", min: 40.01, rate: 12500 },
+    { code: "HAUL_SB_4ENG_51_60", name: "Speedboat Tier 4 (4 engines, >50-60 ft) haul-out + launch round trip", category: "COMMERCIAL_SPEEDBOAT", tier: "SB4", min: 50.01, rate: 16000 },
     ...[8400, 11400, 15000, 19200].map((rate, index) => ({ code: `PKG-HL-SC-SB${index + 1}`, name: `Haul / Launch Package - Sport & Cruiser SB${index + 1}`, category: "SPORT_CRUISER", tier: `SB${index + 1}`, rate })),
     { code: "PKG-HL-MONO-30-34", name: "Haul / Launch Package - Yacht Monohull 30-34 ft", category: "YACHT_MONOHULL", min: 30, max: 34, weight: 14, rate: 12500 },
     { code: "PKG-HL-MONO-35-38", name: "Haul / Launch Package - Yacht Monohull 35-38 ft", category: "YACHT_MONOHULL", min: 35, max: 38, weight: 14, rate: 14500 },

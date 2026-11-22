@@ -56,6 +56,9 @@ try {
   await page.getByLabel("Rate card version").selectOption("current")
   await page.getByRole("region", { name: "Dry Storage / Service Yard rates" }).getByText("STG-M3-M", { exact: true }).waitFor()
   await page.getByRole("region", { name: "Ramp rates" }).getByText("RAMP_SB_3ENG_41_47", { exact: true }).waitFor()
+  const haulRates = page.getByRole("region", { name: "Haul-out / Launch rates" })
+  await haulRates.getByText("HAUL_SB_2ENG_28_40", { exact: true }).waitFor()
+  assert.equal(await haulRates.getByText("PKG-HL-SB2", { exact: true }).count(), 0)
   assert.equal(await page.getByText("STG-MONO-M", { exact: true }).count(), 0)
   const boats = await page.evaluate(async () => (await fetch("/api/db/boats")).json())
   const monohull = boats.find(row => row.boat_type === "MOTOR_YACHT" && Number(row.loa_ft) === 40 &&
@@ -66,6 +69,7 @@ try {
     { boat: monohull, code: "STG-M3-M", rate: 26000, unit: "month", basis: "FIXED" },
     { boat: monohull, code: "PKG-HL-MONO-39-42", rate: 16000, unit: "package", basis: "PACKAGE" },
     { boat: speedboat, code: "RAMP_SB_2ENG_28_40", rate: 1200, unit: "trip", basis: "FIXED" },
+    { boat: speedboat, code: "HAUL_SB_2ENG_28_40", rate: 9500, unit: "package", basis: "PACKAGE" },
   ]) {
     assert.ok(boat, `Missing staging vessel for ${code}`)
     const title = `V38-PREVIEW-QA-${randomUUID()}`
@@ -95,6 +99,10 @@ try {
     assert.equal(line.unit, unit)
     assert.equal(line.pricing_code, code)
     assert.equal(line.pricing_rule_snapshot.rateBasis, basis)
+    if (code === "HAUL_SB_2ENG_28_40") {
+      assert.equal(line.pricing_rule_snapshot.isPackage, true)
+      assert.ok(line.pricing_rule_snapshot.includedServiceCodes.includes("TOW-ROUND-TRIP"))
+    }
     console.log("PASS", code, "1", unit, rate)
   }
   assert.deepEqual(errors, [])

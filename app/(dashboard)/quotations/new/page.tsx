@@ -1,5 +1,5 @@
 "use client"
-import React, { useState, useCallback, useEffect } from "react"
+import React, { useState, useCallback, useEffect, useMemo } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Plus, Save, Send, Sparkles, BookOpen, X, Loader2, Search } from "lucide-react"
@@ -10,6 +10,13 @@ import { PageHeader } from "@/components/shared/PageHeader"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { LineItemRow } from "@/components/quotations/LineItemRow"
 import type { Customer, Boat } from "@/lib/supabase"
+import {
+  V38_SOURCE_VERSION,
+  calculateV38PricingLine,
+  hasV38PackageConflict,
+  type V38PricingRule,
+  type VesselPricingContext,
+} from "@/lib/pricing-v38"
 import { formatTHB, cn } from "@/lib/utils"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -20,16 +27,44 @@ interface LineItem {
   unit: string
   qty: number
   unitPrice: number
+  pricingMasterId?: string
+  pricingCode?: string
+  pricingSourceVersion?: string | null
+  pricingRule?: V38PricingRule | null
+  pricingInput?: Record<string, unknown>
 }
 
 interface PricingOption {
   id: string
   code: string
   serviceNameEn: string
-  serviceNameTh: string | null
+  serviceNameTh?: string | null
   category: string
   unit: string
   rateThb: number
+  fullRateThb?: number
+  directCostThb?: number | null
+  revenueGlCode?: string | null
+  costGlCode?: string | null
+  pnlCategory?: string | null
+  costPnlCategory?: string | null
+  sourceVersion: string | null
+  quoteAllowed: string | null
+  pricingRule: V38PricingRule | null
+  effectiveDate?: string | null
+  updatedAt?: string
+}
+
+function vesselContext(boat: Boat | undefined): VesselPricingContext {
+  return {
+    boatId: boat?.id ?? null,
+    boatName: boat?.name ?? null,
+    boatType: boat?.boat_type ?? null,
+    usageType: boat?.usage_type ?? null,
+    loaFt: boat?.loa_ft ?? null,
+    weightT: boat?.weight_t ?? null,
+    numEngines: boat?.num_engines ?? null,
+  }
 }
 
 const CATEGORIES = [
@@ -63,9 +98,11 @@ function uid() { return Math.random().toString(36).slice(2, 9) }
 function RateCardPanel({
   onAdd,
   onClose,
+  selectedBoat,
 }: {
   onAdd: (item: PricingOption) => void
   onClose: () => void
+  selectedBoat: Boat | undefined
 }) {
   const [items, setItems] = useState<PricingOption[]>([])
   const [loading, setLoading] = useState(true)
@@ -82,14 +119,21 @@ function RateCardPanel({
 
   const categories = ["All", ...Array.from(new Set(items.map((i) => i.category))).sort()]
 
-  const filtered = items.filter((i) => {
-    const matchCat = activeCategory === "All" || i.category === activeCategory
-    const matchSearch =
-      !search ||
-      i.serviceNameEn.toLowerCase().includes(search.toLowerCase()) ||
-      i.code.toLowerCase().includes(search.toLowerCase())
-    return matchCat && matchSearch
-  })
+  const evaluated = useMemo(() => items.map((item) => ({
+    item,
+    calculation: calculateV38PricingLine(item, vesselContext(selectedBoat)),
+  })), [items, selectedBoat])
+
+  const filtered = evaluated
+    .filter(({ item }) => {
+      const matchCat = activeCategory === "All" || item.category === activeCategory
+      const matchSearch =
+        !search ||
+        item.serviceNameEn.toLowerCase().includes(search.toLowerCase()) ||
+        item.code.toLowerCase().includes(search.toLowerCase())
+      return matchCat && matchSearch
+    })
+    .sort((a, b) => Number(b.calculation.eligible) - Number(a.calculation.eligible))
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-end bg-black/30 pt-16 pr-4">
@@ -148,10 +192,13 @@ function RateCardPanel({
             <div className="py-10 text-center text-gray-400 text-sm">No items found</div>
           ) : (
             <div className="space-y-1">
-              {filtered.map((item) => (
+              {filtered.map(({ item, calculation }) => (
                 <div
                   key={item.id}
-                  className="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2.5 hover:border-teal-200 hover:bg-teal-50 group transition-colors"
+                  className={cn(
+                    "flex items-center justify-between rounded-lg border px-3 py-2.5 group transition-colors",
+                    calculation.eligible ? "border-gray-100 hover:border-teal-200 hover:bg-teal-50" : "border-amber-100 bg-amber-50/40"
+                  )}
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
@@ -161,13 +208,18 @@ function RateCardPanel({
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="text-xs text-gray-400">{item.category}</span>
                       <span className="text-xs font-semibold text-teal-700">
-                        {formatTHB(item.rateThb)}/{item.unit}
+                        {formatTHB(calculation.eligible ? calculation.lineTotal : item.rateThb)}/{calculation.eligible ? calculation.unit : item.unit}
                       </span>
+                      {item.sourceVersion === V38_SOURCE_VERSION && (
+                        <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700">v3.8</span>
+                      )}
                     </div>
+                    {!calculation.eligible && <p className="mt-1 text-xs text-amber-700">{calculation.reason}</p>}
                   </div>
                   <button
                     onClick={() => onAdd(item)}
-                    className="ml-3 shrink-0 rounded-md bg-teal-600 px-2.5 py-1 text-xs font-medium text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-teal-700"
+                    disabled={!calculation.eligible}
+                    className="ml-3 shrink-0 rounded-md bg-teal-600 px-2.5 py-1 text-xs font-medium text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-teal-700 disabled:cursor-not-allowed disabled:bg-gray-300"
                   >
                     + Add
                   </button>
@@ -343,6 +395,7 @@ export default function NewQuotationPage() {
   const [managerName,    setManagerName]    = useState("")
   const [managerSignature, setManagerSignature] = useState("")
   const [saving,         setSaving]         = useState(false)
+  const [saveError,      setSaveError]      = useState<string | null>(null)
 
   const [items, setItems] = useState<LineItem[]>([
     { id: uid(), description: "", category: "Other", unit: "job", qty: 1, unitPrice: 0 },
@@ -384,20 +437,53 @@ export default function NewQuotationPage() {
     setItems((prev) => prev.filter((item) => item.id !== id))
   }, [])
 
+  const buildLineFromPricing = useCallback((pricing: PricingOption): Omit<LineItem, "id"> | null => {
+    const calculation = calculateV38PricingLine(pricing, vesselContext(selectedBoat))
+    if (!calculation.eligible) {
+      alert(calculation.reason ?? "This rate requires manager review.")
+      return null
+    }
+
+    const conflict = hasV38PackageConflict([
+      ...items
+        .filter((item): item is LineItem & { pricingCode: string } => Boolean(item.pricingCode))
+        .map((item) => ({ code: item.pricingCode, pricingRule: item.pricingRule ?? null })),
+      { code: pricing.code, pricingRule: pricing.pricingRule },
+    ])
+    if (conflict) {
+      alert(conflict)
+      return null
+    }
+
+    return {
+      description: `${pricing.code} - ${pricing.serviceNameEn}${calculation.descriptionSuffix}`,
+      category: pricing.category,
+      unit: calculation.unit,
+      qty: calculation.quantity,
+      unitPrice: calculation.unitPrice,
+      pricingMasterId: pricing.id,
+      pricingCode: pricing.code,
+      pricingSourceVersion: pricing.sourceVersion,
+      pricingRule: pricing.pricingRule,
+      pricingInput: calculation.pricingInput,
+    }
+  }, [items, selectedBoat])
+
   // Add from rate card panel
   const handleAddFromRateCard = useCallback((pricing: PricingOption) => {
-    setItems((prev) => [
-      ...prev,
-      {
-        id:          uid(),
-        description: `${pricing.code} - ${pricing.serviceNameEn}`,
-        category:    pricing.category,
-        unit:        pricing.unit,
-        qty:         1,
-        unitPrice:   Number(pricing.rateThb),
-      },
-    ])
-  }, [])
+    const next = buildLineFromPricing(pricing)
+    if (!next) return
+    setItems((prev) => {
+      const withoutPlaceholder = prev.length === 1 && !prev[0].description && prev[0].unitPrice === 0 ? [] : prev
+      return [...withoutPlaceholder, { id: uid(), ...next }]
+    })
+  }, [buildLineFromPricing])
+
+  const handlePricingSelect = useCallback((lineId: string, pricing: PricingOption) => {
+    const next = buildLineFromPricing(pricing)
+    if (!next) return
+    setItems((prev) => prev.map((item) => item.id === lineId ? { id: lineId, ...next } : item))
+  }, [buildLineFromPricing])
 
   // Apply AI-generated items (appends to existing)
   const handleApplyAiItems = useCallback((aiItems: LineItem[]) => {
@@ -418,6 +504,7 @@ export default function NewQuotationPage() {
       alert("Manager name and signature are required before sending this customized or discounted quotation.")
       return
     }
+    setSaveError(null)
     setSaving(true)
     try {
       const validUntilDate = new Date()
@@ -461,7 +548,8 @@ export default function NewQuotationPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error ?? "Save failed")
       router.push(data?.id ? `/quotations/${data.id}` : "/quotations")
-    } catch {
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Unable to save quotation")
       setSaving(false)
     }
   }
@@ -476,6 +564,7 @@ export default function NewQuotationPage() {
         <RateCardPanel
           onAdd={handleAddFromRateCard}
           onClose={() => setShowRateCard(false)}
+          selectedBoat={selectedBoat}
         />
       )}
       {showAiModal && (
@@ -504,6 +593,12 @@ export default function NewQuotationPage() {
           </div>
         }
       />
+
+      {saveError && (
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          Quotation was not saved: {saveError}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Left sidebar — header info */}
@@ -711,6 +806,7 @@ export default function NewQuotationPage() {
                         units={UNITS}
                         onChange={updateItem}
                         onRemove={removeItem}
+                        onPricingSelect={handlePricingSelect}
                       />
                     ))}
                   </tbody>

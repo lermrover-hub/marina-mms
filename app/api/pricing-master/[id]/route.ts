@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getPricingMasterById, updatePricingMaster } from "@/lib/pricing-master"
+import { getPricingWriteAccess } from "@/lib/pricing-access"
+import { pricingUpdateSchema, pricingValidationMessage } from "@/lib/pricing-validation"
 
 export const dynamic = "force-dynamic"
 
@@ -30,20 +32,20 @@ export async function PATCH(
 ) {
   const { id } = await params
   try {
-    const body = await req.json()
-    const { serviceNameEn, serviceNameTh, category, unit, rateThb, pilotRateThb, pilotNotes, description, notes, isActive } = body
+    const access = await getPricingWriteAccess()
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.error }, { status: access.status })
+    }
+
+    const parsed = pricingUpdateSchema.safeParse(await req.json())
+    if (!parsed.success) {
+      return NextResponse.json({ error: pricingValidationMessage(parsed.error) }, { status: 400 })
+    }
 
     const pricing = await updatePricingMaster(id, {
-      serviceNameEn,
-      serviceNameTh,
-      category,
-      unit,
-      rateThb,
-      pilotRateThb,
-      pilotNotes,
-      description,
-      notes,
-      isActive,
+      ...parsed.data,
+      updatedBy: access.actorId,
+      approvedBy: access.actorId,
     })
 
     if (!pricing) {
@@ -64,7 +66,17 @@ export async function DELETE(
 ) {
   const { id } = await params
   try {
-    const pricing = await updatePricingMaster(id, { isActive: false })
+    const access = await getPricingWriteAccess()
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.error }, { status: access.status })
+    }
+
+    const pricing = await updatePricingMaster(id, {
+      isActive: false,
+      priceStatus: "INACTIVE",
+      updatedBy: access.actorId,
+      approvedBy: access.actorId,
+    })
 
     if (!pricing) {
       return NextResponse.json({ error: "Pricing not found" }, { status: 404 })

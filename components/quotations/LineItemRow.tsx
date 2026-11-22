@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react"
 import { Trash2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { formatTHB } from "@/lib/utils"
+import type { V38PricingRule } from "@/lib/pricing-v38"
 
 interface PricingOption {
   id: string
@@ -12,6 +13,9 @@ interface PricingOption {
   category: string
   unit: string
   rateThb: number
+  sourceVersion: string | null
+  quoteAllowed: string | null
+  pricingRule: V38PricingRule | null
 }
 
 interface LineItem {
@@ -21,6 +25,11 @@ interface LineItem {
   unit: string
   qty: number
   unitPrice: number
+  pricingMasterId?: string
+  pricingCode?: string
+  pricingSourceVersion?: string | null
+  pricingRule?: V38PricingRule | null
+  pricingInput?: Record<string, unknown>
 }
 
 interface LineItemRowProps {
@@ -30,6 +39,7 @@ interface LineItemRowProps {
   units: string[]
   onChange: (id: string, field: keyof LineItem, value: string | number) => void
   onRemove: (id: string) => void
+  onPricingSelect: (id: string, pricing: PricingOption) => void
 }
 
 export function LineItemRow({
@@ -39,6 +49,7 @@ export function LineItemRow({
   units,
   onChange,
   onRemove,
+  onPricingSelect,
 }: LineItemRowProps) {
   const [pricingOptions, setPricingOptions] = useState<PricingOption[]>([])
   const [loadingPricing, setLoadingPricing] = useState(false)
@@ -87,10 +98,7 @@ export function LineItemRow({
     const pricing = pricingOptions.find((p) => p.code === pricingCode)
     if (!pricing) return
 
-    onChange(item.id, "description", `${pricing.code} - ${pricing.serviceNameEn}`)
-    onChange(item.id, "category", pricing.category)
-    onChange(item.id, "unit", pricing.unit)
-    onChange(item.id, "unitPrice", Number(pricing.rateThb))
+    onPricingSelect(item.id, pricing)
   }
 
   return (
@@ -130,8 +138,8 @@ export function LineItemRow({
               >
                 <option value="">Pick rate card...</option>
                 {pricingOptions.map((p) => (
-                  <option key={p.code} value={p.code}>
-                    {p.code} - {p.serviceNameEn} (฿{Number(p.rateThb).toLocaleString()}/{p.unit})
+                  <option key={p.id} value={p.code} disabled={String(p.quoteAllowed ?? "YES") !== "YES"}>
+                    {p.code} - {p.serviceNameEn} (฿{Number(p.rateThb).toLocaleString()}/{p.unit}){String(p.quoteAllowed ?? "YES") !== "YES" ? " — manager review" : ""}
                   </option>
                 ))}
               </select>

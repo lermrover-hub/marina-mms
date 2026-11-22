@@ -1,4 +1,5 @@
 import { Pool } from "pg"
+import { createServerClient } from "@/lib/supabase-server"
 
 export type AuthUserRecord = {
   user_id: string
@@ -37,6 +38,27 @@ export function mapDatabaseRole(role: string): string {
 }
 
 export async function findActiveAuthUser(email: string): Promise<AuthUserRecord | null> {
+  if (process.env.MMS_V38_STAGING_AUTH === "true") {
+    if (
+      process.env.VERCEL_ENV !== "preview" ||
+      new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").hostname !== "zanlunbgupdtqznruzok.supabase.co" ||
+      !process.env.SUPABASE_SERVICE_ROLE_KEY
+    ) {
+      throw new Error("The v3.8 staging auth adapter is restricted to the staging preview.")
+    }
+    // Staging has users.id, while production queries users.user_id.
+    const { data, error } = await createServerClient()
+      .from("users")
+      .select("id,name,email,password_hash,role,is_active")
+      .eq("email", email.trim().toLowerCase())
+      .eq("is_active", true)
+      .maybeSingle()
+    if (error) throw error
+    if (!data) return null
+    const { id, ...user } = data
+    return { ...user, user_id: id }
+  }
+
   const result = await getPool().query<AuthUserRecord>(
     `select user_id, name, email, password_hash, role, is_active
        from public.users
